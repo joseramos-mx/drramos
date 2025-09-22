@@ -80,7 +80,7 @@ export default function HeroDoctor() {
               <Link href="https://wa.me/526182066760?text=Hola%2C%20quiero%20agendar%20mi%20valoraci%C3%B3n%20con%20el%20Dr.%20Felipe%20Ramos">Agenda tu valoración</Link>
             </Button>
             <Link
-              href="#casos"
+              href="#servicios"
               className="text-sm text-zinc-300 underline-offset-4 hover:text-white hover:underline"
             >
               <Button className="bg-white/5 hover:bg-white/10 rounded-none" size="lg" variant="outline">
