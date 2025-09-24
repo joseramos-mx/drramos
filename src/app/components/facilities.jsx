@@ -57,7 +57,7 @@ export default function FacilitiesSection() {
             <div className="aspect-[16/8] w-full overflow-hidden">
               <iframe
                 title="Mapa de la clínica"
-                src="https://www.google.com/maps/embed?pb="
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3643.9926660869032!2d-104.67309012494356!3d24.03132377793404!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x869bc9b7db3fa5bd%3A0xe264f8e0c58c9eac!2sCentral%20M%C3%A9dica%20%7C%20Central%20M%C3%A9dica%20Santa%20Ana%20%7C%20Durango.%20Dgo.!5e0!3m2!1ses-419!2smx!4v1758676218805!5m2!1ses-419!2smx"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
