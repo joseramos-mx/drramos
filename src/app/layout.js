@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 
 // app/layout.tsx
 export const metadata = {
-  metadataBase: new URL("https://tusitio.com"), // <— PRODUCCIÓN
+  metadataBase: new URL("https://www.drfelipedejesusramos.com"), // <— PRODUCCIÓN
   title: {
     default: "Dr. Felipe de Jesús Ramos | Odontología Estética e Implantes",
     template: "%s | Dr. Felipe Ramos",
@@ -30,7 +30,7 @@ export const metadata = {
   authors: [{ name: "RMS Innovation Industries" }],
   openGraph: {
     type: "website",
-    url: "https://tusitio.com/",
+    url: "https://www.drfelipedejesusramos.com/",
     title: "Tu sonrisa merece lo mejor | Dr. Felipe Ramos",
     description:
       "Más de 30 años transformando sonrisas con tecnología digital: TRIOS®, exocad, fresado e impresión 3D.",
@@ -49,11 +49,11 @@ export const metadata = {
     card: "summary_large_image",
     title: "Tu sonrisa merece lo mejor | Dr. Felipe Ramos",
     description:
-      "Odontología estética e implantes en Durango. Agenda tu valoración.",
+      "Odontología estética e implantes en Durango con el dentista autor de El Arte de Hacer Dientes reconocido internacionalmente. Agenda tu valoración.",
     images: ["/og/og-home.jpg"],
   },
   alternates: {
-    canonical: "https://tusitio.com/",
+    canonical: "https://www.drfelipedejesusramos.com/",
   },
   robots: {
     index: true,
