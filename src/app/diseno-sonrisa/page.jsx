@@ -3,6 +3,11 @@ import Hero from "./components/hero";
 import Marquee from "./components/marquee";
 import Problema from "./components/problema";
 import AntesDespues from "./components/antes-despues";
+import Proceso from "./components/proceso";
+import Autoridad from "./components/autoridad";
+import Financiacion from "./components/financiacion";
+import FAQ from "./components/faq";
+import Footer from "./components/footer";
 
 export default function DisenoSonrisaPage() {
   return (
@@ -13,13 +18,12 @@ export default function DisenoSonrisaPage() {
         <Marquee />
         <Problema />
         <AntesDespues />
-
-        {/* TODO: sección proceso   — del escaneo TRIOS al resultado final */}
-        {/* TODO: sección autoridad-doctor — libro, IAN, trayectoria */}
-        {/* TODO: sección financiacion — meses sin intereses */}
-        {/* TODO: sección faq */}
-        {/* TODO: footer */}
+        <Proceso />
+        <Autoridad />
+        <Financiacion />
+        <FAQ />
       </main>
+      <Footer />
     </>
   );
 }

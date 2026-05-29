@@ -1,4 +1,5 @@
 import { Cormorant_Garamond, Albert_Sans } from "next/font/google";
+import LenisProvider from "./components/lenis-provider";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -38,7 +39,7 @@ export default function DisenoSonrisaLayout({ children }) {
       className={`${cormorant.variable} ${albert.variable} min-h-screen bg-[#0a0a0a] text-[#f5f1ea] antialiased`}
     >
       {/* Meta Pixel placeholder — pegar el snippet aquí cuando esté listo */}
-      {children}
+      <LenisProvider>{children}</LenisProvider>
     </div>
   );
 }
