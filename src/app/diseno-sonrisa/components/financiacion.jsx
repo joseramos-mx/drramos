@@ -2,7 +2,60 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Wallet } from "@phosphor-icons/react";
+import { ArrowUpRight } from "@phosphor-icons/react";
+
+/**
+ * Logos monocromos de los principales métodos de pago.
+ * Inline SVG para que escalen y hereden color del padre vía currentColor.
+ * Si más adelante quieres las marcas en color brand, sustituye estos por
+ * los SVG oficiales en /public/cards/.
+ */
+function VisaMark({ className = "" }) {
+  return (
+    <svg viewBox="0 0 64 22" fill="currentColor" className={className} aria-label="Visa">
+      <text
+        x="0"
+        y="18"
+        fontFamily="Helvetica, Arial, sans-serif"
+        fontWeight="800"
+        fontStyle="italic"
+        fontSize="22"
+        letterSpacing="-0.5"
+      >
+        VISA
+      </text>
+    </svg>
+  );
+}
+
+function MastercardMark({ className = "" }) {
+  return (
+    <svg viewBox="0 0 48 32" fill="currentColor" className={className} aria-label="Mastercard">
+      <circle cx="18" cy="16" r="14" opacity="0.85" />
+      <circle cx="32" cy="16" r="14" opacity="0.5" />
+    </svg>
+  );
+}
+
+function AmexMark({ className = "" }) {
+  return (
+    <svg viewBox="0 0 64 24" className={className} aria-label="American Express">
+      <rect width="64" height="24" rx="2" fill="currentColor" />
+      <text
+        x="32"
+        y="16"
+        textAnchor="middle"
+        fontFamily="Helvetica, Arial, sans-serif"
+        fontWeight="800"
+        fontSize="11"
+        letterSpacing="0.5"
+        fill="#000000"
+      >
+        AMEX
+      </text>
+    </svg>
+  );
+}
 
 /**
  * Financiación · tono medio, sin lenguaje de oferta.
@@ -18,7 +71,7 @@ const WHATSAPP_URL =
 const PUNTOS = [
   {
     label: "Pago a meses",
-    value: "Sin intereses",
+    value: "6, 9 o 12 MSI",
   },
   {
     label: "Plan personalizado",
@@ -35,7 +88,7 @@ export default function Financiacion() {
     <section
       id="financiacion"
       aria-label="Financiación e inversión"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-28 md:py-40"
+      className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
       {/* Líneas decorativas */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
@@ -45,24 +98,12 @@ export default function Financiacion() {
         <div className="grid grid-cols-1 gap-16 md:grid-cols-[1.1fr_0.9fr] md:gap-20 md:items-end">
           {/* Lado izquierdo: headline + bio */}
           <div>
-            {/* Eyebrow */}
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-15% 0px" }}
-              transition={{ duration: 0.9, ease: EASE }}
-              className="mb-7 inline-flex items-center gap-3 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-white/55"
-            >
-              <span aria-hidden className="block h-px w-7 bg-[#b89968]" />
-              La inversión
-            </motion.p>
-
             <motion.h2
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-              className="max-w-[600px] font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5vw,68px)] text-[#f5f1ea]"
+              className="max-w-[600px] font-[family-name:var(--font-albert)] font-thin leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5vw,68px)] text-[#f5f1ea]"
             >
               Una inversión en ti, sin urgencias financieras.
             </motion.h2>
@@ -76,7 +117,7 @@ export default function Financiacion() {
             >
               Cada plan se calcula sobre tu caso real, no sobre una lista
               genérica. En la valoración te entregamos el plan, la mensualidad
-              y el calendario de citas — con tiempo para decidir.
+              y el calendario de citas, con tiempo para decidir.
             </motion.p>
           </div>
 
@@ -89,7 +130,15 @@ export default function Financiacion() {
             className="relative"
           >
             <div className="border border-white/[0.08] p-8 md:p-10">
-              <Wallet size={32} weight="thin" className="mb-7 text-[#b89968]" aria-hidden />
+              {/* Métodos de pago aceptados */}
+              <div
+                className="mb-8 flex items-center gap-5 text-[#f5f1ea]/70"
+                aria-label="Métodos de pago aceptados"
+              >
+                <VisaMark className="h-[18px] w-auto" />
+                <MastercardMark className="h-7 w-auto" />
+                <AmexMark className="h-5 w-auto" />
+              </div>
 
               <ul className="divide-y divide-white/[0.06]">
                 {PUNTOS.map((p) => (
@@ -112,9 +161,9 @@ export default function Financiacion() {
                 target="_blank"
                 rel="noopener"
                 data-event="lead_whatsapp_click_financiacion"
-                className="group mt-8 inline-flex w-full items-center justify-between gap-3 bg-[#f5f1ea] px-6 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#0a0a0a] transition-colors duration-300 hover:bg-white"
+                className="group mt-8 inline-flex w-full items-center justify-between gap-3 bg-[#f5f1ea] px-6 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
               >
-                Conocer mi plan y mensualidad
+                Conocer mi plan personalizado
                 <ArrowUpRight
                   size={18}
                   weight="light"

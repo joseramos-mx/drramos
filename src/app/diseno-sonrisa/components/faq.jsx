@@ -22,7 +22,7 @@ const FAQS = [
   },
   {
     q: "¿Se nota artificial?",
-    a: "No, si el criterio es el correcto. Diseñamos cada caso atendiendo a la proporción del rostro, color de piel y forma original. El objetivo es que tu sonrisa siga siendo tuya — solo restaurada.",
+    a: "No, si el criterio es el correcto. Diseñamos cada caso atendiendo a la proporción del rostro, color de piel y forma original. El objetivo es que tu sonrisa siga siendo tuya, solo restaurada.",
   },
   {
     q: "¿Cuánto cuesta?",
@@ -51,14 +51,14 @@ function Item({ q, a, isOpen, onToggle, index }) {
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="group flex w-full items-center justify-between gap-6 py-7 text-left transition-colors duration-300 hover:text-[#f5f1ea]"
+        className="group flex w-full items-center justify-between gap-6 py-7 text-left transition-colors duration-300 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
       >
         <span className="font-[family-name:var(--font-cormorant)] text-[clamp(20px,2vw,26px)] font-light leading-[1.3] text-[#f5f1ea]">
           {q}
         </span>
         <span
           aria-hidden
-          className="relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.15] text-[#b89968] transition-colors duration-300 group-hover:border-white/40"
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center border border-white/[0.15] text-[#b89968] transition-colors duration-300 group-hover:border-white/40"
         >
           <AnimatePresence mode="wait" initial={false}>
             {isOpen ? (
@@ -113,7 +113,7 @@ export default function FAQ() {
     <section
       id="faq"
       aria-label="Preguntas frecuentes"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-28 md:py-40"
+      className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-16 hidden w-px bg-white/[0.08] sm:block md:right-20" />
@@ -122,23 +122,12 @@ export default function FAQ() {
         <div className="grid grid-cols-1 gap-16 md:grid-cols-[0.4fr_0.6fr] md:gap-20">
           {/* Lado izquierdo: header sticky */}
           <div className="md:sticky md:top-32 md:self-start">
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-15% 0px" }}
-              transition={{ duration: 0.9, ease: EASE }}
-              className="mb-7 inline-flex items-center gap-3 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-white/55"
-            >
-              <span aria-hidden className="block h-px w-7 bg-[#b89968]" />
-              Preguntas frecuentes
-            </motion.p>
-
             <motion.h2
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-              className="font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.01em] text-[clamp(36px,4.4vw,58px)] text-[#f5f1ea]"
+              className="font-[family-name:var(--font-albert)] font-thin leading-[1.05] tracking-[-0.01em] text-[clamp(36px,4.4vw,58px)] text-[#f5f1ea]"
             >
               Lo que suelen
               <br />

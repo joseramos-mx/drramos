@@ -84,31 +84,20 @@ export default function Problema() {
     <section
       id="problema"
       aria-label="Tal vez te resulte familiar"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-28 md:py-40"
+      className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
       {/* Líneas decorativas verticales — coherentes con el hero */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-16 hidden w-px bg-white/[0.08] sm:block md:right-20" />
 
       <div className="relative mx-auto w-full max-w-[1280px] px-8 md:px-12">
-        {/* Eyebrow centrado */}
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-15% 0px" }}
-          transition={{ duration: 0.9, ease: EASE }}
-          className="mx-auto mb-7 flex items-center justify-center gap-3 text-center font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-white/55"
-        >
-
-        </motion.p>
-
         {/* Headline emocional, centrado — sin italic */}
         <motion.h2
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-          className="mx-auto max-w-[820px] text-center font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5.5vw,72px)] text-[#f5f1ea]"
+          className="mx-auto max-w-[820px] text-center font-[family-name:var(--font-albert)] font-thin leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5.5vw,72px)] text-[#f5f1ea]"
         >
           Tal vez te resulte familiar.
         </motion.h2>

@@ -32,20 +32,23 @@ const LINES = {
   centerColor: "bg-white/10",
 };
 
-// Caja de imagen — cuadro a la derecha
+// Caja de imagen — cuadro a la derecha (sólo desktop)
 // El right inset DEBE coincidir con LINES.right para que la imagen
 // respete la línea decorativa de la derecha y no la sobrepase.
+// En mobile el retrato se OCULTA — el copy luce mejor solo, y la foto
+// del doctor reaparece en la sección Autoridad.
 const IMAGE_BOX = {
-  width: "w-full md:w-[35%]",                       // ancho del cuadro
-  inset: "top-0 right-16 bottom-0 md:right-53",      // = LINES.right
-  border: "md:border-l md:border-white/[0.08]",     // borde sutil del cuadro
+  width: "w-full md:w-[35%]",
+  inset: "top-0 right-16 bottom-0 md:right-53",
+  border: "md:border-l md:border-white/[0.08]",
+  visibility: "hidden md:block",
 };
 
 export default function Hero() {
   return (
     <section
       aria-label="Diseño digital de sonrisa"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] text-[#f5f1ea] font-[family-name:var(--font-albert)]"
+      className="relative isolate overflow-hidden bg-[#000000] text-[#f5f1ea] font-[family-name:var(--font-albert)]"
     >
       {/* ──────────────────────────────────────────────────────────
          Líneas decorativas — ajusta posiciones en la constante LINES
@@ -56,9 +59,32 @@ export default function Hero() {
       {/* ──────────────────────────────────────────────────────────
          Cuerpo del hero — caja de imagen a la derecha, copy sobrepuesto
          ────────────────────────────────────────────────────────── */}
-      <div className="relative min-h-[680px] lg:min-h-[760px]">
-        {/* Imagen — cuadro derecho, sin gradients */}
-        <div className={`absolute ${IMAGE_BOX.inset} ${IMAGE_BOX.width} ${IMAGE_BOX.border} overflow-hidden`}>
+      <div className="relative min-h-[640px] md:min-h-[680px] lg:min-h-[760px]">
+        {/* Imagen de fondo SOLO mobile — retrato a pantalla completa con overlay oscuro */}
+        <div className="absolute inset-0 overflow-hidden md:hidden">
+          <Image
+            src="/drramos.jpg"
+            alt=""
+            aria-hidden
+            fill
+            priority
+            fetchPriority="high"
+            sizes="100vw"
+            className="object-cover object-[60%_top]"
+          />
+          {/* Overlays para garantizar lectura del copy */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[#000000]/70"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-b from-[#000000]/80 via-[#000000]/40 to-[#000000]"
+          />
+        </div>
+
+        {/* Imagen — cuadro derecho, sin gradients (sólo desktop) */}
+        <div className={`absolute ${IMAGE_BOX.inset} ${IMAGE_BOX.width} ${IMAGE_BOX.border} ${IMAGE_BOX.visibility} overflow-hidden`}>
           {/*
             Visual principal — retrato editorial del Dr. Felipe,
             iluminación cálida, fondo neutro. Reemplazar /drramos.jpg por el render final.
@@ -88,7 +114,7 @@ export default function Hero() {
             >
               Tres décadas perfeccionando el diseño digital de sonrisa en
               Durango. Resultados naturales, sin cirugías invasivas, en pocas
-              citas — con la tranquilidad de pagar a meses sin intereses.
+              citas, con la tranquilidad de pagar a meses sin intereses.
             </motion.p>
 
             {/*
@@ -112,7 +138,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.35, ease }}
-              className="font-[family-name:var(--font-albert)] font-light leading-[0.98] tracking-[-0.012em] text-[clamp(50px,8.8vw,120px)] text-[#f5f1ea]"
+              className="font-[family-name:var(--font-albert)] font-light leading-[0.98] tracking-[-0.012em] text-[clamp(44px,8.8vw,120px)] text-[#f5f1ea]"
             >
               Devolverle <em className="italic font-light font-[family-name:var(--font-cormorant)]">la sonrisa</em>
               <br />
@@ -133,7 +159,7 @@ export default function Hero() {
                 rel="noopener"
                 data-event="lead_whatsapp_click"
                 aria-label="Agendar valoración privada por WhatsApp con el Dr. Felipe Ramos"
-                className="bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#0a0a0a] transition-colors duration-300 hover:bg-white"
+                className="bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
               >
                 Agendar valoración privada
               </Link>
@@ -149,32 +175,36 @@ export default function Hero() {
             </motion.div>
 
             {/* Trust strip — discreta, separadores en champagne */}
-            <motion.p
+            {/* En mobile cada credencial se apila para evitar overflow.
+                En md+ vuelven a fluir inline con separadores. */}
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1.1, delay: 0.85, ease }}
               className="mt-16 max-w-[760px] font-[family-name:var(--font-albert)] text-[12px] font-light leading-[1.8] tracking-[0.04em] text-white/55"
             >
-              <span className="whitespace-nowrap">
-                Autor de{" "}
-                <em className="font-[family-name:var(--font-cormorant)] italic text-white/75">
-                  El Arte de Hacer Dientes
-                </em>
-              </span>
-              <span aria-hidden className="mx-3 text-[#b89968]">·</span>
-              <span className="whitespace-nowrap">Fundador del IAN</span>
-              <span aria-hidden className="mx-3 text-[#b89968]">·</span>
-              <span className="whitespace-nowrap">Tecnología TRIOS 5</span>
-              <span aria-hidden className="mx-3 text-[#b89968]">·</span>
-              <span className="whitespace-nowrap">30+ años en Durango</span>
-            </motion.p>
+              <ul className="flex flex-col gap-y-1.5 md:flex-row md:flex-wrap md:items-center md:gap-y-0">
+                <li>
+                  Autor de{" "}
+                  <em className="font-[family-name:var(--font-cormorant)] italic text-white/75">
+                    El Arte de Hacer Dientes
+                  </em>
+                </li>
+                <li aria-hidden className="hidden text-[#b89968] md:mx-3 md:inline">·</li>
+                <li>Fundador del IAN</li>
+                <li aria-hidden className="hidden text-[#b89968] md:mx-3 md:inline">·</li>
+                <li>Tecnología TRIOS 5</li>
+                <li aria-hidden className="hidden text-[#b89968] md:mx-3 md:inline">·</li>
+                <li>30+ años en Durango</li>
+              </ul>
+            </motion.div>
           </div>
         </div>
 
         {/* Gradient de transición hacia la siguiente sección — funde la imagen a negro */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-100 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/1000 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-32 bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent md:h-40"
         />
       </div>
     </section>

@@ -36,7 +36,7 @@ export const metadata = {
 export default function DisenoSonrisaLayout({ children }) {
   return (
     <div
-      className={`${cormorant.variable} ${albert.variable} min-h-screen bg-[#0a0a0a] text-[#f5f1ea] antialiased`}
+      className={`${cormorant.variable} ${albert.variable} min-h-screen bg-[#000000] text-[#f5f1ea] antialiased`}
     >
       {/* Meta Pixel placeholder — pegar el snippet aquí cuando esté listo */}
       <LenisProvider>{children}</LenisProvider>

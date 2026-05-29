@@ -34,7 +34,7 @@ const STEPS = [
     title: "Diseño en pantalla",
     description:
       "Ves tu nueva sonrisa antes de aprobar nada. Ajustamos forma, color y proporción hasta que se sienta tuya.",
-    meta: "Misma cita",
+    meta: "Próxima cita",
   },
   {
     num: "03",
@@ -78,32 +78,20 @@ export default function Proceso() {
       id="proceso"
       ref={sectionRef}
       aria-label="Cómo funciona el proceso"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-28 md:py-40"
+      className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
       {/* Líneas decorativas */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-16 hidden w-px bg-white/[0.08] sm:block md:right-20" />
 
       <div className="relative mx-auto w-full max-w-[1280px] px-8 md:px-12">
-        {/* Eyebrow */}
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-15% 0px" }}
-          transition={{ duration: 0.9, ease: EASE }}
-          className="mb-7 inline-flex items-center gap-3 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-white/55"
-        >
-          <span aria-hidden className="block h-px w-7 bg-[#b89968]" />
-          El proceso
-        </motion.p>
-
         {/* Headline */}
         <motion.h2
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-          className="max-w-[820px] font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5.5vw,72px)] text-[#f5f1ea]"
+          className="max-w-[820px] font-[family-name:var(--font-albert)] font-thin leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5.5vw,72px)] text-[#f5f1ea]"
         >
           Ves tu sonrisa antes
           <br />
@@ -143,7 +131,7 @@ export default function Proceso() {
                 className="relative"
               >
                 {/* Punto pivote sobre la línea */}
-                <div className="relative z-10 mb-7 inline-flex h-[88px] w-[88px] items-center justify-center rounded-full border border-white/[0.1] bg-[#0a0a0a]">
+                <div className="relative z-10 mb-7 inline-flex h-[88px] w-[88px] items-center justify-center rounded-full border border-white/[0.1] bg-[#000000]">
                   <s.Icon size={36} weight="thin" className="text-[#b89968]" aria-hidden />
                 </div>
 

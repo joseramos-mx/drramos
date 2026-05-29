@@ -24,7 +24,7 @@ const CREDENTIALS = [
   {
     Icon: BookOpen,
     title: "Autor",
-    detail: "El Arte de Hacer Dientes — referencia editorial en odontología estética.",
+    detail: "El Arte de Hacer Dientes, referencia editorial en odontología estética.",
   },
   {
     Icon: GraduationCap,
@@ -70,7 +70,7 @@ export default function Autoridad() {
       id="trayectoria"
       ref={sectionRef}
       aria-label="Sobre el Dr. Felipe Ramos"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-28 md:py-40"
+      className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
       {/* Líneas decorativas */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
@@ -106,25 +106,13 @@ export default function Autoridad() {
 
           {/* Copy + credenciales */}
           <div>
-            {/* Eyebrow */}
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-15% 0px" }}
-              transition={{ duration: 0.9, ease: EASE }}
-              className="mb-7 inline-flex items-center gap-3 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-white/55"
-            >
-              <span aria-hidden className="block h-px w-7 bg-[#b89968]" />
-              Sobre el doctor
-            </motion.p>
-
             {/* Headline */}
             <motion.h2
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-              className="max-w-[560px] font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.01em] text-[clamp(36px,4.4vw,58px)] text-[#f5f1ea]"
+              className="max-w-[560px] font-[family-name:var(--font-albert)] font-thin leading-[1.05] tracking-[-0.01em] text-[clamp(36px,4.4vw,58px)] text-[#f5f1ea]"
             >
               Criterio antes que técnica.
             </motion.h2>
@@ -138,8 +126,8 @@ export default function Autoridad() {
               className="mt-7 max-w-[560px] font-[family-name:var(--font-albert)] text-[16px] font-light leading-[1.7] text-white/65"
             >
               El Dr. Felipe lleva tres décadas diseñando sonrisas en Durango.
-              Lo que distingue su trabajo no es la tecnología — esa la tienen
-              otros también — sino el criterio para usarla con mesura.
+              Lo que distingue su trabajo no es la tecnología, esa la tienen
+              otros también, sino el criterio para usarla con mesura.
               Resultados naturales, proporcionados al rostro, que pasan
               inadvertidos en una foto familiar.
             </motion.p>
@@ -182,7 +170,7 @@ export default function Autoridad() {
                     aria-hidden
                   />
                   <div>
-                    <div className="font-[family-name:var(--font-cormorant)] text-[20px] font-light text-[#f5f1ea]">
+                    <div className="font-[family-name:var(--font-albert)] text-[20px] font-thin text-[#f5f1ea]">
                       {c.title}
                     </div>
                     <p className="mt-1 max-w-[460px] font-[family-name:var(--font-albert)] text-[14px] font-light leading-[1.6] text-white/55">

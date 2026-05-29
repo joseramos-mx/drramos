@@ -85,7 +85,7 @@ function CaseRow({ data }) {
         <motion.div variants={photoEntrance} className="relative overflow-hidden">
           <Image
             src={data.antes}
-            alt={`Antes — ${data.title}`}
+            alt={`Antes: ${data.title}`}
             width={900}
             height={1125}
             sizes="(min-width: 768px) 45vw, 100vw"
@@ -101,7 +101,7 @@ function CaseRow({ data }) {
         <motion.div variants={photoEntrance} className="relative overflow-hidden">
           <Image
             src={data.despues}
-            alt={`Después — ${data.title}`}
+            alt={`Después: ${data.title}`}
             width={900}
             height={1125}
             sizes="(min-width: 768px) 45vw, 100vw"
@@ -138,32 +138,20 @@ export default function AntesDespues() {
     <section
       id="galeria"
       aria-label="Galería de casos: antes y después"
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-28 md:py-40"
+      className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
       {/* Líneas decorativas verticales — coherentes con las demás secciones */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-16 hidden w-px bg-white/[0.08] sm:block md:right-20" />
 
       <div className="relative mx-auto w-full max-w-[1280px] px-8 md:px-12">
-        {/* Eyebrow */}
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-15% 0px" }}
-          transition={{ duration: 0.9, ease: EASE }}
-          className="mb-7 inline-flex items-center gap-3 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-white/55"
-        >
-          <span aria-hidden className="block h-px w-7 bg-[#b89968]" />
-          Casos seleccionados
-        </motion.p>
-
         {/* Headline */}
         <motion.h2
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-          className="max-w-[820px] font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5.5vw,72px)] text-[#f5f1ea]"
+          className="max-w-[820px] font-[family-name:var(--font-albert)] font-thin leading-[1.05] tracking-[-0.01em] text-[clamp(40px,5.5vw,72px)] text-[#f5f1ea]"
         >
           Resultados que se ven naturales.
         </motion.h2>
@@ -206,7 +194,7 @@ export default function AntesDespues() {
             rel="noopener"
             data-event="lead_whatsapp_click_gallery"
             aria-label="Agendar valoración por WhatsApp después de ver la galería"
-            className="group inline-flex items-center gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#0a0a0a] transition-colors duration-300 hover:bg-white"
+            className="group inline-flex items-center gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
           >
             Agendar valoración
             <ArrowUpRight

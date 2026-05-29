@@ -1,43 +1,47 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 /**
  * Marquee · Strip de afiliaciones / credenciales bajo el hero.
- * - Líneas finas grises arriba/abajo + separadores entre celdas (estado base).
- * - Hover (Framer Motion): cada línea SE EXTIENDE desde el centro hacia los lados
- *   (scaleX para horizontales, scaleY para verticales), con overshoot fuera del cell.
+ * - SVGs reales en /public/logos (todos ya en blanco para fondo oscuro).
+ * - Hover (Framer Motion): cada línea SE EXTIENDE desde el centro hacia los lados.
  * - Degradados negros en los flancos para sensación de marquee infinito.
- * - Entrada del bloque suavizada al entrar en viewport.
  */
 
 // ─────────────────────────────────────────────────────────────
 //  AJUSTES FINOS
 // ─────────────────────────────────────────────────────────────
 const OVERSHOOT = {
-  // Cuánto sobresalen las líneas verticales por arriba y abajo de la celda
   vertical:   "-top-6 -bottom-6",
-  // Cuánto sobresalen las líneas horizontales hacia los lados
   horizontal: "-left-6 -right-6",
 };
 
-const FADE_W = "w-120";       // ancho del degradado lateral
-const ROW_PADDING_Y = "py-12";
+// Fade lateral responsive — en mobile no debe tapar el grid entero.
+const FADE_W = "w-12 sm:w-24 md:w-48 lg:w-120";
+const ROW_PADDING_Y = "py-14";
 
-// Ease "luxury" — easeOutExpo-like; trazo lento al final
+// Ease luxury — easeOutExpo-like
 const EASE = [0.22, 0.61, 0.36, 1];
 const LINE_DURATION = 0.7;
 
-// Sustituir por logos reales (SVG / Image). Por ahora marcas placeholder.
+// Logos reales. Las alturas se calibran para que pesen visualmente parejo.
+// `monochrome: true` aplica brightness-0 + invert para que las marcas con
+// colores brand (BSM verde/azul, Elegoo azules) entren al palette dark luxury.
+// "El Arte de Hacer Dientes" se deja natural porque su bronce coincide con
+// nuestro champagne.
 const LOGOS = [
-  { mark: "IAN", label: "Fundador",             name: "Instituto IAN" },
-  { mark: "3S",  label: "Operador certificado", name: "3Shape TRIOS 5" },
-  { mark: "EX",  label: "Flujo digital",        name: "exocad" },
-  { mark: "AM",  label: "Miembro",              name: "AMOOI" },
-  { mark: "EAD", label: "Autor",                name: "El Arte de Hacer Dientes" },
+  { src: "/logos/ian.svg",                                  alt: "Instituto IAN",            h: 48 },
+  { src: "/logos/3shape.svg",                               alt: "3Shape",                   h: 24 },
+  { src: "/logos/rmszahn.svg",                              alt: "RMS Zahn",                 h: 28 },
+  { src: "/logos/bsm.svg",                                  alt: "BSM",                      h: 36, monochrome: true },
+  { src: "/logos/elegoo.svg",                               alt: "Elegoo",                   h: 24, monochrome: true },
+  { src: "/logos/el%20arte%20de%20hacer%20dientes.svg",     alt: "El Arte de Hacer Dientes", h: 30 },
+  { src: "/logos/lisermed.svg",                             alt: "Lisermed",                 h: 44 },
 ];
 
-// Variantes — el cell coordina las 4 líneas
+// Variantes de líneas hover
 const lineHorizontal = {
   rest:  { scaleX: 0, opacity: 0 },
   hover: {
@@ -61,24 +65,20 @@ const separatorVariant = {
   hover: { opacity: 0, transition: { duration: 0.35, ease: EASE } },
 };
 
-function LogoMark({ mark, label, name }) {
+function LogoMark({ src, alt, h, monochrome }) {
   return (
-    <div className="flex items-center gap-3.5 text-white/45 transition-colors duration-500 group-hover:text-[#f5f1ea]">
-      {/* Mark — placeholder geométrico; sustituir por SVG real */}
-      <span
-        aria-hidden
-        className="flex h-9 w-9 items-center justify-center border border-current font-[family-name:var(--font-cormorant)] text-[12px] italic"
-      >
-        {mark}
-      </span>
-      <div className="text-left">
-        <div className="font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.22em] text-white/35 transition-colors duration-500 group-hover:text-white/65">
-          {label}
-        </div>
-        <div className="font-[family-name:var(--font-cormorant)] text-[16px] font-light italic leading-tight">
-          {name}
-        </div>
-      </div>
+    <div className="flex items-center justify-center opacity-65 transition-opacity duration-500 group-hover:opacity-100">
+      <Image
+        src={src}
+        alt={alt}
+        width={Math.round(h * 4)}
+        height={h}
+        unoptimized
+        style={{ height: `${h}px`, width: "auto" }}
+        className={`block max-w-[160px] object-contain md:max-w-[180px] ${
+          monochrome ? "brightness-0 invert" : ""
+        }`}
+      />
     </div>
   );
 }
@@ -93,18 +93,18 @@ export default function Marquee() {
       transition={{ duration: 1.1, ease: EASE }}
       // py-8 da aire para que el overshoot vertical (-top-6/-bottom-6 = 24px)
       // no sea recortado por el overflow-hidden de la sección.
-      className="relative isolate overflow-hidden bg-[#0a0a0a] py-8"
+      className="relative isolate overflow-hidden bg-[#000000] py-8"
     >
       <div className="relative">
-        {/* Líneas horizontales sutiles, arriba y abajo del strip */}
+        {/* Líneas horizontales sutiles arriba y abajo del strip */}
         <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-white/[0.1]" />
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-white/[0.1]" />
 
         {/* Grid de logos */}
-        <div className="relative mx-auto grid w-full max-w-[1440px] grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="relative mx-auto grid w-full max-w-[1440px] grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           {LOGOS.map((logo, i) => (
             <motion.div
-              key={logo.name}
+              key={logo.alt}
               initial="rest"
               animate="rest"
               whileHover="hover"
@@ -153,11 +153,11 @@ export default function Marquee() {
         {/* Degradados laterales — marquee fade */}
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-y-0 left-0 ${FADE_W} bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent z-10`}
+          className={`pointer-events-none absolute inset-y-0 left-0 ${FADE_W} bg-gradient-to-r from-[#000000] via-[#000000]/80 to-transparent z-10`}
         />
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-y-0 right-0 ${FADE_W} bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent z-10`}
+          className={`pointer-events-none absolute inset-y-0 right-0 ${FADE_W} bg-gradient-to-l from-[#000000] via-[#000000]/80 to-transparent z-10`}
         />
       </div>
     </motion.section>
