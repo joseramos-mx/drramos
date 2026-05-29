@@ -1,27 +1,27 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { WhatsappLogoIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
+import { useAplicacion, CTA_LABEL } from "./aplicacion-context";
 
 /**
  * CTA final · sección autónoma antes del footer.
- * Fondo /images/snow.jpg con overlays oscuros para mantener legibilidad.
+ * Fondo /images/snow.jpg con overlays oscuros. Un único CTA al formulario
+ * de aplicación. WhatsApp y teléfono no aparecen aquí, sólo después de
+ * que el lead se haya guardado.
  */
 
 const EASE = [0.22, 0.61, 0.36, 1];
 
-const WHATSAPP_URL =
-  "https://wa.me/526182066760?text=Hola%20Dr.%20Felipe%2C%20me%20gustar%C3%ADa%20agendar%20una%20valoraci%C3%B3n%20para%20dise%C3%B1o%20de%20sonrisa";
-
 export default function CTAFinal() {
+  const { openModal } = useAplicacion();
+
   return (
     <section
-      aria-label="Cierre — Empieza por una valoración privada"
+      aria-label="Empieza por una valoración privada"
       className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
-      {/* Imagen de fondo snow.jpg con overlays */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <Image
           src="/images/snow.jpg"
@@ -44,7 +44,6 @@ export default function CTAFinal() {
         />
       </div>
 
-      {/* Líneas decorativas */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10"
@@ -73,24 +72,25 @@ export default function CTAFinal() {
             Empieza por una valoración privada.
           </h2>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noopener"
-              data-event="lead_whatsapp_click_cta_final"
+          <p className="mt-6 max-w-[560px] font-[family-name:var(--font-albert)] text-[15px] font-light leading-[1.7] text-white/65">
+            Tres preguntas. Te contactamos para coordinar tu valoración. Sin
+            compromiso, sin lista de precios genérica.
+          </p>
+
+          <div className="mt-10">
+            <button
+              type="button"
+              onClick={openModal}
+              data-event="open_application_cta_final"
               className="group inline-flex min-h-[56px] items-center gap-3 bg-[#f5f1ea] px-8 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b89968]"
             >
-              <WhatsappLogoIcon size={20} weight="light" />
-              Agendar por WhatsApp
-            </Link>
-
-            <a
-              href="tel:+526182066760"
-              className="inline-flex min-h-[56px] items-center border border-white/[0.2] px-7 py-4 font-[family-name:var(--font-albert)] text-[15px] font-light tracking-[0.02em] text-[#f5f1ea] transition-colors duration-300 hover:border-white/45 hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b89968]"
-            >
-              +52 618 206 6760
-            </a>
+              {CTA_LABEL}
+              <ArrowRightIcon
+                size={18}
+                weight="light"
+                className="transition-transform duration-300 group-hover:translate-x-0.5"
+              />
+            </button>
           </div>
         </motion.div>
       </div>

@@ -2,44 +2,44 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowUpRight } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
+import { useAplicacion, CTA_LABEL } from "./aplicacion-context";
 
 /**
  * Antes & Después · galería editorial.
- * 3-5 casos reales en formato grande. Sin marcas de agua, sin testimonios encima.
- * Función: validar visualmente la promesa del hero. CTA #2 al pie.
+ * 3 a 5 casos reales en formato grande. Sin marcas de agua, sin testimonios.
+ *
+ * Las imágenes reales y con consentimiento las coloca el cliente en
+ * /public/cases/. Mientras tanto cada caso renderiza un placeholder en
+ * negro editorial (no stock) para no romper el layout ni lanzar 404 en
+ * consola. Bandera `placeholder: true` en la entrada del array.
  */
 
-// ─────────────────────────────────────────────────────────────
-//  AJUSTES FINOS
-// ─────────────────────────────────────────────────────────────
 const EASE = [0.22, 0.61, 0.36, 1];
 
-const WHATSAPP_URL =
-  "https://wa.me/526182066760?text=Hola%20Dr.%20Felipe%2C%20vi%20la%20galer%C3%ADa%20de%20casos%20y%20me%20gustar%C3%ADa%20saber%20si%20mi%20caso%20es%20similar.%20Quisiera%20agendar%20una%20valoraci%C3%B3n";
-
-// Sustituir por casos reales — foto + meta breve. Aspect 4/5 recomendado.
 const CASES = [
   {
     num: "01",
     title: "Rehabilitación estética",
     duration: "2 citas",
-    antes:   "/cases/01-antes.jpg",
+    placeholder: true,
+    antes: "/cases/01-antes.jpg",
     despues: "/cases/01-despues.jpg",
   },
   {
     num: "02",
     title: "Carillas de porcelana",
     duration: "3 citas",
-    antes:   "/cases/02-antes.jpg",
+    placeholder: true,
+    antes: "/cases/02-antes.jpg",
     despues: "/cases/02-despues.jpg",
   },
   {
     num: "03",
     title: "Diseño digital completo",
     duration: "4 citas",
-    antes:   "/cases/03-antes.jpg",
+    placeholder: true,
+    antes: "/cases/03-antes.jpg",
     despues: "/cases/03-despues.jpg",
   },
 ];
@@ -64,6 +64,35 @@ const photoEntrance = {
 // ─────────────────────────────────────────────────────────────
 //  Componente: par antes/después
 // ─────────────────────────────────────────────────────────────
+function CasePhoto({ src, alt, dim }) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={900}
+      height={1125}
+      sizes="(min-width: 768px) 45vw, 100vw"
+      className={`aspect-[4/5] w-full object-cover ${dim ? "saturate-[0.92]" : ""}`}
+    />
+  );
+}
+
+function CasePlaceholder({ side }) {
+  return (
+    <div
+      aria-hidden
+      className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a0a0a] to-[#000000]"
+    >
+      {/* Ornamento sutil, no decorativo de stock */}
+      <span className="pointer-events-none absolute inset-6 border border-white/[0.04]" />
+      <span className="pointer-events-none absolute h-px w-12 bg-[#b89968]/40" />
+      <p className="absolute bottom-6 left-6 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.3em] text-white/35">
+        {side === "antes" ? "Antes" : "Después"} · próximamente
+      </p>
+    </div>
+  );
+}
+
 function CaseRow({ data }) {
   return (
     <motion.article
@@ -73,9 +102,7 @@ function CaseRow({ data }) {
       viewport={{ once: true, margin: "-10% 0px" }}
       className="relative"
     >
-      {/* Par de fotos — grid 2 columnas con línea divisora delgada */}
       <div className="relative grid grid-cols-1 md:grid-cols-2">
-        {/* Línea divisora vertical, sólo desktop */}
         <span
           aria-hidden
           className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 bg-white/[0.08] md:block"
@@ -83,33 +110,30 @@ function CaseRow({ data }) {
 
         {/* ANTES */}
         <motion.div variants={photoEntrance} className="relative overflow-hidden">
-          <Image
-            src={data.antes}
-            alt={`Antes: ${data.title}`}
-            width={900}
-            height={1125}
-            sizes="(min-width: 768px) 45vw, 100vw"
-            className="aspect-[4/5] w-full object-cover saturate-[0.92]"
-          />
-          {/* Etiqueta sutil — caps tracked, top-left */}
-          <span className="absolute left-5 top-5 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.32em] text-white/55">
-            Antes
-          </span>
+          {data.placeholder ? (
+            <CasePlaceholder side="antes" />
+          ) : (
+            <CasePhoto src={data.antes} alt={`Antes: ${data.title}`} dim />
+          )}
+          {!data.placeholder && (
+            <span className="absolute left-5 top-5 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.32em] text-white/55">
+              Antes
+            </span>
+          )}
         </motion.div>
 
         {/* DESPUÉS */}
         <motion.div variants={photoEntrance} className="relative overflow-hidden">
-          <Image
-            src={data.despues}
-            alt={`Después: ${data.title}`}
-            width={900}
-            height={1125}
-            sizes="(min-width: 768px) 45vw, 100vw"
-            className="aspect-[4/5] w-full object-cover"
-          />
-          <span className="absolute left-5 top-5 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.32em] text-white/85">
-            Después
-          </span>
+          {data.placeholder ? (
+            <CasePlaceholder side="despues" />
+          ) : (
+            <CasePhoto src={data.despues} alt={`Después: ${data.title}`} />
+          )}
+          {!data.placeholder && (
+            <span className="absolute left-5 top-5 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.32em] text-white/85">
+              Después
+            </span>
+          )}
         </motion.div>
       </div>
 
@@ -134,6 +158,7 @@ function CaseRow({ data }) {
 //  Sección
 // ─────────────────────────────────────────────────────────────
 export default function AntesDespues() {
+  const { openModal } = useAplicacion();
   return (
     <section
       id="galeria"
@@ -188,21 +213,19 @@ export default function AntesDespues() {
             ¿Quieres ver si tu caso es similar?
           </p>
 
-          <Link
-            href={WHATSAPP_URL}
-            target="_blank"
-            rel="noopener"
-            data-event="lead_whatsapp_click_gallery"
-            aria-label="Agendar valoración por WhatsApp después de ver la galería"
-            className="group inline-flex items-center gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
+          <button
+            type="button"
+            onClick={openModal}
+            data-event="open_application_gallery"
+            className="group inline-flex min-h-[56px] items-center gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b89968]"
           >
-            Agendar valoración
-            <ArrowUpRight
+            {CTA_LABEL}
+            <ArrowRightIcon
               size={18}
               weight="light"
-              className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              className="transition-transform duration-300 group-hover:translate-x-0.5"
             />
-          </Link>
+          </button>
         </motion.div>
       </div>
     </section>

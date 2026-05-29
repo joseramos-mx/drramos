@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
+import { useAplicacion, CTA_LABEL } from "./aplicacion-context";
 
 /**
  * Logos monocromos de los principales métodos de pago.
@@ -65,9 +65,6 @@ function AmexMark({ className = "" }) {
 
 const EASE = [0.22, 0.61, 0.36, 1];
 
-const WHATSAPP_URL =
-  "https://wa.me/526182066760?text=Hola%20Dr.%20Felipe%2C%20me%20gustar%C3%ADa%20conocer%20mi%20plan%20personalizado%20y%20mensualidad%20para%20el%20dise%C3%B1o%20digital%20de%20sonrisa";
-
 const PUNTOS = [
   {
     label: "Pago a meses",
@@ -84,6 +81,7 @@ const PUNTOS = [
 ];
 
 export default function Financiacion() {
+  const { openModal } = useAplicacion();
   return (
     <section
       id="financiacion"
@@ -156,20 +154,19 @@ export default function Financiacion() {
                 ))}
               </ul>
 
-              <Link
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noopener"
-                data-event="lead_whatsapp_click_financiacion"
-                className="group mt-8 inline-flex w-full items-center justify-between gap-3 bg-[#f5f1ea] px-6 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
+              <button
+                type="button"
+                onClick={openModal}
+                data-event="open_application_financiacion"
+                className="group mt-8 inline-flex min-h-[56px] w-full items-center justify-between gap-3 bg-[#f5f1ea] px-6 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b89968]"
               >
-                Conocer mi plan personalizado
-                <ArrowUpRight
+                {CTA_LABEL}
+                <ArrowRightIcon
                   size={18}
                   weight="light"
-                  className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  className="transition-transform duration-300 group-hover:translate-x-0.5"
                 />
-              </Link>
+              </button>
 
               <p className="mt-4 font-[family-name:var(--font-albert)] text-[11px] font-light leading-[1.6] text-white/35">
                 El plan se calcula en consulta, después de la valoración.

@@ -1,15 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { XIcon, ArrowRightIcon, ArrowLeftIcon, CheckIcon } from "@phosphor-icons/react";
+import {
+  XIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon,
+  CheckIcon,
+  WhatsappLogoIcon,
+} from "@phosphor-icons/react";
+import { useAplicacion } from "./aplicacion-context";
 
 /**
- * Aplicación · formulario de 3 preguntas (Modo B del blueprint).
- * - Q1 = detector de reconstrucción ($100k track) vs diseño de sonrisa estética.
- * - Q2 = motivo (boda / trabajo / merezco / viendo).
- * - Q3 = intención sobre plan a meses.
- * - Al submit: dispara Pixel event correcto + abre WhatsApp con contexto.
+ * Aplicacion · sidebar slide-in con formulario de 3 preguntas.
+ *
+ * Flujo de submit:
+ *   1. POST a /api/lead (persiste el lead + dispara CAPI server-side).
+ *   2. Si /api/lead devuelve 200: fbq trackCustom con MISMO eventId (dedup).
+ *   3. Render pantalla de confirmación con CTA a WhatsApp cualificado.
+ *
+ * El WhatsApp sólo aparece DESPUÉS de guardar el lead, nunca antes.
  */
 
 const EASE = [0.22, 0.61, 0.36, 1];
@@ -21,8 +31,8 @@ const QUESTIONS = [
     id: "dientes",
     title: "¿Te faltan uno o más dientes, o sientes que alguno se mueve?",
     options: [
-      { value: "intactos",         label: "No, los tengo todos y firmes" },
-      { value: "faltan_o_flojos",  label: "Sí, me falta alguno o se mueve" },
+      { value: "intactos",        label: "No, los tengo todos y firmes" },
+      { value: "faltan_o_flojos", label: "Sí, me falta alguno o se mueve" },
     ],
   },
   {
@@ -37,15 +47,15 @@ const QUESTIONS = [
   },
   {
     id: "plan",
-    title: "El diseño de sonrisa es una inversión con pago a meses. ¿Te late conocer tu plan?",
+    title:
+      "El diseño de sonrisa es una inversión con pago a meses. ¿Te late conocer tu plan?",
     options: [
-      { value: "si_plan",        label: "Sí, quiero ver mi plan y mi mensualidad" },
-      { value: "precio_rapido",  label: "Solo quiero un precio rápido" },
+      { value: "si_plan",       label: "Sí, quiero ver mi plan y mi mensualidad" },
+      { value: "precio_rapido", label: "Solo quiero un precio rápido" },
     ],
   },
 ];
 
-// Labels legibles para el mensaje de WhatsApp
 const LABELS = {
   dientes: {
     intactos: "Tengo todos los dientes y firmes",
@@ -63,47 +73,74 @@ const LABELS = {
   },
 };
 
-export default function AplicacionModal({ open, onClose }) {
+// Lee fbp / fbc de cookies para enriquecer el evento CAPI server-side
+function readCookie(name) {
+  if (typeof document === "undefined") return undefined;
+  const value = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(`${name}=`));
+  return value ? decodeURIComponent(value.split("=")[1]) : undefined;
+}
+
+function buildWhatsappUrl({ nombre, whatsapp, answers }) {
+  const msg = `Hola Dr. Felipe, completé la aplicación.
+
+Soy ${nombre}.
+Mi WhatsApp: ${whatsapp}.
+
+Mi situación: ${LABELS.dientes[answers.dientes]}.
+Mi motivo: ${LABELS.motivo[answers.motivo]}.
+Sobre el plan: ${LABELS.plan[answers.plan]}.
+
+Me gustaría coordinar mi valoración privada.`;
+  return `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`;
+}
+
+export default function AplicacionModal() {
+  const { open, closeModal } = useAplicacion();
+
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [contact, setContact] = useState({ nombre: "", whatsapp: "" });
+  const [status, setStatus] = useState("idle"); // idle | submitting | success | error
+  const [errorMsg, setErrorMsg] = useState("");
 
   const totalSteps = QUESTIONS.length + 1;
   const isContactStep = step >= QUESTIONS.length;
   const currentQuestion = QUESTIONS[step];
-  const progress = ((step + 1) / totalSteps) * 100;
+  const isSuccess = status === "success";
+  const progress = isSuccess
+    ? 100
+    : (Math.min(step + 1, totalSteps) / totalSteps) * 100;
 
-  // Body scroll lock cuando está abierto
+  // Body scroll lock
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [open]);
 
-  // Reset al cerrar (con delay para no parpadear durante el exit)
+  // Reset al cerrar
   useEffect(() => {
-    if (!open) {
-      const t = setTimeout(() => {
-        setStep(0);
-        setAnswers({});
-        setContact({ nombre: "", whatsapp: "" });
-      }, 500);
-      return () => clearTimeout(t);
-    }
+    if (open) return;
+    const t = setTimeout(() => {
+      setStep(0);
+      setAnswers({});
+      setContact({ nombre: "", whatsapp: "" });
+      setStatus("idle");
+      setErrorMsg("");
+    }, 600);
+    return () => clearTimeout(t);
   }, [open]);
 
-  // ESC para cerrar
+  // ESC cierra
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (e) => e.key === "Escape" && closeModal();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, closeModal]);
 
   const handleAnswer = useCallback((questionId, value) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -112,40 +149,62 @@ export default function AplicacionModal({ open, onClose }) {
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (status === "submitting") return;
 
     const esReconstruccion = answers.dientes === "faltan_o_flojos";
+    const evento = esReconstruccion ? "LeadReconstruccion" : "LeadDisenoSonrisa";
+    const track = esReconstruccion ? "full_mouth" : "estetica";
+    const eventId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    // Pixel event — placeholder; sólo se dispara si Meta Pixel ya está inicializado
-    if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      window.fbq(
-        "trackCustom",
-        esReconstruccion ? "LeadReconstruccion" : "LeadDisenoSonrisa",
-        {
-          track: esReconstruccion ? "full_mouth" : "estetica",
-          motivo: answers.motivo,
-          plan: answers.plan,
-        }
+    const payload = {
+      eventId,
+      evento,
+      track,
+      nombre: contact.nombre.trim(),
+      whatsapp: contact.whatsapp.trim(),
+      answers,
+      fbp: readCookie("_fbp"),
+      fbc: readCookie("_fbc"),
+    };
+
+    setStatus("submitting");
+    setErrorMsg("");
+
+    try {
+      const res = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `status_${res.status}`);
+      }
+
+      // Pixel client-side, MISMO eventId para deduplicar contra CAPI
+      if (typeof window !== "undefined" && typeof window.fbq === "function") {
+        window.fbq(
+          "trackCustom",
+          evento,
+          { track, motivo: answers.motivo, plan: answers.plan },
+          { eventID: eventId }
+        );
+      }
+
+      setStatus("success");
+    } catch (err) {
+      console.error("[aplicacion] submit", err);
+      setErrorMsg(
+        "No pudimos guardar tu aplicación. Intenta de nuevo en unos segundos."
       );
+      setStatus("error");
     }
-
-    // WhatsApp cualificado: el doctor recibe el lead con todo el contexto
-    const msg = `Hola Dr. Felipe, completé la aplicación.
-
-Soy ${contact.nombre.trim()}.
-Mi WhatsApp: ${contact.whatsapp.trim()}
-
-Mi situación: ${LABELS.dientes[answers.dientes]}.
-Mi motivo: ${LABELS.motivo[answers.motivo]}.
-Sobre el plan: ${LABELS.plan[answers.plan]}.
-
-Me gustaría coordinar mi valoración privada.`;
-
-    const url = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`;
-    window.open(url, "_blank", "noopener");
-
-    onClose();
   };
 
   return (
@@ -161,15 +220,13 @@ Me gustaría coordinar mi valoración privada.`;
           role="dialog"
           aria-label="Aplicación de 3 preguntas"
         >
-          {/* Backdrop */}
           <button
             type="button"
             aria-label="Cerrar"
-            onClick={onClose}
+            onClick={closeModal}
             className="absolute inset-0 bg-[#000000]/85 backdrop-blur-xl"
           />
 
-          {/* Sidebar — slide-in desde la derecha */}
           <motion.aside
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -177,7 +234,7 @@ Me gustaría coordinar mi valoración privada.`;
             transition={{ duration: 0.7, ease: EASE }}
             className="absolute inset-y-0 right-0 flex w-full flex-col border-l border-white/[0.1] bg-[#000000] shadow-[-24px_0_60px_-24px_rgba(0,0,0,0.7)] sm:max-w-[480px] md:max-w-[560px]"
           >
-            {/* Progress bar superior */}
+            {/* Progress bar */}
             <div className="absolute inset-x-0 top-0 h-px bg-white/[0.08]">
               <motion.div
                 animate={{ width: `${progress}%` }}
@@ -186,25 +243,32 @@ Me gustaría coordinar mi valoración privada.`;
               />
             </div>
 
-            {/* Close — tap target 48x48 accesible */}
             <button
               type="button"
-              onClick={onClose}
+              onClick={closeModal}
               aria-label="Cerrar aplicación"
               className="absolute right-4 top-4 z-10 flex h-12 w-12 items-center justify-center text-white/55 transition-colors duration-300 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
             >
               <XIcon size={22} weight="thin" />
             </button>
 
-            {/* Content — scrollable internamente */}
             <div className="flex-1 overflow-y-auto p-7 pt-20 md:p-12 md:pt-24">
-              {/* Step counter */}
-              <p className="mb-6 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.3em] text-[#b89968]">
-                Paso {Math.min(step + 1, totalSteps)} de {totalSteps}
-              </p>
+              {/* Step counter — sólo durante el form */}
+              {!isSuccess && (
+                <p className="mb-6 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.3em] text-[#b89968]">
+                  Paso {Math.min(step + 1, totalSteps)} de {totalSteps}
+                </p>
+              )}
 
               <AnimatePresence mode="wait">
-                {!isContactStep ? (
+                {isSuccess ? (
+                  <ConfirmationView
+                    key="success"
+                    contact={contact}
+                    answers={answers}
+                    onClose={closeModal}
+                  />
+                ) : !isContactStep ? (
                   <motion.div
                     key={`q-${step}`}
                     initial={{ opacity: 0, x: 24 }}
@@ -241,7 +305,13 @@ Me gustaría coordinar mi valoración privada.`;
                                   : "border-white/25 group-hover:border-white/45"
                               }`}
                             >
-                              {selected && <CheckIcon size={12} weight="bold" className="text-[#000000]" />}
+                              {selected && (
+                                <CheckIcon
+                                  size={12}
+                                  weight="bold"
+                                  className="text-[#000000]"
+                                />
+                              )}
                             </span>
                           </button>
                         );
@@ -278,8 +348,10 @@ Me gustaría coordinar mi valoración privada.`;
                           required
                           autoComplete="name"
                           value={contact.nombre}
-                          onChange={(e) => setContact({ ...contact, nombre: e.target.value })}
-                          className="w-full border border-white/[0.12] bg-transparent px-5 py-4 font-[family-name:var(--font-albert)] text-[15px] font-light text-[#f5f1ea] placeholder:text-white/25 transition-colors duration-300 focus:border-[#b89968] focus:outline-none"
+                          onChange={(e) =>
+                            setContact({ ...contact, nombre: e.target.value })
+                          }
+                          className="min-h-[52px] w-full border border-white/[0.12] bg-transparent px-5 py-4 font-[family-name:var(--font-albert)] text-[16px] font-light text-[#f5f1ea] placeholder:text-white/25 transition-colors duration-300 focus:border-[#b89968] focus:outline-none"
                           placeholder="Tu nombre"
                         />
                       </div>
@@ -298,39 +370,54 @@ Me gustaría coordinar mi valoración privada.`;
                           autoComplete="tel"
                           inputMode="tel"
                           value={contact.whatsapp}
-                          onChange={(e) => setContact({ ...contact, whatsapp: e.target.value })}
-                          className="w-full border border-white/[0.12] bg-transparent px-5 py-4 font-[family-name:var(--font-albert)] text-[15px] font-light text-[#f5f1ea] placeholder:text-white/25 transition-colors duration-300 focus:border-[#b89968] focus:outline-none"
-                          placeholder="+52 ..."
+                          onChange={(e) =>
+                            setContact({ ...contact, whatsapp: e.target.value })
+                          }
+                          className="min-h-[52px] w-full border border-white/[0.12] bg-transparent px-5 py-4 font-[family-name:var(--font-albert)] text-[16px] font-light text-[#f5f1ea] placeholder:text-white/25 transition-colors duration-300 focus:border-[#b89968] focus:outline-none"
+                          placeholder="+52..."
                         />
                       </div>
                     </div>
 
                     <button
                       type="submit"
+                      disabled={status === "submitting"}
                       data-event="application_submit"
-                      className="group mt-10 inline-flex w-full items-center justify-between gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
+                      className="group mt-10 inline-flex min-h-[56px] w-full items-center justify-between gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b89968] disabled:opacity-60"
                     >
-                      Enviar aplicación
-                      <ArrowRightIcon
-                        size={18}
-                        weight="light"
-                        className="transition-transform duration-300 group-hover:translate-x-0.5"
-                      />
+                      {status === "submitting" ? "Enviando..." : "Enviar aplicación"}
+                      {status !== "submitting" && (
+                        <ArrowRightIcon
+                          size={18}
+                          weight="light"
+                          className="transition-transform duration-300 group-hover:translate-x-0.5"
+                        />
+                      )}
                     </button>
 
-                    <p className="mt-4 font-[family-name:var(--font-albert)] text-[11px] font-light leading-[1.6] text-white/35">
-                      Te contactamos por WhatsApp con tu información ya cargada. Sin spam.
+                    {status === "error" && (
+                      <p
+                        role="alert"
+                        aria-live="polite"
+                        className="mt-4 font-[family-name:var(--font-albert)] text-[12px] font-light leading-[1.6] text-[#ff7a7a]"
+                      >
+                        {errorMsg}
+                      </p>
+                    )}
+
+                    <p className="mt-4 font-[family-name:var(--font-albert)] text-[11px] font-light leading-[1.6] text-white/40">
+                      Solo te contactamos para tu valoración. Tus datos no se
+                      comparten con terceros.
                     </p>
                   </motion.form>
                 )}
               </AnimatePresence>
 
-              {/* Back */}
-              {step > 0 && (
+              {step > 0 && !isContactStep && !isSuccess && (
                 <button
                   type="button"
                   onClick={goBack}
-                  className="mt-8 inline-flex items-center gap-2 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.22em] text-white/45 transition-colors duration-300 hover:text-white/85"
+                  className="mt-8 inline-flex min-h-[44px] items-center gap-2 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.22em] text-white/45 transition-colors duration-300 hover:text-white/85"
                 >
                   <ArrowLeftIcon size={14} weight="thin" />
                   Anterior
@@ -341,5 +428,70 @@ Me gustaría coordinar mi valoración privada.`;
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Pantalla de confirmación · WhatsApp post-aplicación
+// ─────────────────────────────────────────────────────────────
+function ConfirmationView({ contact, answers, onClose }) {
+  const wa = buildWhatsappUrl(contact.nombre && answers.dientes ? {
+    nombre: contact.nombre.trim(),
+    whatsapp: contact.whatsapp.trim(),
+    answers,
+  } : { nombre: "", whatsapp: "", answers: {} });
+
+  const first = (contact.nombre || "").trim().split(/\s+/)[0] || "";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      transition={{ duration: 0.6, ease: EASE }}
+      role="status"
+      aria-live="polite"
+    >
+      <p className="font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.3em] text-[#b89968]">
+        Recibimos tu aplicación
+      </p>
+
+      <h2 className="mt-6 font-[family-name:var(--font-cormorant)] font-light leading-[1.05] tracking-[-0.005em] text-[clamp(28px,3.2vw,40px)] text-[#f5f1ea]">
+        {first ? `Gracias, ${first}.` : "Gracias."}
+      </h2>
+
+      <p className="mt-5 font-[family-name:var(--font-albert)] text-[15px] font-light leading-[1.7] text-white/70">
+        Revisamos tu caso y te contactamos en horario de consultorio para
+        coordinar tu valoración privada. Si prefieres, puedes continuar la
+        conversación ahora por WhatsApp con tu información ya cargada.
+      </p>
+
+      <a
+        href={wa}
+        target="_blank"
+        rel="noopener"
+        data-event="whatsapp_post_application"
+        onClick={onClose}
+        className="group mt-9 inline-flex min-h-[56px] w-full items-center justify-between gap-3 bg-[#25D366] px-7 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium tracking-[0.02em] text-white transition-transform duration-300 hover:scale-[1.01] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#25D366]"
+      >
+        <span className="inline-flex items-center gap-3">
+          <WhatsappLogoIcon size={20} weight="light" />
+          Continuar por WhatsApp
+        </span>
+        <ArrowRightIcon
+          size={18}
+          weight="light"
+          className="transition-transform duration-300 group-hover:translate-x-0.5"
+        />
+      </a>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-4 inline-flex min-h-[44px] items-center font-[family-name:var(--font-albert)] text-[12px] font-light uppercase tracking-[0.22em] text-white/55 transition-colors duration-300 hover:text-white"
+      >
+        Cerrar
+      </button>
+    </motion.div>
   );
 }

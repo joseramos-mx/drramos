@@ -1,17 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { motion } from "framer-motion";
+import { useAplicacion, CTA_LABEL } from "./aplicacion-context";
 
 /**
  * Hero · Landing /diseno-sonrisa
  * Dirección: dark luxury / old money — fondo casi negro, líneas finas de adorno,
  * tipografía editorial Cormorant Garamond (display) + Albert Sans (UI), variantes light.
  */
-
-const WHATSAPP_URL =
-  "https://wa.me/526182066760?text=Hola%20Dr.%20Felipe%2C%20vi%20su%20landing%20de%20dise%C3%B1o%20de%20sonrisa%20y%20me%20gustar%C3%ADa%20agendar%20una%20valoraci%C3%B3n";
 
 const ease = [0.22, 0.61, 0.36, 1];
 
@@ -45,6 +42,7 @@ const IMAGE_BOX = {
 };
 
 export default function Hero() {
+  const { openModal } = useAplicacion();
   return (
     <section
       aria-label="Diseño digital de sonrisa"
@@ -145,33 +143,21 @@ export default function Hero() {
               que recuerda
             </motion.h1>
 
-            {/* CTAs */}
+            {/* CTA único — abre el formulario de aplicación */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.55, ease }}
               className="mt-14 flex flex-wrap items-center gap-3"
             >
-              {/* CTA primario — WhatsApp */}
-              <Link
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noopener"
-                data-event="lead_whatsapp_click"
-                aria-label="Agendar valoración privada por WhatsApp con el Dr. Felipe Ramos"
-                className="bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white"
+              <button
+                type="button"
+                onClick={openModal}
+                data-event="open_application_hero"
+                className="inline-flex min-h-[56px] items-center bg-[#f5f1ea] px-8 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium tracking-[0.02em] text-[#000000] transition-colors duration-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b89968]"
               >
-                Agendar valoración privada
-              </Link>
-
-              {/* CTA secundario — ancla a sección autoridad */}
-              <Link
-                href="#trayectoria"
-                data-event="secondary_cta_click"
-                className="border border-white/30 px-7 py-4 font-[family-name:var(--font-albert)] text-[14px] font-light tracking-[0.02em] text-[#f5f1ea] transition-all duration-300 hover:border-white hover:bg-white/[0.04]"
-              >
-                Conocer al Dr. Ramos
-              </Link>
+                {CTA_LABEL}
+              </button>
             </motion.div>
 
             {/* Trust strip — discreta, separadores en champagne */}

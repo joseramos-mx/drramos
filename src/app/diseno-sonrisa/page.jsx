@@ -12,7 +12,7 @@ import FAQ from "./components/faq";
 import CTAFinal from "./components/cta-final";
 import Footer from "./components/footer";
 import AplicacionTrigger from "./components/aplicacion-trigger";
-import WhatsappFloat from "./components/whatsapp-float";
+import AplicacionModal from "./components/aplicacion-modal";
 import ScrollToTop from "./components/scroll-to-top";
 
 export default function DisenoSonrisaPage() {
@@ -34,7 +34,7 @@ export default function DisenoSonrisaPage() {
       </main>
       <Footer />
       <AplicacionTrigger />
-      <WhatsappFloat />
+      <AplicacionModal />
       <ScrollToTop />
     </>
   );
