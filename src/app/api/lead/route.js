@@ -1,25 +1,28 @@
 import crypto from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * POST /api/lead
  *
- * Recibe el lead del formulario de aplicación, lo persiste y dispara el
- * mismo evento (LeadReconstruccion o LeadDisenoSonrisa) a la Conversions
- * API de Meta usando el MISMO eventId del cliente para deduplicar.
+ * 1. Persiste el lead en Supabase (tabla public.leads). Sin persistencia
+ *    no disparamos pixel: en producción devolvemos 502.
+ * 2. Dispara el mismo evento neutral (LeadCualificado) a la Conversions
+ *    API de Meta, usando el mismo event_id que el cliente para
+ *    deduplicar contra el Pixel browser side. El estado de salud
+ *    (track, dientes, motivo, plan) NO se envía a Meta, queda solo en
+ *    Supabase.
+ * 3. Devuelve la configuración del pixel para que el cliente dispare
+ *    fbq con exactamente los mismos parámetros y eventID.
  *
- * Variables de entorno requeridas (todas opcionales; el handler degrada
- * con elegancia si faltan):
- *   - LEAD_WEBHOOK_URL        URL del webhook de n8n (o CRM/Supabase)
- *   - LEAD_WEBHOOK_SECRET     (opcional) bearer token para el webhook
- *   - META_PIXEL_ID           ID del Pixel de Meta
- *   - META_CAPI_ACCESS_TOKEN  Access token de la Conversions API
- *   - META_TEST_EVENT_CODE    (opcional) para validar en Events Manager
- *
- * Devuelve 200 si el lead se persistió correctamente. El cliente sólo
- * dispara fbq tras recibir 200, garantizando que no haya pixel sin lead.
+ * Variables de entorno:
+ *   NEXT_PUBLIC_SUPABASE_URL
+ *   NEXT_PUBLIC_SUPABASE_ANON_KEY
+ *   META_PIXEL_ID
+ *   META_CAPI_ACCESS_TOKEN
+ *   META_TEST_EVENT_CODE (opcional)
  */
 
-const META_GRAPH_VERSION = "v19.0";
+const META_GRAPH_VERSION = "v22.0";
 
 // ─────────────────────────────────────────────────────────────
 //  Helpers
@@ -33,8 +36,9 @@ function sha256(value) {
 }
 
 function normalizePhone(raw) {
-  if (!raw) return "";
-  return String(raw).replace(/\D+/g, "");
+  let d = String(raw || "").replace(/\D+/g, "");
+  if (d.length === 10) d = "52" + d;
+  return d;
 }
 
 function firstName(fullName) {
@@ -42,46 +46,56 @@ function firstName(fullName) {
   return String(fullName).trim().split(/\s+/)[0] || "";
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Persistencia · webhook n8n / Supabase / CRM
-// ─────────────────────────────────────────────────────────────
-async function persistLead(lead) {
-  const url = process.env.LEAD_WEBHOOK_URL;
-  if (!url) {
-    // Dev / staging sin destino configurado: log y devolver ok.
-    // En producción el webhook DEBE estar definido.
-    console.log("[lead] LEAD_WEBHOOK_URL no configurado, dump local:", lead);
-    return { ok: true, fallback: true };
-  }
+// Mapeo del evento interno al evento neutral que va a Meta.
+// Sin pistas de padecimiento (HIPAA, política de Meta). Solo value
+// y currency como custom_data para optimización de ad spend.
+// Los valores son placeholders, hay que afinarlos con el ticket real.
+function toMetaEvent(evento) {
+  const value = evento === "LeadReconstruccion" ? 100000 : 35000;
+  return { name: "LeadCualificado", value, currency: "MXN" };
+}
 
-  const headers = { "Content-Type": "application/json" };
-  if (process.env.LEAD_WEBHOOK_SECRET) {
-    headers.Authorization = `Bearer ${process.env.LEAD_WEBHOOK_SECRET}`;
-  }
+// ─────────────────────────────────────────────────────────────
+//  Supabase
+// ─────────────────────────────────────────────────────────────
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(lead),
+async function persistToSupabase(lead) {
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, skipped: "supabase_unconfigured" };
+
+  const { error } = await supabase.from("leads").insert({
+    event_id: lead.eventId,
+    evento: lead.evento,
+    track: lead.track,
+    nombre: lead.nombre,
+    whatsapp: lead.whatsapp,
+    dientes: lead.answers?.dientes ?? null,
+    motivo: lead.answers?.motivo ?? null,
+    plan: lead.answers?.plan ?? null,
+    fbp: lead.fbp ?? null,
+    fbc: lead.fbc ?? null,
+    ua: lead.ua ?? null,
+    referer: lead.referer ?? null,
   });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`webhook ${res.status}: ${text}`);
-  }
+  if (error) throw new Error(`supabase: ${error.message}`);
   return { ok: true };
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Meta Conversions API (server-side, mismo eventId que el cliente)
+//  Meta Conversions API
 // ─────────────────────────────────────────────────────────────
-async function sendToMetaCAPI({ lead, request }) {
+async function sendToMetaCAPI({ lead, meta, request }) {
   const pixelId = process.env.META_PIXEL_ID;
   const token = process.env.META_CAPI_ACCESS_TOKEN;
   if (!pixelId || !token) {
-    // Credenciales aún sin configurar: el cliente igual disparará fbq
-    // si el Pixel está cargado en el head.
-    return { ok: false, skipped: true };
+    return { ok: false, skipped: "capi_unconfigured" };
   }
 
   const headers = request.headers;
@@ -94,14 +108,11 @@ async function sendToMetaCAPI({ lead, request }) {
   const forwardedFor = headers.get("x-forwarded-for") || "";
   const clientIp = forwardedFor.split(",")[0].trim();
 
-  const fbp = lead.fbp || undefined;
-  const fbc = lead.fbc || undefined;
-
   const phone = normalizePhone(lead.whatsapp);
   const fn = firstName(lead.nombre);
 
   const event = {
-    event_name: lead.evento,
+    event_name: meta.name,
     event_time: Math.floor(Date.now() / 1000),
     event_id: lead.eventId,
     action_source: "website",
@@ -111,25 +122,20 @@ async function sendToMetaCAPI({ lead, request }) {
       fn: fn ? [sha256(fn)] : undefined,
       client_user_agent: userAgent || undefined,
       client_ip_address: clientIp || undefined,
-      fbp,
-      fbc,
+      fbp: lead.fbp || undefined,
+      fbc: lead.fbc || undefined,
     },
     custom_data: {
-      track: lead.track,
-      motivo: lead.answers?.motivo,
-      plan: lead.answers?.plan,
+      value: meta.value,
+      currency: meta.currency,
     },
   };
 
-  // Limpia keys undefined
   event.user_data = Object.fromEntries(
     Object.entries(event.user_data).filter(([, v]) => v !== undefined)
   );
 
-  const body = {
-    data: [event],
-    access_token: token,
-  };
+  const body = { data: [event], access_token: token };
   if (process.env.META_TEST_EVENT_CODE) {
     body.test_event_code = process.env.META_TEST_EVENT_CODE;
   }
@@ -165,7 +171,6 @@ export async function POST(request) {
   const { eventId, evento, track, nombre, whatsapp, answers, fbp, fbc } =
     payload || {};
 
-  // Validación mínima
   if (!eventId || !evento || !track || !nombre || !whatsapp || !answers) {
     return Response.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
@@ -184,22 +189,49 @@ export async function POST(request) {
     fbc,
     receivedAt: new Date().toISOString(),
     ua: request.headers.get("user-agent") || "",
+    referer: request.headers.get("referer") || "",
   };
 
-  // 1) Persistir SIEMPRE primero. Sin lead persistido no hay a quién contactar
-  //    y por tanto no debemos disparar el pixel.
+  // 1) Persistir en Supabase (único destino).
+  let persisted = false;
   try {
-    await persistLead(lead);
+    const supa = await persistToSupabase(lead);
+    if (supa.ok) persisted = true;
   } catch (err) {
     console.error("[lead] persistencia falló", err);
-    return Response.json({ ok: false, error: "persistence_failed" }, { status: 502 });
+    // En dev devolvemos el detalle al cliente para debug rápido.
+    // En producción solo el código genérico.
+    const body =
+      process.env.NODE_ENV === "production"
+        ? { ok: false, error: "persistence_failed" }
+        : { ok: false, error: "persistence_failed", detail: String(err?.message || err) };
+    return Response.json(body, { status: 502 });
   }
 
-  // 2) CAPI server-side con el mismo eventId. No bloquea la respuesta si falla.
-  const capi = await sendToMetaCAPI({ lead, request }).catch((err) => {
+  if (!persisted) {
+    if (process.env.NODE_ENV === "production") {
+      return Response.json({ ok: false, error: "no_persistence" }, { status: 502 });
+    }
+    console.log("[lead] dev, sin destino persistente:", lead);
+  }
+
+  // 2) Meta CAPI con evento neutral.
+  const meta = toMetaEvent(lead.evento);
+  const capi = await sendToMetaCAPI({ lead, meta, request }).catch((err) => {
     console.error("[capi] excepción", err);
     return { ok: false, error: String(err) };
   });
 
-  return Response.json({ ok: true, capi });
+  // 3) Devolver config para que el cliente dispare fbq con mismos params.
+  return Response.json({
+    ok: true,
+    persisted,
+    capi,
+    pixel: {
+      eventName: meta.name,
+      eventId: lead.eventId,
+      value: meta.value,
+      currency: meta.currency,
+    },
+  });
 }

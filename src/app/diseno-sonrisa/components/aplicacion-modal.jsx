@@ -182,18 +182,33 @@ export default function AplicacionModal() {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        if (data?.detail) {
+          console.error("[aplicacion] backend detail:", data.detail);
+        }
         throw new Error(data?.error || `status_${res.status}`);
       }
 
-      // Pixel client-side, MISMO eventId para deduplicar contra CAPI
-      if (typeof window !== "undefined" && typeof window.fbq === "function") {
+      // Pixel client-side con el MISMO nombre neutral, eventId, value y
+      // currency que devolvió el server. Esa identidad estricta es lo
+      // que permite a Meta deduplicar contra el evento CAPI.
+      // Nada de track, motivo, plan ni dientes acá: no es información
+      // que deba ver Meta.
+      if (
+        typeof window !== "undefined" &&
+        typeof window.fbq === "function" &&
+        data.pixel
+      ) {
         window.fbq(
           "trackCustom",
-          evento,
-          { track, motivo: answers.motivo, plan: answers.plan },
-          { eventID: eventId }
+          data.pixel.eventName,
+          {
+            value: data.pixel.value,
+            currency: data.pixel.currency,
+          },
+          { eventID: data.pixel.eventId }
         );
       }
 

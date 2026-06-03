@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 
 /**
@@ -68,12 +67,10 @@ const separatorVariant = {
 function LogoMark({ src, alt, h, monochrome }) {
   return (
     <div className="flex items-center justify-center opacity-65 transition-opacity duration-500 group-hover:opacity-100">
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={alt}
-        width={Math.round(h * 4)}
-        height={h}
-        unoptimized
         style={{ height: `${h}px`, width: "auto" }}
         className={`block max-w-[160px] object-contain md:max-w-[180px] ${
           monochrome ? "brightness-0 invert" : ""

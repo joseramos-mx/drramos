@@ -67,7 +67,7 @@ export default function Hero() {
             fill
             priority
             fetchPriority="high"
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, 0px"
             className="object-cover object-[60%_top]"
           />
           {/* Overlays para garantizar lectura del copy */}
