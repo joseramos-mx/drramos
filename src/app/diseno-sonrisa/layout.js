@@ -22,6 +22,9 @@ const albert = Albert_Sans({
 // Si cambia, también actualiza META_PIXEL_ID en el .env.
 const META_PIXEL_ID = "27631678653096946";
 
+// Microsoft Clarity — mapas de calor y session replay. ID público.
+const CLARITY_ID = "x1emcppog2";
+
 export const metadata = {
   title: "Diseño Digital de Sonrisa | Dr. Felipe Ramos · Durango",
   description:
@@ -75,6 +78,24 @@ fbq('track', 'PageView');
           alt=""
         />
       </noscript>
+
+      {/* Microsoft Clarity · mapas de calor + session replay.
+          Para enmascarar inputs sensibles del formulario (nombre,
+          WhatsApp), añade data-clarity-mask="true" en los inputs o
+          configura "Mask sensitive content" en el dashboard de Clarity. */}
+      <Script
+        id="ms-clarity"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+(function(c,l,a,r,i,t,y){
+    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+})(window, document, "clarity", "script", "${CLARITY_ID}");
+          `,
+        }}
+      />
 
       <LenisProvider>
         <AplicacionProvider>{children}</AplicacionProvider>
