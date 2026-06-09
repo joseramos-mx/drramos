@@ -420,9 +420,18 @@ export default function AplicacionModal() {
                       </p>
                     )}
 
-                    <p className="mt-4 font-[family-name:var(--font-albert)] text-[11px] font-light leading-[1.6] text-white/40">
-                      Solo te contactamos para tu valoración. Tus datos no se
-                      comparten con terceros.
+                    <p className="mt-4 font-[family-name:var(--font-albert)] text-[11px] font-light leading-[1.6] text-white/45">
+                      Al enviar aceptas nuestro{" "}
+                      <a
+                        href="/privacidad"
+                        target="_blank"
+                        rel="noopener"
+                        className="underline decoration-[#b89968]/60 underline-offset-4 transition-colors hover:text-[#f5f1ea]"
+                      >
+                        aviso de privacidad
+                      </a>
+                      . Solo te contactamos para tu valoración, no
+                      compartimos tus datos con terceros.
                     </p>
                   </motion.form>
                 )}

@@ -1,24 +1,25 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { BookOpen, GraduationCap, Certificate } from "@phosphor-icons/react";
 
 /**
  * Autoridad · El Dr. Felipe.
- * Para este avatar, el criterio (libro, IAN, trayectoria) pesa tanto como la técnica.
- * GSAP anima un contador en la cifra de años de experiencia.
+ * El contador de "30+ años" es a prueba de fallas:
+ *   - SSR y primer paint renderizan 30 (no 0).
+ *   - Si IntersectionObserver dispara, anima de 0 a 30 como mejora progresiva.
+ *   - Si a los 2 segundos no disparó (JS roto, observer no soportado, etc.),
+ *     fija el valor final.
+ *   - Respeta prefers-reduced-motion mostrando 30 sin animar.
  */
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
-
 const EASE = [0.22, 0.61, 0.36, 1];
+
+const TARGET_YEARS = 30;
+const ANIM_DURATION_MS = 2000;
+const FALLBACK_MS = 2000;
 
 const CREDENTIALS = [
   {
@@ -38,47 +39,115 @@ const CREDENTIALS = [
   },
 ];
 
-export default function Autoridad() {
-  const sectionRef = useRef(null);
+function YearsCounter() {
   const counterRef = useRef(null);
+  // Initial 30 → SSR y primer paint muestran "30+", no "0+".
+  const [value, setValue] = useState(TARGET_YEARS);
 
-  useGSAP(
-    () => {
-      if (!counterRef.current) return;
-      const obj = { val: 0 };
-      gsap.to(obj, {
-        val: 30,
-        duration: 2.2,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: counterRef.current,
-          start: "top 80%",
-          once: true,
-        },
-        onUpdate: () => {
-          if (counterRef.current) {
-            counterRef.current.textContent = Math.round(obj.val).toString();
+  useEffect(() => {
+    const el = counterRef.current;
+    if (!el) return;
+
+    // Respeta accesibilidad: sin animación, valor final directo.
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) return;
+
+    // Si el counter ya está en viewport al montar (ej. página corta o
+    // navegación con scroll restaurado), no resetear: dejarlo en 30.
+    // El usuario nunca debe ver "0+".
+    const rect = el.getBoundingClientRect();
+    const alreadyVisible =
+      rect.top < window.innerHeight && rect.bottom > 0;
+    if (alreadyVisible) return;
+
+    let cancelled = false;
+    let rafId = 0;
+    let started = false;
+
+    const animate = () => {
+      if (cancelled || started) return;
+      started = true;
+      const startTime = performance.now();
+
+      const tick = (now) => {
+        if (cancelled) return;
+        const t = Math.min((now - startTime) / ANIM_DURATION_MS, 1);
+        // easeOutCubic, sin rebote.
+        const eased = 1 - Math.pow(1 - t, 3);
+        setValue(Math.round(TARGET_YEARS * eased));
+        if (t < 1) rafId = requestAnimationFrame(tick);
+      };
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    // Solo reseteamos a 0 si vamos a animar de verdad. Si por alguna razón
+    // la animación nunca empieza, el fallback (abajo) restaura a 30.
+    setValue(0);
+
+    let observer = null;
+    if (typeof IntersectionObserver === "function") {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            animate();
+            observer.disconnect();
+            observer = null;
           }
         },
-      });
-    },
-    { scope: sectionRef }
-  );
+        { threshold: 0.1, rootMargin: "0px 0px -10% 0px" }
+      );
+      observer.observe(el);
+    } else {
+      // Sin IntersectionObserver, animar en cuanto sea posible.
+      animate();
+    }
 
+    // Fallback duro: si nada disparó la animación a tiempo, snap a 30.
+    const fallback = window.setTimeout(() => {
+      if (!started && !cancelled) {
+        if (observer) {
+          observer.disconnect();
+          observer = null;
+        }
+        setValue(TARGET_YEARS);
+      }
+    }, FALLBACK_MS);
+
+    return () => {
+      cancelled = true;
+      if (observer) observer.disconnect();
+      cancelAnimationFrame(rafId);
+      window.clearTimeout(fallback);
+    };
+  }, []);
+
+  return (
+    <span
+      ref={counterRef}
+      aria-label={`${TARGET_YEARS} años o más`}
+      className="font-[family-name:var(--font-cormorant)] text-[64px] font-light leading-none text-[#f5f1ea] md:text-[80px]"
+    >
+      {value}
+    </span>
+  );
+}
+
+export default function Autoridad() {
   return (
     <section
       id="trayectoria"
-      ref={sectionRef}
       aria-label="Sobre el Dr. Felipe Ramos"
       className="relative isolate overflow-hidden bg-[#000000] py-28 md:py-40"
     >
-      {/* Líneas decorativas */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 left-6 hidden w-px bg-white/[0.08] sm:block md:left-10" />
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-16 hidden w-px bg-white/[0.08] sm:block md:right-20" />
 
       <div className="relative mx-auto w-full max-w-[1280px] px-8 md:px-12">
         <div className="grid grid-cols-1 gap-16 md:grid-cols-[0.9fr_1.1fr] md:gap-20 lg:gap-28">
-          {/* Retrato editorial */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -96,7 +165,6 @@ export default function Autoridad() {
                 className="aspect-[4/5] w-full object-cover saturate-[0.92]"
               />
             </div>
-            {/* Caption discreto bajo la foto */}
             <p className="mt-5 font-[family-name:var(--font-cormorant)] text-[14px] font-light italic text-white/55">
               Dr. Felipe de Jesús Ramos Sotelo
               <span className="mx-2 text-[#b89968]">·</span>
@@ -104,9 +172,7 @@ export default function Autoridad() {
             </p>
           </motion.div>
 
-          {/* Copy + credenciales */}
           <div>
-            {/* Headline */}
             <motion.h2
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -117,7 +183,6 @@ export default function Autoridad() {
               Criterio antes que técnica.
             </motion.h2>
 
-            {/* Bio */}
             <motion.p
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
@@ -132,7 +197,6 @@ export default function Autoridad() {
               inadvertidos en una foto familiar.
             </motion.p>
 
-            {/* Stat con contador */}
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -140,19 +204,13 @@ export default function Autoridad() {
               transition={{ duration: 1, delay: 0.4, ease: EASE }}
               className="mt-12 flex items-baseline gap-5 border-y border-white/[0.08] py-8"
             >
-              <span
-                ref={counterRef}
-                className="font-[family-name:var(--font-cormorant)] text-[64px] font-light leading-none text-[#f5f1ea] md:text-[80px]"
-              >
-                0
-              </span>
+              <YearsCounter />
               <span className="text-[#b89968] font-light">+</span>
               <span className="font-[family-name:var(--font-albert)] text-[13px] font-light uppercase tracking-[0.22em] text-white/55">
                 años perfeccionando<br />el diseño digital de sonrisa
               </span>
             </motion.div>
 
-            {/* Credenciales */}
             <div className="mt-12 space-y-7">
               {CREDENTIALS.map((c, i) => (
                 <motion.div

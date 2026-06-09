@@ -26,7 +26,9 @@ const META_PIXEL_ID = "27631678653096946";
 const CLARITY_ID = "x1emcppog2";
 
 export const metadata = {
-  title: "Diseño Digital de Sonrisa | Dr. Felipe Ramos · Durango",
+  // `absolute` evita que el template " | Dr. Felipe Ramos" del root layout
+  // se concatene y duplique el sufijo.
+  title: { absolute: "Diseño Digital de Sonrisa | Dr. Felipe Ramos · Durango" },
   description:
     "Tres décadas perfeccionando el diseño digital de sonrisa. Resultados naturales, sin cirugías invasivas, en pocas citas. Pago a meses sin intereses. Durango.",
   alternates: {

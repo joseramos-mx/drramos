@@ -49,9 +49,9 @@ function firstName(fullName) {
 // Mapeo del evento interno al evento neutral que va a Meta.
 // Sin pistas de padecimiento (HIPAA, política de Meta). Solo value
 // y currency como custom_data para optimización de ad spend.
-// Los valores son placeholders, hay que afinarlos con el ticket real.
+// Valores acordados con negocio para el ticket promedio de cada track.
 function toMetaEvent(evento) {
-  const value = evento === "LeadReconstruccion" ? 100000 : 35000;
+  const value = evento === "LeadReconstruccion" ? 100000 : 50000;
   return { name: "LeadCualificado", value, currency: "MXN" };
 }
 
@@ -136,25 +136,48 @@ async function sendToMetaCAPI({ lead, meta, request }) {
   );
 
   const body = { data: [event], access_token: token };
-  if (process.env.META_TEST_EVENT_CODE) {
-    body.test_event_code = process.env.META_TEST_EVENT_CODE;
+  // Solo enviar test_event_code si está definido Y no vacío.
+  // En producción esta variable debe estar vacía para que los eventos
+  // se contabilicen como reales, no de prueba.
+  const testCode = (process.env.META_TEST_EVENT_CODE || "").trim();
+  if (testCode) {
+    body.test_event_code = testCode;
   }
 
-  const res = await fetch(
-    `https://graph.facebook.com/${META_GRAPH_VERSION}/${pixelId}/events`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+  const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${pixelId}/events`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("[capi] error", res.status, text);
-    return { ok: false, error: text };
+    const text = await res.text().catch(() => "<no body>");
+    console.error(
+      "[capi] error",
+      JSON.stringify({
+        status: res.status,
+        statusText: res.statusText,
+        url,
+        eventName: meta.name,
+        eventId: lead.eventId,
+        evento: lead.evento,
+        track: lead.track,
+        testEventCode: testCode || null,
+        response: text,
+      })
+    );
+    return { ok: false, status: res.status, error: text };
   }
-  return { ok: true };
+
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    // CAPI suele devolver { events_received, messages, fbtrace_id }.
+    // Si no parsea, no es crítico: el 200 es suficiente.
+  }
+  return { ok: true, response: json };
 }
 
 // ─────────────────────────────────────────────────────────────

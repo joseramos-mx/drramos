@@ -36,10 +36,10 @@ export default function Footer() {
               Ubicación
             </div>
             <p className="font-[family-name:var(--font-cormorant)] text-[20px] font-light text-[#f5f1ea]">
-              Durango, México
+              Durango, Dgo.
             </p>
-            <p className="mt-2 max-w-[260px] font-[family-name:var(--font-albert)] text-[13px] font-light leading-[1.7] text-white/55">
-              Consultorio privado en zona céntrica. Estacionamiento disponible.
+            <p className="mt-2 max-w-[280px] font-[family-name:var(--font-albert)] text-[13px] font-light leading-[1.7] text-white/55">
+              Prol. Gómez Palacio 501, Zona Centro, C.P. 34000.
             </p>
           </div>
 
@@ -77,16 +77,16 @@ export default function Footer() {
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t border-white/[0.08] py-8 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.16em] text-white/50">
           <p>{year} · Dr. Felipe de Jesús Ramos · Durango, México</p>
           <Link
-            href="#"
+            href="/aviso-legal"
             className="transition-colors duration-300 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
           >
             Aviso legal
           </Link>
           <Link
-            href="#"
+            href="/privacidad"
             className="transition-colors duration-300 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
           >
-            Privacidad
+            Aviso de privacidad
           </Link>
           <p className="inline-flex items-center gap-2">
             <MapPinIcon size={14} weight="thin" />
