@@ -7,40 +7,50 @@ import { useAplicacion, CTA_LABEL } from "./aplicacion-context";
 
 /**
  * Antes & Después · galería editorial.
- * 3 a 5 casos reales en formato grande. Sin marcas de agua, sin testimonios.
+ * 3 casos reales del Dr. Felipe en formato grande. Sin marcas de agua,
+ * sin testimonios encima.
  *
- * Las imágenes reales y con consentimiento las coloca el cliente en
- * /public/cases/. Mientras tanto cada caso renderiza un placeholder en
- * negro editorial (no stock) para no romper el layout ni lanzar 404 en
- * consola. Bandera `placeholder: true` en la entrada del array.
+ * Orden pensado para conversión:
+ *   01 → Anclaje emocional: la lectora se ve a sí misma. Rostro completo,
+ *        transformación dramática pero NATURAL.
+ *   02 → Prueba técnica: close-up que muestra calidad fina de carillas
+ *        de porcelana, textura natural, no "diente de piano".
+ *   03 → Vence el miedo al "blanco fluorescente": resuelve color
+ *        irregular sin caer en sobrecorrección.
+ *
+ * `placeholder: true` deja un fondo negro elegante en caso de futuro
+ * caso sin fotos.
  */
 
 const EASE = [0.22, 0.61, 0.36, 1];
 
+// `aspect` es por caso: retratos (caso 01) usan 4/5, los close-ups
+// (02 y 03) usan 19/8 horizontal para mostrar el set completo de
+// dientes sin recortar y sin pixelar.
 const CASES = [
   {
     num: "01",
-    title: "Rehabilitación estética",
-    duration: "2 citas",
-    placeholder: true,
-    antes: "/cases/01-antes.jpg",
-    despues: "/cases/01-despues.jpg",
+    title: "Rehabilitación estética completa",
+    duration: "Pocas citas",
+    aspect:  "aspect-[4/5]",
+    antes:   "/photos/Imagen1.jpg",
+    despues: "/photos/Imagen2.jpg",
   },
   {
     num: "02",
     title: "Carillas de porcelana",
-    duration: "3 citas",
-    placeholder: true,
-    antes: "/cases/02-antes.jpg",
-    despues: "/cases/02-despues.jpg",
+    duration: "Pocas citas",
+    aspect:  "aspect-[19/8]",
+    antes:   "/photos/Imagen3.jpg",
+    despues: "/photos/Imagen4.jpg",
   },
   {
     num: "03",
-    title: "Diseño digital completo",
-    duration: "4 citas",
-    placeholder: true,
-    antes: "/cases/03-antes.jpg",
-    despues: "/cases/03-despues.jpg",
+    title: "Diseño digital de sonrisa",
+    duration: "Pocas citas",
+    aspect:  "aspect-[19/8]",
+    antes:   "/photos/Imagen7.jpg",
+    despues: "/photos/Picture1.jpg",
   },
 ];
 
@@ -64,26 +74,27 @@ const photoEntrance = {
 // ─────────────────────────────────────────────────────────────
 //  Componente: par antes/después
 // ─────────────────────────────────────────────────────────────
-function CasePhoto({ src, alt, dim }) {
+const DEFAULT_ASPECT = "aspect-[4/5]";
+
+function CasePhoto({ src, alt, dim, aspect = DEFAULT_ASPECT }) {
   return (
     <Image
       src={src}
       alt={alt}
-      width={900}
-      height={1125}
+      width={1600}
+      height={1000}
       sizes="(min-width: 768px) 45vw, 100vw"
-      className={`aspect-[4/5] w-full object-cover ${dim ? "saturate-[0.92]" : ""}`}
+      className={`${aspect} w-full object-cover ${dim ? "saturate-[0.92]" : ""}`}
     />
   );
 }
 
-function CasePlaceholder({ side }) {
+function CasePlaceholder({ side, aspect = DEFAULT_ASPECT }) {
   return (
     <div
       aria-hidden
-      className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a0a0a] to-[#000000]"
+      className={`relative flex ${aspect} w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a0a0a] to-[#000000]`}
     >
-      {/* Ornamento sutil, no decorativo de stock */}
       <span className="pointer-events-none absolute inset-6 border border-white/[0.04]" />
       <span className="pointer-events-none absolute h-px w-12 bg-[#b89968]/40" />
       <p className="absolute bottom-6 left-6 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.3em] text-white/35">
@@ -111,9 +122,14 @@ function CaseRow({ data }) {
         {/* ANTES */}
         <motion.div variants={photoEntrance} className="relative overflow-hidden">
           {data.placeholder ? (
-            <CasePlaceholder side="antes" />
+            <CasePlaceholder side="antes" aspect={data.aspect} />
           ) : (
-            <CasePhoto src={data.antes} alt={`Antes: ${data.title}`} dim />
+            <CasePhoto
+              src={data.antes}
+              alt={`Antes: ${data.title}`}
+              aspect={data.aspect}
+              dim
+            />
           )}
           {!data.placeholder && (
             <span className="absolute left-5 top-5 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.32em] text-white/55">
@@ -125,9 +141,13 @@ function CaseRow({ data }) {
         {/* DESPUÉS */}
         <motion.div variants={photoEntrance} className="relative overflow-hidden">
           {data.placeholder ? (
-            <CasePlaceholder side="despues" />
+            <CasePlaceholder side="despues" aspect={data.aspect} />
           ) : (
-            <CasePhoto src={data.despues} alt={`Después: ${data.title}`} />
+            <CasePhoto
+              src={data.despues}
+              alt={`Después: ${data.title}`}
+              aspect={data.aspect}
+            />
           )}
           {!data.placeholder && (
             <span className="absolute left-5 top-5 font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.32em] text-white/85">
