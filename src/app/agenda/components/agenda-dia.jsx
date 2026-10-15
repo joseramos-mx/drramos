@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import {
   DENTISTAS,
   SLOT_MIN,
+  carrilesColumna,
   formatHora,
   horarioDelDia,
   idsEncimados,
@@ -76,6 +77,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
         {/* Una columna por dentista */}
         {DENTISTAS.map((d) => {
           const suyas = citas.filter((c) => c.dentista === d.value);
+          const carriles = carrilesColumna(suyas);
           return (
             <div key={d.value} className="relative border-l border-white/[0.08]">
               {slots.map((m) => (
@@ -97,6 +99,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
                   key={c.id}
                   cita={c}
                   abre={abre}
+                  carril={carriles[c.id]}
                   encimada={encimados.has(c.id)}
                   onClick={soloLectura ? undefined : () => setSheet({ modo: "cita", cita: c })}
                 />
@@ -117,11 +120,15 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
   );
 }
 
-function CitaBloque({ cita, abre, encimada, onClick }) {
+function CitaBloque({ cita, abre, carril, encimada, onClick }) {
   const ini = minutosDelDia(cita.inicio);
   const fin = minutosDelDia(cita.fin);
   const top = ((ini - abre) / SLOT_MIN) * ROW_PX;
   const height = Math.max(((fin - ini) / SLOT_MIN) * ROW_PX - 4, 28);
+  // Ancho y posición del carril (mitad y mitad si dos se enciman)
+  const { carril: n = 0, carriles = 1 } = carril || {};
+  const left = `calc(${(n / carriles) * 100}% + 4px)`;
+  const width = `calc(${100 / carriles}% - 8px)`;
 
   const tono =
     cita.estado === "cancelada" || cita.estado === "no_asistio"
@@ -137,9 +144,10 @@ function CitaBloque({ cita, abre, encimada, onClick }) {
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      style={{ top: top + 2, height }}
-      className={`absolute inset-x-1 overflow-hidden border px-2 py-1 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono} ${
-        encimada ? "ring-2 ring-[#ff7a7a]" : ""
+      style={{ top: top + 2, height, left, width }}
+      className={`absolute overflow-hidden border px-2 py-1 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono} ${
+        // Mismo dentista a la misma hora: aviso discreto de doble cita
+        encimada ? "border-l-2 border-l-[#ff7a7a]" : ""
       }`}
     >
       <p className="truncate font-[family-name:var(--font-albert)] text-[13px] font-normal leading-tight">

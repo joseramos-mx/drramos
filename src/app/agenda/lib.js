@@ -145,6 +145,47 @@ export function formatMoney(n) {
   });
 }
 
+/**
+ * Acomodo tipo Google Calendar para las citas de UNA columna: las que
+ * se enciman se reparten el ancho en carriles. Un grupo es una cadena
+ * de citas que se tocan entre sí; dentro del grupo cada cita toma el
+ * primer carril libre. Devuelve { [id]: { carril, carriles } }.
+ */
+export function carrilesColumna(citas) {
+  const orden = [...citas].sort(
+    (a, b) => new Date(a.inicio) - new Date(b.inicio) || new Date(b.fin) - new Date(a.fin)
+  );
+  const out = {};
+  let grupo = [];
+  let finGrupo = -Infinity;
+  let finesCarril = [];
+
+  const cerrarGrupo = () => {
+    for (const id of grupo) out[id].carriles = finesCarril.length;
+    grupo = [];
+    finesCarril = [];
+  };
+
+  for (const c of orden) {
+    const ini = new Date(c.inicio).getTime();
+    const fin = new Date(c.fin).getTime();
+    if (ini >= finGrupo) cerrarGrupo();
+
+    let carril = finesCarril.findIndex((f) => f <= ini);
+    if (carril === -1) {
+      carril = finesCarril.length;
+      finesCarril.push(fin);
+    } else {
+      finesCarril[carril] = fin;
+    }
+    out[c.id] = { carril, carriles: 1 };
+    grupo.push(c.id);
+    finGrupo = Math.max(finGrupo, fin);
+  }
+  cerrarGrupo();
+  return out;
+}
+
 /** Citas que se enciman con otra del mismo dentista (se pintan en rojo). */
 export function idsEncimados(citas) {
   const out = new Set();
