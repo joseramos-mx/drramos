@@ -12,5 +12,7 @@ export const config = {
      */
     "/crm",
     "/crm/:path*",
+    "/agenda",
+    "/agenda/:path*",
   ],
 };

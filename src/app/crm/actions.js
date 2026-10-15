@@ -32,7 +32,15 @@ export async function loginAction(_prevState, formData) {
     return { error: "Correo o contraseña incorrectos." };
   }
 
-  redirect("/crm");
+  redirect(destinoSeguro(formData.get("from")));
+}
+
+// Sólo regresa a rutas internas del personal (evita redirecciones abiertas).
+function destinoSeguro(from) {
+  const f = String(from || "");
+  return /^\/(crm|agenda)(\/[\w\-/?=&]*)?$/.test(f) && !f.startsWith("/crm/login")
+    ? f
+    : "/crm";
 }
 
 export async function signOutAction() {

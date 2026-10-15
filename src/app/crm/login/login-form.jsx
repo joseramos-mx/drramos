@@ -4,11 +4,12 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { loginAction } from "../actions";
 
-export default function LoginForm() {
+export default function LoginForm({ from = "" }) {
   const [state, formAction] = useActionState(loginAction, null);
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
+      <input type="hidden" name="from" value={from} />
       <Field
         id="email"
         name="email"
