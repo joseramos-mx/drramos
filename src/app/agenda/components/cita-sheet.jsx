@@ -46,14 +46,14 @@ export default function CitaSheet({ fecha, estado, onClose }) {
     >
       <div className="max-h-[92vh] w-full max-w-[640px] overflow-y-auto border border-white/[0.1] bg-[#0a0a0a] p-5 md:p-8">
         <div className="mb-5 flex items-start justify-between gap-4">
-          <p className="font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-[#b89968]">
+          <p className="font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.28em] text-[#b89968]">
             {estado.modo === "nueva" ? "Nueva cita" : "Cita"}
           </p>
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="-m-2 p-2 text-white/55 hover:text-[#f5f1ea]"
+            className="-m-2 p-2 text-white/75 hover:text-[#f5f1ea]"
           >
             <XIcon size={20} weight="light" />
           </button>
@@ -205,17 +205,17 @@ function BuscarPaciente({ onElegir }) {
       {(resultados.length > 0 || pending) && (
         <ul className="mt-2 border border-white/[0.08]">
           {pending && resultados.length === 0 && (
-            <li className="px-3 py-3 font-[family-name:var(--font-albert)] text-[12px] font-light text-white/45">Buscando…</li>
+            <li className="px-3 py-3 font-[family-name:var(--font-albert)] text-[12px] font-normal text-white/65">Buscando…</li>
           )}
           {resultados.map((r) => (
             <li key={`${r.tipo}-${r.id}`}>
               <button
                 type="button"
                 onClick={() => onElegir(r)}
-                className="flex min-h-[48px] w-full items-center justify-between gap-3 border-b border-white/[0.04] px-3 py-2 text-left font-[family-name:var(--font-albert)] text-[14px] font-light text-[#f5f1ea] last:border-0 hover:bg-white/[0.04]"
+                className="flex min-h-[48px] w-full items-center justify-between gap-3 border-b border-white/[0.04] px-3 py-2 text-left font-[family-name:var(--font-albert)] text-[14px] font-normal text-[#f5f1ea] last:border-0 hover:bg-white/[0.04]"
               >
                 <span className="truncate">{r.nombre || "Sin nombre"}</span>
-                <span className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-white/45">
+                <span className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-white/65">
                   {r.tipo === "lead" ? "Formulario" : r.whatsapp || ""}
                 </span>
               </button>
@@ -223,7 +223,7 @@ function BuscarPaciente({ onElegir }) {
           ))}
         </ul>
       )}
-      <p className="mt-2 font-[family-name:var(--font-albert)] text-[11px] font-light text-white/40">
+      <p className="mt-2 font-[family-name:var(--font-albert)] text-[11px] font-normal text-white/60">
         Si no aparece, escribe sus datos abajo y se registra solo.
       </p>
     </div>
@@ -233,14 +233,14 @@ function BuscarPaciente({ onElegir }) {
 function PacienteElegido({ paciente, onCambiar }) {
   return (
     <div className="flex min-h-[48px] items-center justify-between gap-3 border border-[#b89968]/60 bg-[#b89968]/[0.08] px-3 py-2">
-      <span className="truncate font-[family-name:var(--font-albert)] text-[14px] font-light text-[#f5f1ea]">
+      <span className="truncate font-[family-name:var(--font-albert)] text-[14px] font-normal text-[#f5f1ea]">
         {paciente.nombre}
-        {paciente.whatsapp && <span className="ml-2 text-white/55">{paciente.whatsapp}</span>}
+        {paciente.whatsapp && <span className="ml-2 text-white/75">{paciente.whatsapp}</span>}
       </span>
       <button
         type="button"
         onClick={onCambiar}
-        className="shrink-0 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.18em] text-white/60 hover:text-[#f5f1ea]"
+        className="shrink-0 font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.18em] text-white/60 hover:text-[#f5f1ea]"
       >
         Cambiar
       </button>
@@ -263,7 +263,7 @@ function DetalleCita({ fecha, cita, onDone }) {
         <h2 className="font-[family-name:var(--font-cormorant)] text-[28px] font-light leading-tight text-[#f5f1ea]">
           {cita.paciente?.nombre || "Sin nombre"}
         </h2>
-        <p className="mt-1 font-[family-name:var(--font-albert)] text-[12px] font-light uppercase tracking-[0.16em] text-white/55">
+        <p className="mt-1 font-[family-name:var(--font-albert)] text-[12px] font-normal uppercase tracking-[0.16em] text-white/75">
           {formatHora(ini)}–{formatHora(fin)} · {labelDe(TIPOS, cita.tipo)} · {labelDe(DENTISTAS, cita.dentista)}
         </p>
         {wa && (
@@ -271,13 +271,13 @@ function DetalleCita({ fecha, cita, onDone }) {
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noopener"
-            className="mt-3 inline-flex items-center gap-2 font-[family-name:var(--font-albert)] text-[14px] font-light text-[#f5f1ea] underline decoration-[#b89968]/50 underline-offset-4 hover:text-[#b89968]"
+            className="mt-3 inline-flex items-center gap-2 font-[family-name:var(--font-albert)] text-[14px] font-normal text-[#f5f1ea] underline decoration-[#b89968]/50 underline-offset-4 hover:text-[#b89968]"
           >
             <WhatsappLogoIcon size={16} weight="light" /> {cita.paciente.whatsapp}
           </a>
         )}
         {cita.notas && (
-          <p className="mt-3 font-[family-name:var(--font-albert)] text-[13px] font-light text-white/70">{cita.notas}</p>
+          <p className="mt-3 font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/70">{cita.notas}</p>
         )}
       </header>
 
@@ -289,7 +289,7 @@ function DetalleCita({ fecha, cita, onDone }) {
           <button
             type="button"
             onClick={() => setEditando(true)}
-            className="font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.18em] text-white/55 underline-offset-4 hover:text-[#f5f1ea] hover:underline"
+            className="font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.18em] text-white/75 underline-offset-4 hover:text-[#f5f1ea] hover:underline"
           >
             Mover o cambiar la cita
           </button>
@@ -399,7 +399,7 @@ function MontoInput({ name, label, value, onChange }) {
           className={`${inputClass} max-w-[200px]`}
         />
         {value && (
-          <span className="font-[family-name:var(--font-albert)] text-[13px] font-light text-white/55">
+          <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/75">
             {formatMoney(value)}
           </span>
         )}
@@ -416,13 +416,13 @@ function Acciones({ state, label, disabled, onCancel }) {
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-[44px] px-2 font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.18em] text-white/55 hover:text-[#f5f1ea]"
+          className="min-h-[44px] px-2 font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.18em] text-white/75 hover:text-[#f5f1ea]"
         >
           Cancelar
         </button>
       )}
       {state?.error && (
-        <span role="alert" className="font-[family-name:var(--font-albert)] text-[13px] font-light text-[#ff7a7a]">
+        <span role="alert" className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-[#ff7a7a]">
           {state.error}
         </span>
       )}

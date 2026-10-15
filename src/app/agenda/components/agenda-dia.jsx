@@ -41,7 +41,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
   return (
     <>
       {!horario && (
-        <p className="mt-6 font-[family-name:var(--font-albert)] text-[13px] font-light text-white/55">
+        <p className="mt-6 font-[family-name:var(--font-albert)] text-[14px] font-normal text-white/75">
           Domingo: consultorio cerrado. Puedes agendar una urgencia si hace falta.
         </p>
       )}
@@ -67,7 +67,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
             <div
               key={m}
               style={{ height: ROW_PX }}
-              className="border-b border-white/[0.04] pr-2 pt-1 text-right font-[family-name:var(--font-albert)] text-[11px] font-light tabular-nums text-white/45"
+              className={`border-b ${m % 60 === 0 ? "border-white/[0.10]" : "border-white/[0.05]"} pr-2 pt-1 text-right font-[family-name:var(--font-albert)] text-[12px] font-normal tabular-nums text-white/70`}
             >
               {m % 60 === 0 ? formatHora(m) : ""}
             </div>
@@ -89,7 +89,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
                   onClick={() => setSheet({ modo: "nueva", dentista: d.value, minutos: m })}
                   style={{ height: ROW_PX }}
                   className={`block w-full border-b ${
-                    m % 60 === 0 ? "border-white/[0.06]" : "border-white/[0.03]"
+                    m % 60 === 0 ? "border-white/[0.10]" : "border-white/[0.05]"
                   } transition-colors hover:bg-white/[0.03] focus-visible:bg-[#b89968]/[0.08] focus-visible:outline-none disabled:hover:bg-transparent`}
                 />
               ))}
@@ -130,33 +130,45 @@ function CitaBloque({ cita, abre, carril, encimada, onClick }) {
   const left = `calc(${(n / carriles) * 100}% + 4px)`;
   const width = `calc(${100 / carriles}% - 8px)`;
 
-  const tono =
-    cita.estado === "cancelada" || cita.estado === "no_asistio"
-      ? "border-white/[0.1] bg-white/[0.02] text-white/40 line-through"
-      : cita.estado === "asistio"
-        ? "border-emerald-400/40 bg-emerald-400/[0.08] text-[#f5f1ea]"
-        : cita.tipo === "urgencia"
-          ? "border-[#ff7a7a]/50 bg-[#ff7a7a]/[0.08] text-[#f5f1ea]"
-          : "border-[#b89968]/60 bg-[#b89968]/[0.12] text-[#f5f1ea]";
+  // Fondos sólidos (no translúcidos) + barra de color a la izquierda
+  // para leer el estado de un vistazo. Paleta de /diseno-sonrisa.
+  const apagada = cita.estado === "cancelada" || cita.estado === "no_asistio";
+  const tono = apagada
+    ? { bg: "#111111", barra: "rgba(255,255,255,0.18)", texto: "text-white/50" }
+    : cita.estado === "asistio"
+      ? { bg: "#0f1d17", barra: "#34d399", texto: "text-[#f5f1ea]" }
+      : cita.tipo === "urgencia"
+        ? { bg: "#241212", barra: "#ff7a7a", texto: "text-[#f5f1ea]" }
+        : { bg: "#1d1913", barra: "#b89968", texto: "text-[#f5f1ea]" };
 
   const Tag = onClick ? "button" : "div";
   return (
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      style={{ top: top + 2, height, left, width }}
-      className={`absolute overflow-hidden border px-2 py-1 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono} ${
-        // Mismo dentista a la misma hora: aviso discreto de doble cita
-        encimada ? "border-l-2 border-l-[#ff7a7a]" : ""
-      }`}
+      style={{ top: top + 2, height, left, width, background: tono.bg, borderLeftColor: tono.barra }}
+      className={`absolute overflow-hidden border border-l-4 border-white/[0.08] py-1.5 pl-2.5 pr-2 text-left transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono.texto}`}
     >
-      <p className="truncate font-[family-name:var(--font-albert)] text-[13px] font-normal leading-tight">
+      <p
+        className={`truncate font-[family-name:var(--font-albert)] text-[14px] font-medium leading-snug md:text-[15px] ${
+          apagada ? "line-through" : ""
+        }`}
+      >
         {cita.paciente?.nombre || "Sin nombre"}
       </p>
-      <p className="truncate font-[family-name:var(--font-albert)] text-[10px] font-light uppercase tracking-[0.14em] opacity-70">
+      <p className="truncate font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.06em] opacity-80 md:text-[12px]">
         {formatHora(ini)} · {labelDe(TIPOS, cita.tipo)}
-        {cita.estado === "asistio" && " · ✓"}
+        {cita.estado === "asistio" && " · ✓ Vino"}
+        {cita.estado === "no_asistio" && " · No vino"}
+        {cita.estado === "cancelada" && " · Canceló"}
       </p>
+      {encimada && (
+        // Mismo dentista a la misma hora: aviso de doble cita
+        <span
+          title="Se encima con otra cita"
+          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#ff7a7a]"
+        />
+      )}
     </Tag>
   );
 }

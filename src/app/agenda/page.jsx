@@ -37,7 +37,7 @@ export default async function AgendaPage({ searchParams }) {
     <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-8 md:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-5">
         <div>
-          <p className="font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-[#b89968]">
+          <p className="font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.24em] text-[#b89968]">
             Agenda
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-[clamp(26px,4vw,40px)] font-light leading-[1.1] first-letter:uppercase text-[#f5f1ea]">
@@ -73,7 +73,7 @@ function NavBtn({ href, label }) {
   return (
     <Link
       href={href}
-      className="inline-flex min-h-[44px] items-center border border-white/[0.12] px-4 py-2 font-[family-name:var(--font-albert)] text-[12px] font-light tracking-[0.04em] text-white/70 transition-colors duration-200 hover:border-white/30 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
+      className="inline-flex min-h-[44px] items-center border border-white/[0.12] px-4 py-2 font-[family-name:var(--font-albert)] text-[13px] font-normal tracking-[0.02em] text-white/85 transition-colors duration-200 hover:border-white/30 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
     >
       {label}
     </Link>
