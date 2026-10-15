@@ -40,7 +40,7 @@ export default async function AgendaPage({ searchParams }) {
           <p className="font-[family-name:var(--font-albert)] text-[11px] font-light uppercase tracking-[0.28em] text-[#b89968]">
             Agenda
           </p>
-          <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-[clamp(26px,4vw,40px)] font-light capitalize leading-[1.1] text-[#f5f1ea]">
+          <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-[clamp(26px,4vw,40px)] font-light leading-[1.1] first-letter:uppercase text-[#f5f1ea]">
             {formatFechaLarga(fecha)}
             {fecha === hoy && <span className="normal-case text-white/45"> · hoy</span>}
           </h1>
