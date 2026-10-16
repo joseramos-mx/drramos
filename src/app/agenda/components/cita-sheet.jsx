@@ -5,22 +5,19 @@ import { useFormStatus } from "react-dom";
 import { WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
 import {
   buscarPacientesAction,
-  cerrarCitaAction,
   guardarCitaAction,
 } from "../actions";
 import {
   DENTISTAS,
   DURACIONES,
-  ESTADOS_CITA,
   ORIGENES,
   TIPOS,
-  TRATAMIENTOS,
   formatHora,
-  formatMoney,
   labelDe,
   minutosDelDia,
 } from "../lib";
 import ChoiceChips, { FieldLabel, inputClass, primaryBtnClass } from "./choice-chips";
+import CierreWizard from "./cierre-wizard";
 
 /**
  * Panel que sube desde abajo (celular) o aparece al centro (iPad).
@@ -285,7 +282,7 @@ function DetalleCita({ fecha, cita, onDone }) {
         <EditarCita fecha={fecha} cita={cita} onDone={onDone} onCancel={() => setEditando(false)} />
       ) : (
         <>
-          <CierreCita cita={cita} onDone={onDone} />
+          <CierreWizard cita={cita} onDone={onDone} />
           <button
             type="button"
             onClick={() => setEditando(true)}
@@ -296,49 +293,6 @@ function DetalleCita({ fecha, cita, onDone }) {
         </>
       )}
     </div>
-  );
-}
-
-function CierreCita({ cita, onDone }) {
-  const [state, formAction] = useActionState(cerrarCitaAction, null);
-  const [estado, setEstado] = useState(cita.estado === "agendada" ? "" : cita.estado);
-  const [cotizado, setCotizado] = useState(cita.cotizado || []);
-  const [realizado, setRealizado] = useState(cita.realizado || []);
-  const [cotizadoMonto, setCotizadoMonto] = useState(montoInicial(cita.cotizado_monto));
-  const [pagadoMonto, setPagadoMonto] = useState(montoInicial(cita.pagado_monto));
-
-  useEffect(() => {
-    if (state?.ok) onDone();
-  }, [state, onDone]);
-
-  return (
-    <form action={formAction} className="space-y-6 border-t border-white/[0.06] pt-6">
-      <input type="hidden" name="id" value={cita.id} />
-
-      <div>
-        <FieldLabel>¿Se presentó?</FieldLabel>
-        <ChoiceChips name="estado" options={ESTADOS_CITA} value={estado} onChange={setEstado} />
-      </div>
-
-      {estado === "asistio" && (
-        <>
-          <div>
-            <FieldLabel>¿Qué se cotizó?</FieldLabel>
-            <ChoiceChips name="cotizado" options={TRATAMIENTOS} value={cotizado} onChange={setCotizado} multiple />
-            <MontoInput name="cotizado_monto" label="Monto cotizado" value={cotizadoMonto} onChange={setCotizadoMonto} />
-          </div>
-
-          <div>
-            <FieldLabel>¿Qué se hizo hoy?</FieldLabel>
-            <ChoiceChips name="realizado" options={TRATAMIENTOS} value={realizado} onChange={setRealizado} multiple />
-          </div>
-
-          <MontoInput name="pagado_monto" label="¿Cuánto pagó hoy?" value={pagadoMonto} onChange={setPagadoMonto} />
-        </>
-      )}
-
-      <Acciones state={state} label="Guardar" disabled={!estado} />
-    </form>
   );
 }
 
@@ -383,31 +337,6 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
 // ─────────────────────────────────────────────────────────────
 //  Piezas
 // ─────────────────────────────────────────────────────────────
-function MontoInput({ name, label, value, onChange }) {
-  return (
-    <div className="mt-3">
-      <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      <div className="flex items-center gap-3">
-        <input
-          id={name}
-          name={name}
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="$"
-          value={value}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
-          className={`${inputClass} max-w-[200px]`}
-        />
-        {value && (
-          <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/75">
-            {formatMoney(value)}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function Acciones({ state, label, disabled, onCancel }) {
   return (
     <div className="flex flex-wrap items-center gap-4 border-t border-white/[0.06] pt-5">
@@ -437,10 +366,6 @@ function SubmitBtn({ label, disabled }) {
       {pending ? "Guardando..." : label}
     </button>
   );
-}
-
-function montoInicial(n) {
-  return n === null || n === undefined ? "" : String(Math.round(Number(n)));
 }
 
 function normalizar(raw) {
