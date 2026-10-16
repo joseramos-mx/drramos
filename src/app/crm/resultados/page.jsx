@@ -1,0 +1,35 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
+import { PERIODOS, calcularResultados, rangoPeriodo } from "./stats";
+import ResultadosVista from "./resultados-vista";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Resultados del consultorio a partir de la agenda: embudo, dinero,
+ * origen de los pacientes, tratamientos y listas de acción. La Dra.
+ * Gaby no captura nada aquí; todo sale del cierre de cada cita.
+ */
+export default async function ResultadosPage({ searchParams }) {
+  const sp = (await searchParams) || {};
+  const periodo = PERIODOS.some((p) => p.value === sp.periodo) ? sp.periodo : "mes";
+
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/crm/login?from=/crm/resultados");
+
+  // Volumen de un consultorio: se leen todas las citas y se calcula aquí.
+  const { data: citas, error } = await supabase
+    .from("citas")
+    .select(
+      "id, inicio, fin, estado, cotizado, cotizado_monto, realizado, pagado_monto, paciente:pacientes(id, nombre, whatsapp, origen)"
+    )
+    .order("inicio", { ascending: false });
+
+  const r = calcularResultados(citas || [], rangoPeriodo(periodo));
+
+  return <ResultadosVista r={r} periodo={periodo} email={user.email} error={error} />;
+}
