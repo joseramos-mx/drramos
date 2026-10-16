@@ -130,7 +130,7 @@ export default function CierreWizard({ cita, onDone }) {
             <Pregunta titulo="¿Qué tratamiento se le cotizó?">
               <OpcionesTratamiento
                 valor={r.cotizado}
-                primera={{ value: NADA, label: "Nada, sólo se valoró" }}
+                primeras={[{ value: NADA, label: "Nada, sólo se valoró" }]}
                 onElegir={(v) => avanzar({ cotizado: v })}
               />
             </Pregunta>
@@ -151,7 +151,13 @@ export default function CierreWizard({ cita, onDone }) {
             <Pregunta titulo="¿Qué se le hizo hoy?">
               <OpcionesTratamiento
                 valor={r.realizado}
-                primera={{ value: SOLO_VALORACION, label: "Sólo la valoración" }}
+                primeras={[
+                  // Atajo: lo más común es que se haga lo mismo que se cotizó
+                  ...(r.cotizado && r.cotizado !== NADA
+                    ? [{ value: r.cotizado, label: `Lo mismo que se cotizó (${labelDe(TRATAMIENTOS, r.cotizado)})` }]
+                    : []),
+                  { value: SOLO_VALORACION, label: "Sólo la valoración" },
+                ]}
                 onElegir={(v) => avanzar({ realizado: v })}
               />
             </Pregunta>
@@ -235,12 +241,13 @@ function Opciones({ valor, opciones, onElegir }) {
 }
 
 /** Pocas opciones a la vista; el resto sólo si se pide. */
-function OpcionesTratamiento({ valor, primera, onElegir }) {
+function OpcionesTratamiento({ valor, primeras, onElegir }) {
   const elegidoEnOtros = OTROS.some((o) => o.value === valor);
   const [verOtros, setVerOtros] = useState(elegidoEnOtros);
-  const opciones = verOtros
-    ? [primera, ...OTROS]
-    : [primera, ...PRINCIPALES.map(opcion)];
+  // Lo que ya va arriba como atajo no se repite en la lista
+  const arriba = new Set(primeras.map((o) => o.value));
+  const resto = (verOtros ? OTROS : PRINCIPALES.map(opcion)).filter((o) => !arriba.has(o.value));
+  const opciones = [...primeras, ...resto];
 
   return (
     <>
