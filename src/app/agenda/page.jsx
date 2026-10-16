@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import AgendaDia from "./components/agenda-dia";
+import Reloj from "./components/reloj";
 import {
   CITA_SELECT,
   esFechaValida,
@@ -46,7 +47,9 @@ export default async function AgendaPage({ searchParams }) {
           </h1>
         </div>
 
-        <nav className="flex flex-wrap items-center gap-2">
+        <Reloj />
+
+        <nav className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
           <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}`} label="← Ayer" />
           {fecha !== hoy && <NavBtn href="/agenda" label="Hoy" />}
           <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}`} label="Mañana →" />

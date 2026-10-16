@@ -37,7 +37,7 @@ export default async function PantallaPage() {
         <h1 className="font-[family-name:var(--font-cormorant)] text-[clamp(32px,3.5vw,52px)] font-light leading-[1.05] first-letter:uppercase text-[#f5f1ea]">
           {formatFechaLarga(fecha)}
         </h1>
-        <Reloj />
+        <Reloj grande />
       </header>
       <AgendaDia fecha={fecha} citas={citas || []} soloLectura />
     </main>
