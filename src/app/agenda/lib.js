@@ -64,6 +64,22 @@ export const ORIGENES = [
   { value: "otro",          label: "Otro" },
 ];
 
+// Colores de las citas: una sola fuente para las fichas y la leyenda.
+// Fondos sólidos + barra a la izquierda. Paleta de /diseno-sonrisa.
+export const TONOS = {
+  agendada: { label: "Agendada",          bg: "#1d1913", barra: "#b89968" },
+  asistio:  { label: "Vino",              bg: "#0f1d17", barra: "#34d399" },
+  urgencia: { label: "Urgencia",          bg: "#241212", barra: "#ff7a7a" },
+  apagada:  { label: "No vino / canceló", bg: "#111111", barra: "rgba(255,255,255,0.18)" },
+};
+
+export function tonoDeCita(cita) {
+  if (cita.estado === "cancelada" || cita.estado === "no_asistio") return "apagada";
+  if (cita.estado === "asistio") return "asistio";
+  if (cita.tipo === "urgencia") return "urgencia";
+  return "agendada";
+}
+
 // Horario de atención (de la landing): L-V 9-19, sáb 9-14, dom cerrado.
 export function horarioDelDia(fecha) {
   const dow = diaSemana(fecha);

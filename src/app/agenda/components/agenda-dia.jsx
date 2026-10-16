@@ -11,6 +11,8 @@ import {
   labelDe,
   minutosDelDia,
   TIPOS,
+  TONOS,
+  tonoDeCita,
 } from "../lib";
 import CitaSheet from "./cita-sheet";
 
@@ -46,8 +48,10 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
         </p>
       )}
 
+      <div className="mt-6 flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
+      <Leyenda />
       <div
-        className="mt-6 grid border border-white/[0.08]"
+        className="grid min-w-0 flex-1 border border-white/[0.08]"
         style={{ gridTemplateColumns: `52px repeat(${DENTISTAS.length}, minmax(0, 1fr))` }}
       >
         {/* Encabezados */}
@@ -108,6 +112,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
           );
         })}
       </div>
+      </div>
 
       {sheet && (
         <CitaSheet
@@ -130,16 +135,9 @@ function CitaBloque({ cita, abre, carril, encimada, onClick }) {
   const left = `calc(${(n / carriles) * 100}% + 4px)`;
   const width = `calc(${100 / carriles}% - 8px)`;
 
-  // Fondos sólidos (no translúcidos) + barra de color a la izquierda
-  // para leer el estado de un vistazo. Paleta de /diseno-sonrisa.
-  const apagada = cita.estado === "cancelada" || cita.estado === "no_asistio";
-  const tono = apagada
-    ? { bg: "#111111", barra: "rgba(255,255,255,0.18)", texto: "text-white/50" }
-    : cita.estado === "asistio"
-      ? { bg: "#0f1d17", barra: "#34d399", texto: "text-[#f5f1ea]" }
-      : cita.tipo === "urgencia"
-        ? { bg: "#241212", barra: "#ff7a7a", texto: "text-[#f5f1ea]" }
-        : { bg: "#1d1913", barra: "#b89968", texto: "text-[#f5f1ea]" };
+  const clave = tonoDeCita(cita);
+  const apagada = clave === "apagada";
+  const tono = { ...TONOS[clave], texto: apagada ? "text-white/50" : "text-[#f5f1ea]" };
 
   const Tag = onClick ? "button" : "div";
   return (
@@ -150,7 +148,7 @@ function CitaBloque({ cita, abre, carril, encimada, onClick }) {
       className={`absolute overflow-hidden border border-l-4 border-white/[0.08] py-1.5 pl-2.5 pr-2 text-left transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono.texto}`}
     >
       <p
-        className={`truncate font-[family-name:var(--font-albert)] text-[14px] font-medium leading-snug md:text-[15px] ${
+        className={`line-clamp-2 break-words font-[family-name:var(--font-albert)] text-[14px] font-medium leading-snug md:text-[15px] ${
           apagada ? "line-through" : ""
         }`}
       >
@@ -170,5 +168,42 @@ function CitaBloque({ cita, abre, carril, encimada, onClick }) {
         />
       )}
     </Tag>
+  );
+}
+
+/**
+ * Qué significa cada color. En pantalla ancha va a un costado de la
+ * agenda; en celular, arriba en una fila.
+ */
+function Leyenda() {
+  return (
+    <aside
+      aria-label="Colores de las citas"
+      className="flex flex-wrap gap-x-4 gap-y-2 border border-white/[0.08] p-3 lg:sticky lg:top-6 lg:w-[190px] lg:flex-col lg:gap-3 lg:p-4"
+    >
+      <p className="hidden font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 lg:block">
+        Colores
+      </p>
+      {Object.entries(TONOS).map(([k, t]) => (
+        <div key={k} className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className="h-5 w-7 shrink-0 border border-l-4 border-white/[0.08]"
+            style={{ background: t.bg, borderLeftColor: t.barra }}
+          />
+          <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
+            {t.label}
+          </span>
+        </div>
+      ))}
+      <div className="flex items-center gap-2.5">
+        <span aria-hidden className="flex h-5 w-7 shrink-0 items-center justify-center">
+          <span className="h-2 w-2 rounded-full bg-[#ff7a7a]" />
+        </span>
+        <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
+          Se encima con otra cita
+        </span>
+      </div>
+    </aside>
   );
 }
