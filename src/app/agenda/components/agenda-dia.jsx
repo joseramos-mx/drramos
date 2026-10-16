@@ -18,7 +18,7 @@ import CitaSheet from "./cita-sheet";
 
 const ROW_PX = 56; // alto de cada bloque de 30 min: cómodo para el dedo
 const ROW_MIN_PX = 18; // límite inferior al encoger para que quepa todo
-const ANCHO_PANTALLA = 1024; // desde aquí "auto" ajusta el alto
+const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado) "auto" ajusta el alto
 
 /**
  * Vista de un día: una columna por dentista, bloques de 30 min.
