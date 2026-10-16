@@ -119,9 +119,14 @@ export function calcularResultados(citas, rango, ahora = new Date().toISOString(
   }
 
   // ── Listas de acción (sin importar el periodo) ───────────────
-  // Citas que ya pasaron y nadie cerró: datos que faltan.
+  // Citas que ya pasaron y nadie cerró, o que sólo tienen la palomita
+  // rápida de "vino" sin cotizado/pagado: datos que faltan.
   const sinCerrar = citas
-    .filter((c) => c.estado === "agendada" && c.fin < ahora)
+    .filter(
+      (c) =>
+        (c.estado === "agendada" && c.fin < ahora) ||
+        (c.estado === "asistio" && c.cierre_completo === false)
+    )
     .sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
 
   // Presupuestos que nunca se pagaron: seguimiento.

@@ -27,7 +27,7 @@ export default async function ResultadosPage({ searchParams }) {
   const { data: citas, error } = await supabase
     .from("citas")
     .select(
-      "id, inicio, fin, estado, cotizado, cotizado_monto, realizado, pagado_monto, paciente:pacientes(id, nombre, whatsapp, origen)"
+      "id, inicio, fin, estado, cotizado, cotizado_monto, realizado, pagado_monto, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen)"
     )
     .order("inicio", { ascending: false });
 
