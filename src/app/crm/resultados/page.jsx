@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { PERIODOS, calcularResultados, rangoPeriodo } from "./stats";
 import ResultadosVista from "./resultados-vista";
+import { kpisAnuncios, leerAnunciosMeta } from "./meta-ads";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,15 @@ export default async function ResultadosPage({ searchParams }) {
     )
     .order("inicio", { ascending: false });
 
-  const r = calcularResultados(citas || [], rangoPeriodo(periodo));
+  const rango = rangoPeriodo(periodo);
+  const r = calcularResultados(citas || [], rango);
 
-  return <ResultadosVista r={r} periodo={periodo} email={user.email} error={error} />;
+  // Anuncios de Meta cruzados con los pacientes que llegaron por anuncio
+  const meta = await leerAnunciosMeta(rango);
+  const anuncios =
+    meta.conectado && !meta.error
+      ? { ...meta, kpis: kpisAnuncios(meta, r.porOrigen.find((o) => o.origen === "anuncio")) }
+      : meta;
+
+  return <ResultadosVista r={r} anuncios={anuncios} periodo={periodo} email={user.email} error={error} />;
 }

@@ -13,7 +13,7 @@ const ORIGEN_LABELS = [
 ];
 
 /** Lo que se dibuja en /crm/resultados (sin consultas a la base). */
-export default function ResultadosVista({ r, periodo, email, error }) {
+export default function ResultadosVista({ r, anuncios, periodo, email, error }) {
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 md:py-12">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.08] pb-6">
@@ -70,6 +70,9 @@ export default function ResultadosVista({ r, periodo, email, error }) {
           {r.citasTotal} citas en el periodo · {r.noVino} no vinieron · {r.cancelo} cancelaron
         </p>
       </Seccion>
+
+      {/* Anuncios de Meta */}
+      <SeccionAnuncios anuncios={anuncios} />
 
       {/* Por origen */}
       <Seccion titulo="¿De dónde llegan los que pagan?">
@@ -129,6 +132,85 @@ export default function ResultadosVista({ r, periodo, email, error }) {
         </Seccion>
       </div>
     </main>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Anuncios de Meta
+// ─────────────────────────────────────────────────────────────
+const pesos2 = (n) =>
+  n == null ? "—" : Number(n).toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
+const pesos = (n) => (n == null ? "—" : formatMoney(n));
+
+function SeccionAnuncios({ anuncios }) {
+  if (!anuncios || !anuncios.conectado) {
+    return (
+      <Seccion titulo="Anuncios de Meta" sub="Gasto de Facebook e Instagram cruzado con los pacientes que llegan por anuncio.">
+        <p className="border border-[#b89968]/40 bg-[#b89968]/[0.06] p-5 font-[family-name:var(--font-albert)] text-[14px] leading-[1.6] text-white/85">
+          Los anuncios todavía no están conectados. Para verlos aquí hay que agregar en Vercel las variables
+          <code className="mx-1 text-[#f5f1ea]">META_ADS_ACCESS_TOKEN</code> (sólo lectura, ads_read) y
+          <code className="mx-1 text-[#f5f1ea]">META_AD_ACCOUNT_ID</code>.
+        </p>
+      </Seccion>
+    );
+  }
+  if (anuncios.error) {
+    return (
+      <Seccion titulo="Anuncios de Meta">
+        <p role="alert" className="border border-[#ff7a7a]/30 bg-[#ff7a7a]/[0.06] p-5 font-[family-name:var(--font-albert)] text-[14px] text-[#ffb1b1]">
+          {anuncios.error}
+        </p>
+      </Seccion>
+    );
+  }
+
+  const k = anuncios.kpis;
+  return (
+    <Seccion titulo="Anuncios de Meta" sub="Lo que se gastó contra lo que regresó, con los pacientes que la agenda marca como &quot;Anuncio&quot;.">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <Kpi label="Gasto" valor={pesos(k.gasto)} />
+        <Kpi label="Conversaciones" valor={k.conversaciones} sub={`${pesos2(k.costoConversacion)} c/u`} />
+        <Kpi label="Pacientes por anuncio" valor={k.pacientes} sub={`${pesos(k.costoPaciente)} c/u`} />
+        <Kpi label="Pagaron" valor={k.pagaron} sub={`${pesos(k.costoPacientePago)} c/u`} destacado />
+        <Kpi
+          label="Retorno"
+          valor={k.retorno == null ? "—" : `${k.retorno.toFixed(1)}×`}
+          sub={k.retorno == null ? "" : `$${k.retorno.toFixed(2)} por cada $1`}
+          destacado
+        />
+      </div>
+
+      <div className="mt-4">
+        <Tabla
+          vacio="Sin gasto en anuncios en este periodo."
+          columnas={["Campaña", "Gasto", "Conversaciones", "Costo por conversación"]}
+          filas={anuncios.campanas.map((c) => [
+            c.nombre,
+            pesos(c.gasto),
+            c.conversaciones,
+            pesos2(c.conversaciones ? c.gasto / c.conversaciones : null),
+          ])}
+        />
+      </div>
+      <p className="mt-3 font-[family-name:var(--font-albert)] text-[13px] text-white/65">
+        Cuando cada anuncio lleve su código en el mensaje de WhatsApp, aquí también se verá cuántos pacientes y cuánto
+        dinero trajo cada campaña.
+      </p>
+    </Seccion>
+  );
+}
+
+function Kpi({ label, valor, sub, destacado }) {
+  return (
+    <div className={`border p-4 ${destacado ? "border-[#b89968]/60 bg-[#b89968]/[0.08]" : "border-white/[0.1] bg-white/[0.02]"}`}>
+      <p className="break-all font-[family-name:var(--font-cormorant)] text-[clamp(28px,3vw,38px)] font-light leading-none text-[#f5f1ea]">
+        {valor}
+      </p>
+      <p className="mt-2 font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+        {label}
+      </p>
+      {sub && <p className="mt-1 font-[family-name:var(--font-albert)] text-[13px] text-[#b89968]">{sub}</p>}
+    </div>
   );
 }
 
