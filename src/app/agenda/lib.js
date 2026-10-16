@@ -11,9 +11,11 @@ export const CITA_SELECT =
   "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen)";
 
 // Columnas de la agenda. Para sumar un dentista, agregarlo aquí.
+// Hoy sólo atiende el Dr. Felipe (la Dra. Gaby lleva la agenda, no tiene
+// pacientes propios). Para sumar a otro dentista, agregarlo aquí y la
+// agenda muestra su columna y el selector "Con".
 export const DENTISTAS = [
   { value: "felipe", label: "Dr. Felipe" },
-  { value: "gaby", label: "Dra. Gaby" },
 ];
 
 export const TIPOS = [
@@ -48,6 +50,7 @@ export const TRATAMIENTOS = [
   { value: "blanqueamiento", label: "Blanqueamiento" },
   { value: "limpieza",       label: "Limpieza" },
   { value: "resina",         label: "Resina" },
+  { value: "plu",            label: "PLU" },
   { value: "urgencia",       label: "Urgencia" },
   { value: "otro",           label: "Otro" },
 ];

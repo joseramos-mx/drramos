@@ -131,10 +131,14 @@ function NuevaCita({ fecha, dentista: dentistaInicial, minutos: minutosIniciales
         <ChoiceChips name="duracion" options={DURACIONES} value={duracion} onChange={setDuracion} />
       </div>
 
-      <div>
-        <FieldLabel>Con</FieldLabel>
-        <ChoiceChips name="dentista" options={DENTISTAS} value={dentista} onChange={setDentista} />
-      </div>
+      {DENTISTAS.length > 1 ? (
+        <div>
+          <FieldLabel>Con</FieldLabel>
+          <ChoiceChips name="dentista" options={DENTISTAS} value={dentista} onChange={setDentista} />
+        </div>
+      ) : (
+        <input type="hidden" name="dentista" value={dentista} />
+      )}
 
       <div>
         <FieldLabel htmlFor="notas">Nota (opcional)</FieldLabel>
@@ -261,7 +265,8 @@ function DetalleCita({ fecha, cita, onDone }) {
           {cita.paciente?.nombre || "Sin nombre"}
         </h2>
         <p className="mt-1 font-[family-name:var(--font-albert)] text-[12px] font-normal uppercase tracking-[0.16em] text-white/75">
-          {formatHora(ini)}–{formatHora(fin)} · {labelDe(TIPOS, cita.tipo)} · {labelDe(DENTISTAS, cita.dentista)}
+          {formatHora(ini)}–{formatHora(fin)} · {labelDe(TIPOS, cita.tipo)}
+          {DENTISTAS.length > 1 && ` · ${labelDe(DENTISTAS, cita.dentista)}`}
         </p>
         {wa && (
           <a
@@ -321,10 +326,14 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
         <FieldLabel>Tipo</FieldLabel>
         <ChoiceChips name="tipo" options={TIPOS} value={tipo} onChange={setTipo} />
       </div>
-      <div>
-        <FieldLabel>Con</FieldLabel>
-        <ChoiceChips name="dentista" options={DENTISTAS} value={dentista} onChange={setDentista} />
-      </div>
+      {DENTISTAS.length > 1 ? (
+        <div>
+          <FieldLabel>Con</FieldLabel>
+          <ChoiceChips name="dentista" options={DENTISTAS} value={dentista} onChange={setDentista} />
+        </div>
+      ) : (
+        <input type="hidden" name="dentista" value={dentista} />
+      )}
       <div>
         <FieldLabel htmlFor="notas-edit">Nota</FieldLabel>
         <input id="notas-edit" name="notas" defaultValue={cita.notas || ""} autoComplete="off" className={inputClass} />
