@@ -67,7 +67,7 @@ export default async function AgendaPage({ searchParams }) {
         </div>
       )}
 
-      <AgendaDia fecha={fecha} citas={citas || []} />
+      <AgendaDia fecha={fecha} citas={citas || []} ajustarAlto="auto" />
     </main>
   );
 }

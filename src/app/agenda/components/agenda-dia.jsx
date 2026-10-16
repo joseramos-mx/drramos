@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   DENTISTAS,
   SLOT_MIN,
@@ -17,13 +17,19 @@ import {
 import CitaSheet from "./cita-sheet";
 
 const ROW_PX = 56; // alto de cada bloque de 30 min: cómodo para el dedo
+const ROW_MIN_PX = 18; // límite inferior al encoger para que quepa todo
+const ANCHO_PANTALLA = 1024; // desde aquí "auto" ajusta el alto
 
 /**
  * Vista de un día: una columna por dentista, bloques de 30 min.
  * Tocar un hueco abre "Nueva cita"; tocar una cita abre su detalle y
  * el cierre (¿se presentó?, cotizado, realizado, pagado).
+ *
+ * `ajustarAlto`: true = el día completo cabe en la ventana sin scroll
+ * (monitor del consultorio); "auto" = sólo en pantallas anchas, en el
+ * celular se queda con bloques altos para el dedo.
  */
-export default function AgendaDia({ fecha, citas, soloLectura = false }) {
+export default function AgendaDia({ fecha, citas, soloLectura = false, ajustarAlto = false }) {
   const [sheet, setSheet] = useState(null);
   const cerrar = useCallback(() => setSheet(null), []);
 
@@ -39,6 +45,8 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
   for (let m = abre; m < cierra; m += SLOT_MIN) slots.push(m);
 
   const encimados = idsEncimados(citas);
+  const rowPx = useAltoDeFila(ajustarAlto, slots.length);
+  const gridRef = rowPx.ref;
 
   return (
     <>
@@ -51,6 +59,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
       <div className="mt-6 flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
       <Leyenda />
       <div
+        ref={gridRef}
         className="grid min-w-0 flex-1 border border-white/[0.08]"
         style={{ gridTemplateColumns: `52px repeat(${DENTISTAS.length}, minmax(0, 1fr))` }}
       >
@@ -70,7 +79,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
           {slots.map((m) => (
             <div
               key={m}
-              style={{ height: ROW_PX }}
+              style={{ height: rowPx.alto }}
               className={`border-b ${m % 60 === 0 ? "border-white/[0.10]" : "border-white/[0.05]"} pr-2 pt-1 text-right font-[family-name:var(--font-albert)] text-[12px] font-normal tabular-nums text-white/70`}
             >
               {m % 60 === 0 ? formatHora(m) : ""}
@@ -91,7 +100,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
                   disabled={soloLectura}
                   aria-label={`Nueva cita ${d.label} ${formatHora(m)}`}
                   onClick={() => setSheet({ modo: "nueva", dentista: d.value, minutos: m })}
-                  style={{ height: ROW_PX }}
+                  style={{ height: rowPx.alto }}
                   className={`block w-full border-b ${
                     m % 60 === 0 ? "border-white/[0.10]" : "border-white/[0.05]"
                   } transition-colors hover:bg-white/[0.03] focus-visible:bg-[#b89968]/[0.08] focus-visible:outline-none disabled:hover:bg-transparent`}
@@ -103,6 +112,7 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
                   key={c.id}
                   cita={c}
                   abre={abre}
+                  rowPx={rowPx.alto}
                   carril={carriles[c.id]}
                   encimada={encimados.has(c.id)}
                   onClick={soloLectura ? undefined : () => setSheet({ modo: "cita", cita: c })}
@@ -125,11 +135,13 @@ export default function AgendaDia({ fecha, citas, soloLectura = false }) {
   );
 }
 
-function CitaBloque({ cita, abre, carril, encimada, onClick }) {
+function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
   const ini = minutosDelDia(cita.inicio);
   const fin = minutosDelDia(cita.fin);
-  const top = ((ini - abre) / SLOT_MIN) * ROW_PX;
-  const height = Math.max(((fin - ini) / SLOT_MIN) * ROW_PX - 4, 28);
+  const top = ((ini - abre) / SLOT_MIN) * rowPx;
+  const height = Math.max(((fin - ini) / SLOT_MIN) * rowPx - 4, Math.min(28, rowPx - 2));
+  // Ficha bajita (filas encogidas): hora y nombre en un solo renglón
+  const compacta = height < 44;
   // Ancho y posición del carril (mitad y mitad si dos se enciman)
   const { carril: n = 0, carriles = 1 } = carril || {};
   const left = `calc(${(n / carriles) * 100}% + 4px)`;
@@ -145,21 +157,34 @@ function CitaBloque({ cita, abre, carril, encimada, onClick }) {
       type={onClick ? "button" : undefined}
       onClick={onClick}
       style={{ top: top + 2, height, left, width, background: tono.bg, borderLeftColor: tono.barra }}
-      className={`absolute overflow-hidden border border-l-4 border-white/[0.08] py-1.5 pl-2.5 pr-2 text-left transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono.texto}`}
+      className={`absolute overflow-hidden border border-l-4 border-white/[0.08] ${compacta ? "py-0.5" : "py-1.5"} pl-2.5 pr-2 text-left transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono.texto}`}
     >
+      {compacta ? (
+        <p
+          className={`truncate font-[family-name:var(--font-albert)] text-[13px] font-medium leading-tight md:text-[14px] ${
+            apagada ? "line-through" : ""
+          }`}
+        >
+          <span className="opacity-80">{formatHora(ini)}</span> {cita.paciente?.nombre || "Sin nombre"}
+          {cita.estado === "asistio" && " ✓"}
+        </p>
+      ) : (
+        <>
       <p
         className={`line-clamp-2 break-words font-[family-name:var(--font-albert)] text-[14px] font-medium leading-snug md:text-[15px] ${
           apagada ? "line-through" : ""
         }`}
       >
         {cita.paciente?.nombre || "Sin nombre"}
-      </p>
-      <p className="truncate font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.06em] opacity-80 md:text-[12px]">
+        </p>
+        <p className="truncate font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.06em] opacity-80 md:text-[12px]">
         {formatHora(ini)} · {labelDe(TIPOS, cita.tipo)}
         {cita.estado === "asistio" && " · ✓ Vino"}
         {cita.estado === "no_asistio" && " · No vino"}
         {cita.estado === "cancelada" && " · Canceló"}
-      </p>
+        </p>
+        </>
+      )}
       {encimada && (
         // Mismo dentista a la misma hora: aviso de doble cita
         <span
@@ -206,4 +231,39 @@ function Leyenda() {
       </div>
     </aside>
   );
+}
+
+/**
+ * Alto de cada fila de 30 min. Con `ajustar` mide cuánto espacio queda
+ * debajo del inicio de la agenda y reparte la ventana entre las filas
+ * para que el día completo quepa sin scroll; se recalcula al cambiar el
+ * tamaño de la ventana.
+ */
+function useAltoDeFila(ajustar, filas) {
+  const ref = useRef(null);
+  const [alto, setAlto] = useState(ROW_PX);
+
+  useLayoutEffect(() => {
+    if (!ajustar) return;
+    const calcular = () => {
+      const el = ref.current;
+      if (!el) return;
+      if (ajustar === "auto" && window.innerWidth < ANCHO_PANTALLA) {
+        setAlto(ROW_PX);
+        return;
+      }
+      const encabezado = el.firstElementChild?.getBoundingClientRect().height || 0;
+      const arriba = el.getBoundingClientRect().top + window.scrollY;
+      // Margen de abajo de la página + bordes, para que no aparezca scroll
+      const main = el.closest("main");
+      const margenAbajo = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
+      const disponible = window.innerHeight - arriba - encabezado - margenAbajo - 4;
+      setAlto(Math.max(ROW_MIN_PX, Math.floor(disponible / filas)));
+    };
+    calcular();
+    window.addEventListener("resize", calcular);
+    return () => window.removeEventListener("resize", calcular);
+  }, [ajustar, filas]);
+
+  return { ref, alto };
 }

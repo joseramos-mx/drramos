@@ -39,7 +39,7 @@ export default async function PantallaPage() {
         </h1>
         <Reloj grande />
       </header>
-      <AgendaDia fecha={fecha} citas={citas || []} soloLectura />
+      <AgendaDia fecha={fecha} citas={citas || []} soloLectura ajustarAlto />
     </main>
   );
 }
