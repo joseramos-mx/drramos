@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { PERIODOS, calcularResultados, rangoPeriodo } from "./stats";
 import ResultadosVista from "./resultados-vista";
 import { kpisAnuncios, leerAnunciosMeta } from "./meta-ads";
+import { gastoPorCanal, mesDe, tablaFuentes } from "./fuentes";
 
 export const dynamic = "force-dynamic";
 
@@ -40,5 +41,33 @@ export default async function ResultadosPage({ searchParams }) {
       ? { ...meta, kpis: kpisAnuncios(meta, r.porOrigen.find((o) => o.origen === "anuncio")) }
       : meta;
 
-  return <ResultadosVista r={r} anuncios={anuncios} periodo={periodo} email={user.email} error={error} />;
+  // Todas las fuentes: gasto (Meta automático + manual del resto) contra pacientes
+  const [{ data: fuentes }, { data: gastos }] = await Promise.all([
+    supabase.from("fuentes").select("id, codigo, nombre, canal, de_pago, mensaje").eq("activa", true).order("created_at"),
+    supabase.from("fuente_gastos").select("fuente_id, mes, monto"),
+  ]);
+  const gastos_ = gastoPorCanal({
+    fuentes,
+    gastos,
+    rango,
+    gastoMeta: meta.conectado && !meta.error ? meta.gasto : null,
+  });
+  const filasFuentes = tablaFuentes(r.porOrigen, gastos_);
+
+  const mes = mesDe(new Date().toISOString());
+  const gastoMes = Object.fromEntries((gastos || []).filter((g) => g.mes === mes).map((g) => [g.fuente_id, Number(g.monto)]));
+
+  return (
+    <ResultadosVista
+      r={r}
+      anuncios={anuncios}
+      filasFuentes={filasFuentes}
+      fuentes={fuentes || []}
+      gastoMes={gastoMes}
+      mes={mes}
+      periodo={periodo}
+      email={user.email}
+      error={error}
+    />
+  );
 }

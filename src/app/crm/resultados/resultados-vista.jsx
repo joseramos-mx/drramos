@@ -3,17 +3,14 @@ import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/ssr";
 import SignOutButton from "../components/sign-out-button";
 import NavCrm from "../components/nav-crm";
 import { buildWhatsappLink } from "../lib";
-import { ORIGENES, TRATAMIENTOS, formatMoney, labelDe } from "../../agenda/lib";
+import { TRATAMIENTOS, formatMoney, labelDe } from "../../agenda/lib";
 import { PERIODOS, porcentaje } from "./stats";
+import { labelCanal } from "./fuentes";
+import FuentesAdmin from "./fuentes-admin";
 
-const ORIGEN_LABELS = [
-  ...ORIGENES,
-  { value: "formulario", label: "Formulario landing" },
-  { value: "sin_dato", label: "Sin dato" },
-];
 
 /** Lo que se dibuja en /crm/resultados (sin consultas a la base). */
-export default function ResultadosVista({ r, anuncios, periodo, email, error }) {
+export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuentes = [], gastoMes = {}, mes, periodo, email, error }) {
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 md:py-12">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.08] pb-6">
@@ -71,24 +68,32 @@ export default function ResultadosVista({ r, anuncios, periodo, email, error }) 
         </p>
       </Seccion>
 
-      {/* Anuncios de Meta */}
-      <SeccionAnuncios anuncios={anuncios} />
-
-      {/* Por origen */}
-      <Seccion titulo="¿De dónde llegan los que pagan?">
+      {/* Todas las fuentes, comparadas igual */}
+      <Seccion
+        titulo="Fuentes de pacientes"
+        sub="Todas las fuentes con la misma regla: lo que costaron contra lo que regresó. Arriba, las que más dinero traen."
+      >
         <Tabla
-          vacio="Todavía no hay citas en este periodo."
-          columnas={["Origen", "Pacientes", "Vinieron", "Pagaron", "Cobrado", "Presupuestado"]}
-          filas={r.porOrigen.map((o) => [
-            labelDe(ORIGEN_LABELS, o.origen),
-            o.pacientes,
-            o.vinieron,
-            o.pagaron,
-            formatMoney(o.cobrado),
-            formatMoney(o.presupuestado),
+          vacio="Todavía no hay pacientes ni gasto en este periodo."
+          columnas={["Fuente", "Gasto", "Pacientes", "Pagaron", "Cobrado", "Costo por paciente que pagó", "Retorno"]}
+          filas={filasFuentes.map((f) => [
+            labelCanal(f.origen),
+            f.gasto == null ? "Gratis" : formatMoney(f.gasto),
+            f.pacientes,
+            f.pagaron,
+            formatMoney(f.cobrado),
+            f.gasto == null ? "—" : f.costoPacientePago == null ? "Sin pagos aún" : formatMoney(f.costoPacientePago),
+            f.retorno == null ? "—" : `${f.retorno.toFixed(1)}×`,
           ])}
         />
+        <p className="mt-3 font-[family-name:var(--font-albert)] text-[13px] text-white/65">
+          Retorno = cobrado ÷ gasto. 3× significa que por cada $1 regresaron $3. El gasto de Meta llega solo; el de las
+          demás fuentes de paga se anota abajo cada mes.
+        </p>
       </Seccion>
+
+      {/* Detalle de Meta */}
+      <SeccionAnuncios anuncios={anuncios} />
 
       {/* Por tratamiento */}
       <Seccion titulo="Tratamientos">
@@ -131,6 +136,19 @@ export default function ResultadosVista({ r, anuncios, periodo, email, error }) 
           />
         </Seccion>
       </div>
+
+      <Seccion
+        titulo="Links de WhatsApp por fuente"
+        sub="Cada fuente tiene su link con código. Pégalo donde corresponda (Google, Instagram, anuncios…) y el sistema sabrá de dónde llegó cada paciente."
+      >
+        <FuentesAdmin
+          fuentes={fuentes}
+          gastoMes={gastoMes}
+          mes={mes}
+          mesLabel={mes ? new Date(`${mes}T12:00:00Z`).toLocaleDateString("es-MX", { month: "long", timeZone: "UTC" }) : ""}
+          metaConectado={!!anuncios?.conectado && !anuncios?.error}
+        />
+      </Seccion>
     </main>
   );
 }
@@ -145,7 +163,7 @@ const pesos = (n) => (n == null ? "—" : formatMoney(n));
 function SeccionAnuncios({ anuncios }) {
   if (!anuncios || !anuncios.conectado) {
     return (
-      <Seccion titulo="Anuncios de Meta" sub="Gasto de Facebook e Instagram cruzado con los pacientes que llegan por anuncio.">
+      <Seccion titulo="Detalle de anuncios de Meta" sub="Gasto de Facebook e Instagram cruzado con los pacientes que llegan por anuncio.">
         <p className="border border-[#b89968]/40 bg-[#b89968]/[0.06] p-5 font-[family-name:var(--font-albert)] text-[14px] leading-[1.6] text-white/85">
           Los anuncios todavía no están conectados. Para verlos aquí hay que agregar en Vercel las variables
           <code className="mx-1 text-[#f5f1ea]">META_ADS_ACCESS_TOKEN</code> (sólo lectura, ads_read) y
@@ -156,7 +174,7 @@ function SeccionAnuncios({ anuncios }) {
   }
   if (anuncios.error) {
     return (
-      <Seccion titulo="Anuncios de Meta">
+      <Seccion titulo="Detalle de anuncios de Meta">
         <p role="alert" className="border border-[#ff7a7a]/30 bg-[#ff7a7a]/[0.06] p-5 font-[family-name:var(--font-albert)] text-[14px] text-[#ffb1b1]">
           {anuncios.error}
         </p>
@@ -166,7 +184,7 @@ function SeccionAnuncios({ anuncios }) {
 
   const k = anuncios.kpis;
   return (
-    <Seccion titulo="Anuncios de Meta" sub="Lo que se gastó contra lo que regresó, con los pacientes que la agenda marca como &quot;Anuncio&quot;.">
+    <Seccion titulo="Detalle de anuncios de Meta" sub="Lo que se gastó contra lo que regresó, con los pacientes que la agenda marca como &quot;Anuncio&quot;.">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Gasto" valor={pesos(k.gasto)} />
         <Kpi label="Conversaciones" valor={k.conversaciones} sub={`${pesos2(k.costoConversacion)} c/u`} />
