@@ -48,9 +48,12 @@ create table if not exists public.citas (
   realizado text[],
   pagado_monto numeric(12, 2),
   notas text,
+  -- false = sólo se marcó "vino" con la palomita rápida; falta contestar
+  -- cotizado / hecho / pagado (aparece en "Citas sin cerrar")
+  cierre_completo boolean not null default false,
   constraint citas_rango_check check (fin > inicio),
   constraint citas_tipo_check check (tipo in (
-    'valoracion', 'tratamiento', 'revision', 'urgencia'
+    'valoracion', 'tratamiento', 'revision', 'cirugia', 'urgencia'
   )),
   constraint citas_estado_check check (estado in (
     'agendada', 'asistio', 'no_asistio', 'cancelada'
@@ -64,6 +67,18 @@ create table if not exists public.citas (
 create index if not exists citas_inicio_idx on public.citas (inicio);
 create index if not exists citas_paciente_idx on public.citas (paciente_id);
 
+-- Pendientes del día (lo que la Dra. Gaby anota al pie de la libreta:
+-- "llamar a…", "factura Sr. …"). Texto corto con palomita de hecho.
+create table if not exists public.pendientes (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  fecha date not null,
+  texto text not null check (length(texto) between 1 and 300),
+  hecho boolean not null default false
+);
+
+create index if not exists pendientes_fecha_idx on public.pendientes (fecha);
+
 alter table public.pacientes enable row level security;
 alter table public.citas enable row level security;
 
@@ -73,4 +88,10 @@ create policy "staff gestiona pacientes"
 
 create policy "staff gestiona citas"
   on public.citas for all to authenticated
+  using (true) with check (true);
+
+alter table public.pendientes enable row level security;
+
+create policy "staff gestiona pendientes"
+  on public.pendientes for all to authenticated
   using (true) with check (true);

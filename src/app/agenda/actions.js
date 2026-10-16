@@ -193,6 +193,7 @@ export async function cerrarCitaAction(_prev, formData) {
       cotizado_monto: asistio ? cotizadoMonto : null,
       realizado: realizado.length ? realizado : null,
       pagado_monto: asistio ? pagadoMonto : null,
+      cierre_completo: true,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -209,6 +210,53 @@ export async function cerrarCitaAction(_prev, formData) {
     }
   }
 
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Palomita rápida: "vino", y el resto se contesta después
+// ─────────────────────────────────────────────────────────────
+export async function marcarVinoAction(id) {
+  if (!id) return { error: "Cita inválida." };
+  const supabase = createClient(await cookies());
+  const { error } = await supabase
+    .from("citas")
+    .update({ estado: "asistio", updated_at: new Date().toISOString() })
+    .eq("id", String(id));
+  if (error) return { error: error.message };
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Pendientes del día (las notas al pie de la libreta)
+// ─────────────────────────────────────────────────────────────
+export async function agregarPendienteAction(_prev, formData) {
+  const fecha = String(formData.get("fecha") || "");
+  const texto = String(formData.get("texto") || "").trim().slice(0, 300);
+  if (!esFechaValida(fecha)) return { error: "Fecha inválida." };
+  if (!texto) return { error: "Escribe el pendiente." };
+
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.from("pendientes").insert({ fecha, texto });
+  if (error) return { error: error.message };
+  revalidatePath("/agenda");
+  return { ok: true, savedAt: Date.now() };
+}
+
+export async function cambiarPendienteAction(id, hecho) {
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.from("pendientes").update({ hecho: !!hecho }).eq("id", String(id));
+  if (error) return { error: error.message };
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+export async function borrarPendienteAction(id) {
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.from("pendientes").delete().eq("id", String(id));
+  if (error) return { error: error.message };
   revalidatePath("/agenda");
   return { ok: true };
 }

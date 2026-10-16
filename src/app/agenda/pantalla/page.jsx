@@ -30,6 +30,12 @@ export default async function PantallaPage() {
     .neq("estado", "cancelada")
     .order("inicio");
 
+  const { data: pendientes } = await supabase
+    .from("pendientes")
+    .select("id, texto, hecho")
+    .eq("fecha", fecha)
+    .order("created_at");
+
   return (
     <main className="mx-auto w-full max-w-[1600px] px-6 py-6">
       <AutoRefresh segundos={60} />
@@ -39,7 +45,7 @@ export default async function PantallaPage() {
         </h1>
         <Reloj grande />
       </header>
-      <AgendaDia fecha={fecha} citas={citas || []} soloLectura ajustarAlto />
+      <AgendaDia fecha={fecha} citas={citas || []} pendientes={pendientes || []} soloLectura ajustarAlto />
     </main>
   );
 }

@@ -34,6 +34,12 @@ export default async function AgendaPage({ searchParams }) {
     .lt("inicio", hasta)
     .order("inicio");
 
+  const { data: pendientes } = await supabase
+    .from("pendientes")
+    .select("id, texto, hecho")
+    .eq("fecha", fecha)
+    .order("created_at");
+
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-8 md:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-5">
@@ -67,7 +73,7 @@ export default async function AgendaPage({ searchParams }) {
         </div>
       )}
 
-      <AgendaDia fecha={fecha} citas={citas || []} ajustarAlto="auto" />
+      <AgendaDia fecha={fecha} citas={citas || []} pendientes={pendientes || []} ajustarAlto="auto" />
     </main>
   );
 }

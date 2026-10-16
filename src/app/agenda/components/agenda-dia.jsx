@@ -15,6 +15,7 @@ import {
   tonoDeCita,
 } from "../lib";
 import CitaSheet from "./cita-sheet";
+import Pendientes from "./pendientes";
 
 const ROW_PX = 56; // alto de cada bloque de 30 min: cómodo para el dedo
 const ROW_MIN_PX = 18; // límite inferior al encoger para que quepa todo
@@ -29,7 +30,7 @@ const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado)
  * (monitor del consultorio); "auto" = sólo en pantallas anchas, en el
  * celular se queda con bloques altos para el dedo.
  */
-export default function AgendaDia({ fecha, citas, soloLectura = false, ajustarAlto = false }) {
+export default function AgendaDia({ fecha, citas, pendientes, soloLectura = false, ajustarAlto = false }) {
   const [sheet, setSheet] = useState(null);
   const cerrar = useCallback(() => setSheet(null), []);
 
@@ -57,7 +58,15 @@ export default function AgendaDia({ fecha, citas, soloLectura = false, ajustarAl
       )}
 
       <div className="mt-6 flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
-      <Leyenda />
+      {/* A un costado (arriba en celular): pendientes del día y colores */}
+      <div className="flex shrink-0 flex-col gap-4 lg:sticky lg:top-6 lg:w-[230px]">
+        {pendientes && (
+          <div className="border border-white/[0.08] p-3 lg:p-4">
+            <Pendientes fecha={fecha} items={pendientes} soloLectura={soloLectura} />
+          </div>
+        )}
+        <Leyenda />
+      </div>
       <div
         ref={gridRef}
         className="grid min-w-0 flex-1 border border-white/[0.08]"
@@ -166,7 +175,7 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
           }`}
         >
           <span className="opacity-80">{formatHora(ini)}</span> {cita.paciente?.nombre || "Sin nombre"}
-          {cita.estado === "asistio" && " ✓"}
+          {cita.estado === "asistio" && (cita.cierre_completo ? " ✓" : " ✓…")}
         </p>
       ) : (
         <>
@@ -179,7 +188,7 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
         </p>
         <p className="truncate font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.06em] opacity-80 md:text-[12px]">
         {formatHora(ini)} · {labelDe(TIPOS, cita.tipo)}
-        {cita.estado === "asistio" && " · ✓ Vino"}
+        {cita.estado === "asistio" && (cita.cierre_completo ? " · ✓ Vino" : " · ✓ Vino · por cerrar")}
         {cita.estado === "no_asistio" && " · No vino"}
         {cita.estado === "cancelada" && " · Canceló"}
         </p>
@@ -204,7 +213,7 @@ function Leyenda() {
   return (
     <aside
       aria-label="Colores de las citas"
-      className="flex flex-wrap gap-x-4 gap-y-2 border border-white/[0.08] p-3 lg:sticky lg:top-6 lg:w-[190px] lg:flex-col lg:gap-3 lg:p-4"
+      className="flex flex-wrap gap-x-4 gap-y-2 border border-white/[0.08] p-3 lg:flex-col lg:gap-3 lg:p-4"
     >
       <p className="hidden font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 lg:block">
         Colores
@@ -227,6 +236,14 @@ function Leyenda() {
         </span>
         <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
           Se encima con otra cita
+        </span>
+      </div>
+      <div className="flex items-center gap-2.5">
+        <span aria-hidden className="flex h-5 w-7 shrink-0 items-center justify-center font-[family-name:var(--font-albert)] text-[13px] font-medium text-[#34d399]">
+          ✓…
+        </span>
+        <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
+          Vino, falta cerrar la cita
         </span>
       </div>
     </aside>

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from "@phosphor-icons/react";
-import { cerrarCitaAction } from "../actions";
+import { cerrarCitaAction, marcarVinoAction } from "../actions";
 import { TRATAMIENTOS, formatMoney, labelDe } from "../lib";
 
 /**
@@ -35,14 +35,28 @@ export default function CierreWizard({ cita, onDone }) {
   const [pending, startTransition] = useTransition();
 
   const yaCerrada = cita.estado !== "agendada";
+  // Vino con la palomita rápida pero falta contestar lo demás
+  const soloPalomita = cita.estado === "asistio" && !cita.cierre_completo;
+  const completa = yaCerrada && !soloPalomita;
   const [r, setR] = useState({
     estado: yaCerrada ? cita.estado : "",
-    cotizado: cita.cotizado?.[0] || (yaCerrada && cita.estado === "asistio" ? NADA : ""),
+    cotizado: cita.cotizado?.[0] || (completa && cita.estado === "asistio" ? NADA : ""),
     cotizadoMonto: montoInicial(cita.cotizado_monto),
-    realizado: cita.realizado?.[0] || (yaCerrada && cita.estado === "asistio" ? SOLO_VALORACION : ""),
+    realizado: cita.realizado?.[0] || (completa && cita.estado === "asistio" ? SOLO_VALORACION : ""),
     pagadoMonto: montoInicial(cita.pagado_monto),
   });
-  const [paso, setPaso] = useState(yaCerrada ? "resumen" : "estado");
+  const [paso, setPaso] = useState(soloPalomita ? "cotizado" : completa ? "resumen" : "estado");
+  const [marcando, startMarcar] = useTransition();
+  const [errorMarcar, setErrorMarcar] = useState(null);
+
+  function soloMarcarVino() {
+    setErrorMarcar(null);
+    startMarcar(async () => {
+      const res = await marcarVinoAction(cita.id);
+      if (res?.error) setErrorMarcar(res.error);
+      else onDone();
+    });
+  }
   const [historial, setHistorial] = useState([]);
 
   useEffect(() => {
@@ -123,6 +137,17 @@ export default function CierreWizard({ cita, onDone }) {
                 ]}
                 onElegir={(v) => avanzar({ estado: v })}
               />
+              {/* Como la palomita de la libreta: marcar y contestar lo demás después */}
+              <button
+                type="button"
+                onClick={soloMarcarVino}
+                disabled={marcando}
+                className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 border border-dashed border-[#34d399]/60 px-5 font-[family-name:var(--font-albert)] text-[15px] text-[#f5f1ea] transition-colors hover:bg-[#34d399]/[0.08] disabled:opacity-60"
+              >
+                <CheckIcon size={18} weight="bold" className="text-[#34d399]" />
+                {marcando ? "Marcando..." : "Sólo marcar que vino (lo demás después)"}
+              </button>
+              {errorMarcar && <p role="alert" className="mt-2 text-[13px] text-[#ff7a7a]">{errorMarcar}</p>}
             </Pregunta>
           )}
 

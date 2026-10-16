@@ -8,7 +8,7 @@ export const TZ_OFFSET = "-06:00";
 const TZ_OFFSET_MIN = -6 * 60;
 
 export const CITA_SELECT =
-  "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, paciente:pacientes(id, nombre, whatsapp, origen)";
+  "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen)";
 
 // Columnas de la agenda. Para sumar un dentista, agregarlo aquí.
 export const DENTISTAS = [
@@ -20,6 +20,7 @@ export const TIPOS = [
   { value: "valoracion",  label: "Valoración" },
   { value: "tratamiento", label: "Tratamiento" },
   { value: "revision",    label: "Revisión" },
+  { value: "cirugia",     label: "Cirugía" },
   { value: "urgencia",    label: "Urgencia" },
 ];
 
