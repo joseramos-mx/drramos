@@ -10,7 +10,7 @@ import FuentesAdmin from "./fuentes-admin";
 
 
 /** Lo que se dibuja en /crm/resultados (sin consultas a la base). */
-export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuentes = [], gastoMes = {}, mes, whatsapp, periodo, email, error }) {
+export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuentes = [], gastoMes = {}, mes, whatsapp, wa, periodo, email, error }) {
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 md:py-12">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.08] pb-6">
@@ -70,6 +70,9 @@ export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuente
         </p>
       </Seccion>
 
+      {/* WhatsApp: desde el primer mensaje */}
+      <SeccionWhatsapp wa={wa} />
+
       {/* Todas las fuentes, comparadas igual */}
       <Seccion
         titulo="Fuentes de pacientes"
@@ -77,10 +80,12 @@ export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuente
       >
         <Tabla
           vacio="Todavía no hay pacientes ni gasto en este periodo."
-          columnas={["Fuente", "Gasto", "Pacientes", "Pagaron", "Cobrado", "Costo por paciente que pagó", "Retorno"]}
+          columnas={["Fuente", "Gasto", "Escribieron", "% agendó", "Pacientes", "Pagaron", "Cobrado", "Costo por paciente que pagó", "Retorno"]}
           filas={filasFuentes.map((f) => [
             labelCanal(f.origen),
             f.gasto == null ? "Gratis" : formatMoney(f.gasto),
+            f.escribieron || "—",
+            f.agendoDeWhatsapp == null ? "—" : `${Math.round(f.agendoDeWhatsapp * 100)}%`,
             f.pacientes,
             f.pagaron,
             formatMoney(f.cobrado),
@@ -152,6 +157,54 @@ export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuente
         />
       </Seccion>
     </main>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  WhatsApp: embudo desde el primer mensaje y atención
+// ─────────────────────────────────────────────────────────────
+function SeccionWhatsapp({ wa }) {
+  if (!wa) return null;
+  const e = wa.embudo;
+  const t = wa.tiempos;
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : "—");
+  const tiempo = (min) =>
+    min == null ? "—" : min < 60 ? `${Math.round(min)} min` : min < 60 * 24 ? `${(min / 60).toFixed(1)} h` : `${(min / 1440).toFixed(1)} días`;
+
+  return (
+    <Seccion
+      titulo="WhatsApp: del primer mensaje al pago"
+      sub="Gente que escribió por primera vez en el periodo, cuántos terminaron agendando, y qué tan rápido se les contesta."
+    >
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Paso label="Escribieron" valor={e.total} />
+        <Paso label="Agendaron" valor={e.agendaron} tasa={pct(e.agendaron, e.total)} />
+        <Paso label="Vinieron" valor={e.vinieron} tasa={pct(e.vinieron, e.agendaron)} />
+        <Paso label="Pagaron" valor={e.pagaron} tasa={pct(e.pagaron, e.vinieron)} />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Kpi label="Tiempo típico de respuesta" valor={tiempo(t.medianaMin)} sub={t.contestadas ? `${t.contestadas} respuestas medidas` : ""} />
+        <Kpi label="Contestados en menos de 1 h" valor={t.enUnaHora == null ? "—" : `${Math.round(t.enUnaHora * 100)}%`} />
+        <Kpi label="Sin contestar ahora" valor={wa.sinContestar.length} destacado={wa.sinContestar.length > 0} />
+      </div>
+
+      {wa.sinContestar.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 font-[family-name:var(--font-albert)] text-[13px] text-white/70">
+            Conversaciones donde lo último es un mensaje del paciente (de los últimos 30 días). Los “gracias 👍” no cuentan.
+          </p>
+          <ListaPacientes
+            vacio=""
+            items={wa.sinContestar.slice(0, 20).map((c) => ({
+              key: c.telefono,
+              paciente: c.paciente || { nombre: `WhatsApp ${c.telefono.slice(-10)}`, whatsapp: c.telefono },
+              detalle: c.texto ? `“${c.texto.slice(0, 60)}${c.texto.length > 60 ? "…" : ""}”` : "Mensaje sin texto",
+              fecha: c.desde,
+            }))}
+          />
+        </div>
+      )}
+    </Seccion>
   );
 }
 

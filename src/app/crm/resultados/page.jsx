@@ -5,6 +5,7 @@ import { PERIODOS, calcularResultados, rangoPeriodo } from "./stats";
 import ResultadosVista from "./resultados-vista";
 import { kpisAnuncios, leerAnunciosMeta } from "./meta-ads";
 import { gastoPorCanal, mesDe, tablaFuentes } from "./fuentes";
+import { embudoWhatsapp, sinContestar, tiemposRespuesta } from "./stats-whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,26 @@ export default async function ResultadosPage({ searchParams }) {
     rango,
     gastoMeta: meta.conectado && !meta.error ? meta.gasto : null,
   });
-  const filasFuentes = tablaFuentes(r.porOrigen, gastos_);
+  // WhatsApp: quién escribió, en cuánto se le contestó y a quién no
+  const hace30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const desdeMensajes = rango.desde && rango.desde < hace30 ? rango.desde : rango.desde ? hace30 : null;
+  let qMensajes = supabase
+    .from("whatsapp_mensajes")
+    .select("telefono, direccion, enviado_en, texto, paciente:pacientes(id, nombre, whatsapp)")
+    .order("enviado_en")
+    .limit(20000);
+  if (desdeMensajes) qMensajes = qMensajes.gte("enviado_en", desdeMensajes);
+  const [{ data: contactos }, { data: mensajesWa }] = await Promise.all([
+    supabase.from("pacientes").select("id, origen, primer_mensaje_en").not("primer_mensaje_en", "is", null),
+    qMensajes,
+  ]);
+  const wa = {
+    embudo: embudoWhatsapp(contactos, citas, rango),
+    tiempos: tiemposRespuesta(mensajesWa, rango),
+    sinContestar: sinContestar((mensajesWa || []).filter((m) => m.enviado_en >= hace30)),
+  };
+
+  const filasFuentes = tablaFuentes(r.porOrigen, gastos_, wa.embudo.porOrigen);
 
   // Estado de la conexión de WhatsApp (para confirmar que llegan mensajes)
   const { data: ultimoWa, count: mensajesWa } = await supabase
@@ -74,6 +94,7 @@ export default async function ResultadosPage({ searchParams }) {
       gastoMes={gastoMes}
       mes={mes}
       whatsapp={whatsapp}
+      wa={wa}
       periodo={periodo}
       email={user.email}
       error={error}
