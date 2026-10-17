@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { normalizarTelefono } from "@/lib/telefono";
 import {
   DENTISTAS,
   TIPOS,
@@ -136,7 +137,7 @@ async function resolverPaciente(supabase, formData) {
 
     const { data: nuevo, error: e2 } = await supabase
       .from("pacientes")
-      .insert({ nombre: lead.nombre || "Sin nombre", whatsapp: lead.whatsapp, origen: "formulario", lead_id: lead.id })
+      .insert({ nombre: lead.nombre || "Sin nombre", whatsapp: normalizarTelefono(lead.whatsapp), origen: "formulario", lead_id: lead.id })
       .select("id").single();
     if (e2) return { error: e2.message };
 
@@ -145,12 +146,19 @@ async function resolverPaciente(supabase, formData) {
   }
 
   const nombre = String(formData.get("nombre") || "").trim();
-  const whatsapp = String(formData.get("whatsapp") || "").trim();
+  const whatsapp = normalizarTelefono(formData.get("whatsapp"));
   const origen = String(formData.get("origen") || "");
   const origenDetalle = String(formData.get("origen_detalle") || "").trim();
 
   if (!nombre) return { error: "Escribe el nombre del paciente." };
   if (origen && !ORIGENES_OK.has(origen)) return { error: "Origen inválido." };
+
+  // Si ya existe (p. ej. lo creó WhatsApp al escribir), se reutiliza
+  if (whatsapp) {
+    const { data: existente } = await supabase
+      .from("pacientes").select("id").eq("whatsapp", whatsapp).limit(1).maybeSingle();
+    if (existente) return existente.id;
+  }
 
   const { data: nuevo, error } = await supabase
     .from("pacientes")

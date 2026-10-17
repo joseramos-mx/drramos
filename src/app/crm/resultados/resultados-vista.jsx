@@ -10,7 +10,7 @@ import FuentesAdmin from "./fuentes-admin";
 
 
 /** Lo que se dibuja en /crm/resultados (sin consultas a la base). */
-export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuentes = [], gastoMes = {}, mes, periodo, email, error }) {
+export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuentes = [], gastoMes = {}, mes, whatsapp, periodo, email, error }) {
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 md:py-12">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.08] pb-6">
@@ -41,6 +41,8 @@ export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuente
           </Link>
         ))}
       </nav>
+
+      <EstadoWhatsapp whatsapp={whatsapp} />
 
       {error && (
         <div role="alert" className="mt-8 border border-[#ff7a7a]/30 bg-[#ff7a7a]/[0.06] p-4 font-[family-name:var(--font-albert)] text-[14px] text-[#ffb1b1]">
@@ -151,6 +153,32 @@ export default function ResultadosVista({ r, anuncios, filasFuentes = [], fuente
       </Seccion>
     </main>
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  WhatsApp: ¿están llegando los mensajes?
+// ─────────────────────────────────────────────────────────────
+function EstadoWhatsapp({ whatsapp }) {
+  if (!whatsapp) return null;
+  const conectado = whatsapp.total > 0;
+  const hace = whatsapp.ultimo ? haceCuanto(whatsapp.ultimo) : null;
+  return (
+    <p className="mt-6 inline-flex items-center gap-2.5 border border-white/[0.1] px-4 py-2 font-[family-name:var(--font-albert)] text-[13px] text-white/85">
+      <span aria-hidden className={`h-2.5 w-2.5 rounded-full ${conectado ? "bg-[#34d399]" : "bg-white/30"}`} />
+      {conectado
+        ? `WhatsApp conectado · ${whatsapp.total.toLocaleString("es-MX")} mensajes · último ${hace}`
+        : "WhatsApp todavía no conectado"}
+    </p>
+  );
+}
+
+function haceCuanto(iso) {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return "hace un momento";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 48) return `hace ${h} h`;
+  return `hace ${Math.round(h / 24)} días`;
 }
 
 // ─────────────────────────────────────────────────────────────
