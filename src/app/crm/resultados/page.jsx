@@ -75,12 +75,12 @@ export default async function ResultadosPage({ searchParams }) {
   const filasFuentes = tablaFuentes(r.porOrigen, gastos_, wa.embudo.porOrigen);
 
   // Estado de la conexión de WhatsApp (para confirmar que llegan mensajes)
-  const { data: ultimoWa, count: mensajesWa } = await supabase
+  const { data: ultimoWa, count: totalWa } = await supabase
     .from("whatsapp_mensajes")
     .select("enviado_en", { count: "exact" })
     .order("enviado_en", { ascending: false })
     .limit(1);
-  const whatsapp = { total: mensajesWa || 0, ultimo: ultimoWa?.[0]?.enviado_en || null };
+  const whatsapp = { total: totalWa || 0, ultimo: ultimoWa?.[0]?.enviado_en || null };
 
   const mes = mesDe(new Date().toISOString());
   const gastoMes = Object.fromEntries((gastos || []).filter((g) => g.mes === mes).map((g) => [g.fuente_id, Number(g.monto)]));
