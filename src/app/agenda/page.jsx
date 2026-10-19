@@ -34,11 +34,18 @@ export default async function AgendaPage({ searchParams }) {
     .lt("inicio", hasta)
     .order("inicio");
 
+  // Viene de "Agendar" en Mensajes: el paciente ya va elegido
+  const { data: preseleccion } = sp.paciente
+    ? await supabase.from("pacientes").select("id, nombre, whatsapp").eq("id", String(sp.paciente)).maybeSingle()
+    : { data: null };
+
   const { data: pendientes } = await supabase
     .from("pendientes")
     .select("id, texto, hecho")
     .eq("fecha", fecha)
     .order("created_at");
+
+  const extra = preseleccion ? `&paciente=${preseleccion.id}` : "";
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-8 md:py-10">
@@ -56,9 +63,9 @@ export default async function AgendaPage({ searchParams }) {
         <Reloj />
 
         <nav className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
-          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}`} label="← Ayer" />
-          {fecha !== hoy && <NavBtn href="/agenda" label="Hoy" />}
-          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}`} label="Mañana →" />
+          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}${extra}`} label="← Ayer" />
+          {fecha !== hoy && <NavBtn href={`/agenda?fecha=${hoy}${extra}`} label="Hoy" />}
+          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}${extra}`} label="Mañana →" />
           <NavBtn href={`/agenda/pantalla`} label="Pantalla" />
         </nav>
       </header>
@@ -73,7 +80,22 @@ export default async function AgendaPage({ searchParams }) {
         </div>
       )}
 
-      <AgendaDia fecha={fecha} citas={citas || []} pendientes={pendientes || []} ajustarAlto="auto" />
+      {preseleccion && (
+        <p className="mt-5 border border-[#b89968]/60 bg-[#b89968]/[0.08] px-4 py-3 font-[family-name:var(--font-albert)] text-[14px] text-[#f5f1ea]">
+          Toca un hueco para agendar a <strong className="font-medium">{preseleccion.nombre}</strong>.
+          <Link href={`/agenda?fecha=${fecha}`} className="ml-3 text-[12px] uppercase tracking-[0.14em] text-white/65 underline-offset-4 hover:underline">
+            Cancelar
+          </Link>
+        </p>
+      )}
+
+      <AgendaDia
+        fecha={fecha}
+        citas={citas || []}
+        pendientes={pendientes || []}
+        preseleccion={preseleccion}
+        ajustarAlto="auto"
+      />
     </main>
   );
 }

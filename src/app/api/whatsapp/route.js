@@ -1,16 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
-import { timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { parsearWebhook } from "./parsear";
 import { codigoEnMensaje } from "../../crm/resultados/fuentes";
 
 /**
- * Buzón de WhatsApp (360dialog, número en coexistencia). SÓLO LEE:
- * guarda cada mensaje, crea al paciente la primera vez que escribe y
- * detecta de qué fuente llegó ("(ref G1)" o el click del anuncio).
- * Nunca manda mensajes.
+ * Buzón de WhatsApp: recibe los webhooks de la Cloud API de Meta
+ * (número del consultorio, directo con Meta). Guarda cada mensaje, crea
+ * al paciente la primera vez que escribe y detecta de qué fuente llegó
+ * ("(ref G1)" o el click del anuncio). Aquí NO se mandan mensajes (eso
+ * lo hace la bandeja "Mensajes" del CRM con src/lib/whatsapp.js).
  *
- * Variables de entorno (servidor):
- *   WHATSAPP_WEBHOOK_SECRET    secreto en la URL: /api/whatsapp?token=…
+ * Seguridad (variables de entorno del servidor):
+ *   META_APP_SECRET            con él se valida la firma X-Hub-Signature-256
+ *                              que Meta pone en cada POST (recomendado)
+ *   WHATSAPP_WEBHOOK_SECRET    "Verify token" que se escribe en Meta al
+ *                              registrar el webhook; también sirve como
+ *                              ?token= si algún día se usa un proveedor
  *   SUPABASE_SERVICE_ROLE_KEY  sólo aquí, nunca en el navegador
  *   WHATSAPP_GUARDAR_CRUDO     "0" para dejar de guardar el payload crudo
  *
@@ -20,13 +25,30 @@ import { codigoEnMensaje } from "../../crm/resultados/fuentes";
 
 export const dynamic = "force-dynamic";
 
-function autorizado(request) {
+function iguales(a, b) {
+  const x = Buffer.from(String(a || ""));
+  const y = Buffer.from(String(b || ""));
+  return x.length > 0 && x.length === y.length && timingSafeEqual(x, y);
+}
+
+/** Secreto válido: ?token= o hub.verify_token (mínimo 24 caracteres). */
+function tokenValido(valor) {
   const esperado = process.env.WHATSAPP_WEBHOOK_SECRET || "";
-  const recibido = new URL(request.url).searchParams.get("token") || "";
-  if (!esperado || esperado.length < 24) return false;
-  const a = Buffer.from(esperado);
-  const b = Buffer.from(recibido);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return esperado.length >= 24 && iguales(esperado, valor);
+}
+
+/**
+ * POST auténtico: con META_APP_SECRET se exige la firma de Meta sobre el
+ * cuerpo crudo; sin él (proveedor intermedio) se acepta el ?token=.
+ */
+function postAutorizado(request, crudo) {
+  const appSecret = process.env.META_APP_SECRET;
+  if (appSecret) {
+    const firma = request.headers.get("x-hub-signature-256") || "";
+    const esperada = "sha256=" + createHmac("sha256", appSecret).update(crudo).digest("hex");
+    return iguales(esperada, firma);
+  }
+  return tokenValido(new URL(request.url).searchParams.get("token"));
 }
 
 function supabaseServicio() {
@@ -35,21 +57,22 @@ function supabaseServicio() {
   });
 }
 
-// Verificación estilo Meta (por si se registra el webhook directo con Meta)
+// Verificación de Meta al registrar el webhook (Verify token)
 export async function GET(request) {
   const u = new URL(request.url);
-  if (u.searchParams.get("hub.mode") === "subscribe" && autorizado(request)) {
+  if (u.searchParams.get("hub.mode") === "subscribe" && tokenValido(u.searchParams.get("hub.verify_token"))) {
     return new Response(u.searchParams.get("hub.challenge") || "", { status: 200 });
   }
   return new Response("Forbidden", { status: 403 });
 }
 
 export async function POST(request) {
-  if (!autorizado(request)) return new Response("Forbidden", { status: 403 });
+  const crudo = await request.text();
+  if (!postAutorizado(request, crudo)) return new Response("Forbidden", { status: 403 });
 
   let body;
   try {
-    body = await request.json();
+    body = JSON.parse(crudo);
   } catch {
     return Response.json({ ok: false, error: "json" }, { status: 400 });
   }

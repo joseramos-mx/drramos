@@ -30,7 +30,7 @@ const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado)
  * (monitor del consultorio); "auto" = sólo en pantallas anchas, en el
  * celular se queda con bloques altos para el dedo.
  */
-export default function AgendaDia({ fecha, citas, pendientes, soloLectura = false, ajustarAlto = false }) {
+export default function AgendaDia({ fecha, citas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false }) {
   const [sheet, setSheet] = useState(null);
   const cerrar = useCallback(() => setSheet(null), []);
 
@@ -136,6 +136,7 @@ export default function AgendaDia({ fecha, citas, pendientes, soloLectura = fals
       {sheet && (
         <CitaSheet
           fecha={fecha}
+          preseleccion={preseleccion}
           estado={sheet}
           onClose={cerrar}
         />

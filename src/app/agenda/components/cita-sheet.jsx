@@ -23,7 +23,7 @@ import CierreWizard from "./cierre-wizard";
  * Panel que sube desde abajo (celular) o aparece al centro (iPad).
  * `estado.modo`: "nueva" (hueco tocado) o "cita" (cita existente).
  */
-export default function CitaSheet({ fecha, estado, onClose }) {
+export default function CitaSheet({ fecha, estado, preseleccion, onClose }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -57,7 +57,7 @@ export default function CitaSheet({ fecha, estado, onClose }) {
         </div>
 
         {estado.modo === "nueva" ? (
-          <NuevaCita fecha={fecha} dentista={estado.dentista} minutos={estado.minutos} onDone={onClose} />
+          <NuevaCita fecha={fecha} dentista={estado.dentista} minutos={estado.minutos} preseleccion={preseleccion} onDone={onClose} />
         ) : (
           <DetalleCita fecha={fecha} cita={estado.cita} onDone={onClose} />
         )}
@@ -69,9 +69,12 @@ export default function CitaSheet({ fecha, estado, onClose }) {
 // ─────────────────────────────────────────────────────────────
 //  Nueva cita
 // ─────────────────────────────────────────────────────────────
-function NuevaCita({ fecha, dentista: dentistaInicial, minutos: minutosIniciales, onDone }) {
+function NuevaCita({ fecha, dentista: dentistaInicial, minutos: minutosIniciales, preseleccion, onDone }) {
   const [state, formAction] = useActionState(guardarCitaAction, null);
-  const [paciente, setPaciente] = useState(null); // {tipo, id, nombre, whatsapp}
+  // {tipo, id, nombre, whatsapp}; si viene de Mensajes, ya va elegido
+  const [paciente, setPaciente] = useState(
+    preseleccion ? { tipo: "paciente", id: preseleccion.id, nombre: preseleccion.nombre, whatsapp: preseleccion.whatsapp } : null
+  );
   const [dentista, setDentista] = useState(dentistaInicial);
   const [tipo, setTipo] = useState("valoracion");
   const [duracion, setDuracion] = useState("30");
