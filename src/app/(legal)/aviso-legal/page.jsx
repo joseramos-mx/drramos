@@ -8,7 +8,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATE = "9 de junio de 2026";
+const LAST_UPDATE = "21 de octubre de 2026";
 
 export default function AvisoLegalPage() {
   return (
@@ -25,12 +25,6 @@ export default function AvisoLegalPage() {
         Última actualización: {LAST_UPDATE}
       </p>
 
-      <div className="mt-8 border border-[#b89968]/30 bg-[#b89968]/[0.06] p-5 font-[family-name:var(--font-albert)] text-[13px] font-light leading-[1.7] text-white/70">
-        Nota interna: este documento debe ser revisado y aprobado por el
-        responsable legal del consultorio antes de su publicación. Los
-        campos marcados con [REVISAR] deben confirmarse o reemplazarse
-        con los datos reales del consultorio.
-      </div>
 
       <Prose>
         <Section title="1. Titularidad">
@@ -38,15 +32,14 @@ export default function AvisoLegalPage() {
             El sitio{" "}
             <em>www.drfelipedejesusramos.com</em> y todas sus subrutas son
             operados por el Consultorio del Dr. Felipe de Jesús Ramos
-            Sotelo, con domicilio en Prol. Gómez Palacio 501, Zona Centro,
-            C.P. 34000, Durango, Dgo., México [REVISAR: confirmar razón
-            social y datos fiscales registrados]. Para cualquier asunto
+            Sotelo, con domicilio en Prol. Gómez Palacio 501 Pte., Zona
+            Centro, C.P. 34000, Durango, Dgo., México. Para cualquier asunto
             relacionado con el contenido del sitio, escriba a{" "}
             <a
-              href="mailto:hello@rmsindustries.io"
+              href="mailto:drfeliperamos.consultorio@gmail.com"
               className="underline decoration-[#b89968]/60 underline-offset-4 transition-colors hover:text-[#b89968]"
             >
-              hello@rmsindustries.io
+              drfeliperamos.consultorio@gmail.com
             </a>
             .
           </p>

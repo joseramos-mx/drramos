@@ -8,7 +8,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATE = "9 de junio de 2026";
+const LAST_UPDATE = "21 de octubre de 2026";
 
 export default function PrivacidadPage() {
   return (
@@ -25,28 +25,21 @@ export default function PrivacidadPage() {
         Última actualización: {LAST_UPDATE}
       </p>
 
-      <div className="mt-8 border border-[#b89968]/30 bg-[#b89968]/[0.06] p-5 font-[family-name:var(--font-albert)] text-[13px] font-light leading-[1.7] text-white/70">
-        Nota interna: este documento debe ser revisado y aprobado por el
-        responsable legal del consultorio antes de su publicación definitiva.
-        Los campos marcados con [REVISAR] deben confirmarse o reemplazarse
-        con los datos reales del consultorio.
-      </div>
 
       <Prose>
         <Section title="1. Responsable del tratamiento">
           <p>
             El responsable del tratamiento de sus datos personales es el
-            Consultorio del Dr. Felipe de Jesús Ramos Sotelo, con
-            domicilio en Prol. Gómez Palacio 501, Zona Centro, C.P. 34000,
-            Durango, Dgo., México [REVISAR: confirmar razón social
-            registrada para efectos fiscales]. Para cualquier asunto
+            Dr. Felipe de Jesús Ramos Sotelo, Cirujano Dentista, con
+            domicilio en Prol. Gómez Palacio 501 Pte., Zona Centro, C.P.
+            34000, Durango, Dgo., México. Para cualquier asunto
             relacionado con sus datos personales puede dirigirse al correo
             electrónico{" "}
             <a
-              href="mailto:hello@rmsindustries.io"
+              href="mailto:drfeliperamos.consultorio@gmail.com"
               className="underline decoration-[#b89968]/60 underline-offset-4 transition-colors hover:text-[#b89968]"
             >
-              hello@rmsindustries.io
+              drfeliperamos.consultorio@gmail.com
             </a>
             .
           </p>
@@ -70,6 +63,14 @@ export default function PrivacidadPage() {
             </li>
           </ul>
           <p>
+            Cuando usted nos escribe por WhatsApp al número del consultorio,
+            recibimos su nombre de perfil, su número de teléfono, el
+            contenido de los mensajes que intercambia con nosotros y, si
+            llegó desde un anuncio, la referencia de ese anuncio. Si en la
+            conversación comparte información sobre su salud bucal, ésta
+            se considera un dato personal sensible.
+          </p>
+          <p>
             Adicionalmente, al navegar el sitio se recolectan datos técnicos
             no identificativos (URL de referencia, agente de usuario, hora de
             la visita) por nuestras herramientas de medición. Para detalle
@@ -87,6 +88,10 @@ export default function PrivacidadPage() {
             <li>
               Contactarle por WhatsApp o teléfono para coordinar una
               valoración privada con el Dr. Felipe.
+            </li>
+            <li>
+              Responder sus mensajes de WhatsApp, agendar, confirmar y
+              recordarle sus citas.
             </li>
             <li>
               Dar seguimiento a su interés en el tratamiento de diseño
@@ -120,7 +125,9 @@ export default function PrivacidadPage() {
             No vendemos, comercializamos ni compartimos sus datos personales
             con terceros con fines comerciales. Únicamente compartimos
             información con proveedores tecnológicos que nos ayudan a operar
-            el sitio (medición publicitaria y análisis de uso), bajo
+            el sitio y la atención a pacientes (mensajería de WhatsApp a
+            través de Meta Platforms, medición publicitaria y análisis de
+            uso), bajo
             obligación de confidencialidad y limitada a lo descrito en la
             sección 6.
           </p>
@@ -183,10 +190,10 @@ export default function PrivacidadPage() {
           <p>
             Para ejercer cualquiera de estos derechos, escriba a{" "}
             <a
-              href="mailto:hello@rmsindustries.io"
+              href="mailto:drfeliperamos.consultorio@gmail.com"
               className="underline decoration-[#b89968]/60 underline-offset-4 transition-colors hover:text-[#b89968]"
             >
-              hello@rmsindustries.io
+              drfeliperamos.consultorio@gmail.com
             </a>{" "}
             indicando su nombre completo, una forma de contacto y el
             derecho que desea ejercer. Le responderemos en un plazo no
@@ -213,7 +220,8 @@ export default function PrivacidadPage() {
 
         <Section title="10. Consentimiento">
           <p>
-            Al enviar el formulario de aplicación usted reconoce haber leído
+            Al enviar el formulario de aplicación o escribirnos por
+            WhatsApp usted reconoce haber leído
             este Aviso de Privacidad y otorga su consentimiento expreso para
             el tratamiento de sus datos personales conforme a las
             finalidades aquí descritas, incluyendo el tratamiento de datos
