@@ -198,7 +198,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
       </Hoja>
 
       <Hoja abierta={Boolean(rapida)} onCerrar={cerrarMenus} titulo={rapida?.modo === "evento" ? `Evento · ${formatHora(rapida.minutos)}` : rapida ? `Bloquear desde las ${formatHora(rapida.minutos)}` : ""}>
-        {rapida && <HoraRapida fecha={fecha} minutos={rapida.minutos} modo={rapida.modo} onListo={cerrarMenus} demo={demo} />}
+        {rapida && <HoraRapida fecha={fecha} minutos={rapida.minutos} modo={rapida.modo} onListo={cerrarMenus} demo={demo} citasDelDia={demo ? citas : []} />}
       </Hoja>
 
       <Hoja abierta={Boolean(verEvento)} onCerrar={cerrarMenus} titulo={verEvento?.motivo || ""}>
@@ -207,6 +207,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
             <p className="text-[17px] text-[#5b544a]">
               {formatHora(verEvento.desde)} a {formatHora(verEvento.hasta)} · el asistente no agenda en este horario.
             </p>
+            {verEvento.nota && <p className="rounded-2xl bg-[#f2efe9] px-4 py-3 text-[17px] italic text-[#1c1a17]">{verEvento.nota}</p>}
             <button
               type="button"
               onClick={async () => {
@@ -390,7 +391,10 @@ function EventoBloque({ e, abre, rowPx, onClick }) {
       style={{ top: top + 2, height, left: 4, right: 4, background: EVENTO.bg, borderLeftColor: EVENTO.barra }}
       className="absolute overflow-hidden rounded-lg border border-l-4 border-[#1c1a17]/[0.08] py-1 pl-2.5 pr-2 text-left text-[#1c1a17]"
     >
-      <p className="truncate text-[14px] font-semibold md:text-[15px]">{e.motivo}</p>
+      <p className="truncate text-[14px] font-semibold md:text-[15px]">
+        {e.motivo}
+        {e.nota && <span className="font-normal italic opacity-80"> · {e.nota}</span>}
+      </p>
       {height >= 44 && (
         <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] opacity-70 md:text-[12px]">
           {formatHora(e.desde)} a {formatHora(e.hasta)} · Evento
@@ -409,6 +413,7 @@ function AvisoBloqueo({ b, soloLectura, demo }) {
       <p className="text-[16px] text-[#1c1a17]">
         <strong className="font-bold">{b.motivo}</strong>
         {b.todoElDia ? " · Sin consulta todo el día." : ` · ${formatHora(b.desde)} a ${formatHora(b.hasta)} sin consulta.`}
+        {b.nota && <span className="block text-[16px] italic text-[#1c1a17]">{b.nota}</span>}
         <span className="block text-[14px] text-[#7a7368]">El asistente no ofrece este horario.</span>
       </p>
       {!soloLectura && (

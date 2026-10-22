@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { normalizarTelefono } from "@/lib/telefono";
+import { enviarPlantilla } from "@/lib/whatsapp";
+import { supabaseServicio } from "@/lib/mensajes-servidor";
+import { idBoton } from "@/lib/mi-cita";
+import { PLANTILLAS_SISTEMA, rellenar } from "../crm/mensajes/plantillas";
 import {
   DENTISTAS,
   TIPOS,
@@ -14,6 +18,9 @@ import {
   esFechaValida,
   isoDesde,
   festivosOficiales,
+  formatFechaLarga,
+  formatHora,
+  minutosDelDia,
   hoyDurango,
   rangoDelDia,
   sumarDias,
@@ -282,24 +289,33 @@ const hhmm = (v) => {
   return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
 };
 
-/** Cuántas citas (no canceladas) hay entre esas fechas: para avisarle que las mueva. */
+/** Citas futuras (no canceladas) que caen en lo que se quiere bloquear. */
 async function citasEn(supabase, desdeFecha, hastaFecha, desdeMin, hastaMin) {
   const { data } = await supabase
     .from("citas")
-    .select("inicio, fin")
+    .select("id, inicio, fin, estado, notas, paciente:pacientes(id, nombre, whatsapp)")
     .gte("inicio", rangoDelDia(desdeFecha).desde)
     .lt("inicio", rangoDelDia(hastaFecha).hasta)
-    .neq("estado", "cancelada");
-  if (desdeMin == null) return (data || []).length;
-  return (data || []).filter((c) => new Date(c.inicio) < new Date(isoDesde(desdeFecha, hastaMin)) && new Date(c.fin) > new Date(isoDesde(desdeFecha, desdeMin))).length;
+    .neq("estado", "cancelada")
+    .order("inicio");
+  const ahora = new Date();
+  return (data || []).filter(
+    (c) =>
+      new Date(c.inicio) > ahora &&
+      c.estado !== "asistio" &&
+      (desdeMin == null || (new Date(c.inicio) < new Date(isoDesde(desdeFecha, hastaMin)) && new Date(c.fin) > new Date(isoDesde(desdeFecha, desdeMin))))
+  );
 }
 
-/**
- * { tipo: "dia" | "varios" | "horas", desde, hasta, horaDesde, horaHasta, motivo, evento? }
- * `evento`: algo de la Dra. Gaby que ocupa tiempo (junta, laboratorio…); el nombre va en `motivo`
- * y siempre es por horas. Se ve como bloque en la agenda; el asistente tampoco agenda encima.
- */
-export async function crearBloqueoAction(datos) {
+const resumenCita = (c) => ({
+  id: c.id,
+  nombre: c.paciente?.nombre || "Sin nombre",
+  cuando: `${formatFechaLarga(hoyDurango(new Date(c.inicio)))}, ${formatHora(minutosDelDia(c.inicio))}`,
+  whatsapp: Boolean(normalizarTelefono(c.paciente?.whatsapp)),
+});
+
+/** Revisa los datos de un bloqueo y devuelve { error } o { ok, valores } (sin guardar). */
+function validarBloqueo(datos) {
   const evento = Boolean(datos?.evento);
   const tipo = evento ? "horas" : datos?.tipo;
   const desde = String(datos?.desde || "");
@@ -313,7 +329,6 @@ export async function crearBloqueoAction(datos) {
   if (hasta < desde) return { error: "La fecha final va después de la inicial." };
   if (desde < hoyDurango()) return { error: "Esa fecha ya pasó." };
   if (sumarDias(desde, 120) < hasta) return { error: "Máximo 4 meses seguidos." };
-
   let desdeMin = null;
   let hastaMin = null;
   if (tipo === "horas") {
@@ -321,13 +336,88 @@ export async function crearBloqueoAction(datos) {
     hastaMin = hhmm(datos?.horaHasta);
     if (!Number.isFinite(desdeMin) || !Number.isFinite(hastaMin) || desdeMin >= hastaMin) return { error: "Elige de qué hora a qué hora." };
   }
+  const nota = String(datos?.nota || "").replace(/[\u0000-\u0009\u000b-\u001f]/g, " ").trim().slice(0, 200) || null;
+  return { ok: true, valores: { desde_fecha: desde, hasta_fecha: hasta, desde_min: desdeMin, hasta_min: hastaMin, motivo, evento, nota } };
+}
+
+/** Antes de bloquear: ¿qué citas caen ahí? → { citas: [{ id, nombre, cuando, whatsapp }] } */
+export async function revisarBloqueoAction(datos) {
+  const v = validarBloqueo(datos);
+  if (v.error) return v;
+  const { desde_fecha, hasta_fecha, desde_min, hasta_min } = v.valores;
+  const supabase = createClient(await cookies());
+  const citas = await citasEn(supabase, desde_fecha, hasta_fecha, desde_min, hasta_min);
+  return { citas: citas.map(resumenCita) };
+}
+
+/** Avisa a un paciente por WhatsApp (plantilla del sistema) y lo deja en su chat. */
+async function avisarPaciente(admin, cita, plantilla, botones) {
+  const tel = normalizarTelefono(cita.paciente?.whatsapp);
+  if (!tel) return { sinWhatsapp: true };
+  const p = PLANTILLAS_SISTEMA.find((x) => x.nombre === plantilla);
+  const nombre = cita.paciente?.nombre && !/^WhatsApp /.test(cita.paciente.nombre) ? cita.paciente.nombre.trim().split(/\s+/)[0] : "estimado paciente";
+  const valores = [nombre, formatFechaLarga(hoyDurango(new Date(cita.inicio))), formatHora(minutosDelDia(cita.inicio))];
+  const envio = await enviarPlantilla(tel, p.nombre, valores, "es_MX", { botones });
+  if (envio.error) return { error: envio.error };
+  await admin.from("whatsapp_mensajes").upsert(
+    {
+      wa_id: envio.wa_id || `bloqueo-${cita.id}-${Date.now()}`,
+      telefono: tel,
+      direccion: "salida",
+      via: "api",
+      tipo: "template",
+      texto: `${rellenar(p.texto, valores)}\n[Botones: ${p.botones.join(" · ")}]`,
+      enviado_en: new Date().toISOString(),
+      paciente_id: cita.paciente.id,
+    },
+    { onConflict: "wa_id", ignoreDuplicates: true }
+  );
+  return { ok: true };
+}
+
+/**
+ * { tipo: "dia" | "varios" | "horas", desde, hasta, horaDesde, horaHasta, motivo, evento?, citas? }
+ * `evento`: algo de la Dra. Gaby que ocupa tiempo (junta, laboratorio…); el nombre va en `motivo`
+ * y siempre es por horas. Se ve como bloque en la agenda; el asistente tampoco agenda encima.
+ * `citas` (si caen citas ahí; antes se pregunta con revisarBloqueoAction):
+ *   "avisar"   → siguen en la agenda y a cada paciente le llega WhatsApp para elegir otro horario
+ *   "cancelar" → se cancelan y se les avisa con disculpa (botón para hablar con la Dra. Gaby)
+ *   "dejar"    → no se tocan (ella las acomoda)
+ */
+export async function crearBloqueoAction(datos) {
+  const v = validarBloqueo(datos);
+  if (v.error) return v;
+  const que = ["avisar", "cancelar", "dejar"].includes(datos?.citas) ? datos.citas : "dejar";
 
   const supabase = createClient(await cookies());
-  const { error } = await supabase.from("bloqueos").insert({ desde_fecha: desde, hasta_fecha: hasta, desde_min: desdeMin, hasta_min: hastaMin, motivo, evento });
+  const { error } = await supabase.from("bloqueos").insert(v.valores);
   if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
-  const citas = await citasEn(supabase, desde, hasta, desdeMin, hastaMin);
+  const { desde_fecha, hasta_fecha, desde_min, hasta_min, motivo } = v.valores;
+  const citas = await citasEn(supabase, desde_fecha, hasta_fecha, desde_min, hasta_min);
+
+  const resultado = { ok: true, citas: citas.length, avisados: 0, sinWhatsapp: [], errores: [] };
+  if (citas.length && que !== "dejar") {
+    const admin = supabaseServicio();
+    for (const c of citas) {
+      const nota = que === "cancelar" ? `Cancelada por el consultorio (${motivo})` : `El consultorio le pidió cambiarla (${motivo})`;
+      await supabase
+        .from("citas")
+        .update({
+          ...(que === "cancelar" ? { estado: "cancelada" } : { cambios_paciente: 0 }),
+          notas: [c.notas, nota].filter(Boolean).join(" · ").slice(0, 1000),
+        })
+        .eq("id", c.id);
+      const r =
+        que === "avisar"
+          ? await avisarPaciente(admin, c, "cita_reagendar", [idBoton("cambiar", c.id), idBoton("hablar", c.id)])
+          : await avisarPaciente(admin, c, "cita_cancelada", [idBoton("hablar", c.id)]);
+      if (r.sinWhatsapp) resultado.sinWhatsapp.push(resumenCita(c).nombre);
+      else if (r.error) resultado.errores.push(`${resumenCita(c).nombre}: ${r.error}`);
+      else resultado.avisados++;
+    }
+  }
   revalidatePath("/agenda");
-  return { ok: true, citas };
+  return resultado;
 }
 
 export async function quitarBloqueoAction(id) {

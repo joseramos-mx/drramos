@@ -69,8 +69,8 @@ export default async function AgendaPage({ searchParams }) {
   // Días u horas sin consulta: los del mes (calendario y este día) y los que vienen (para quitarlos)
   const finMes = sumarDias(sigMes.toISOString().slice(0, 10), -1);
   const [{ data: bloqueosMes }, { data: proximos }] = await Promise.all([
-    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento").lte("desde_fecha", finMes).gte("hasta_fecha", primero),
-    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento").gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
+    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota").lte("desde_fecha", finMes).gte("hasta_fecha", primero),
+    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota").gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
   ]);
   const bloqueados = [];
   for (let f = primero; f <= finMes; f = sumarDias(f, 1)) {

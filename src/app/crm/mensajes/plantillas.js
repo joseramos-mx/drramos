@@ -31,6 +31,29 @@ export const PLANTILLAS = [
   },
 ];
 
+/**
+ * Plantillas que manda SÓLO el sistema (al bloquear un horario con citas).
+ * También se dan de alta en WhatsApp Manager, con sus botones de respuesta rápida.
+ */
+export const PLANTILLAS_SISTEMA = [
+  {
+    nombre: "cita_reagendar",
+    titulo: "Pedir que cambie su cita (bloqueo)",
+    texto:
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto no podremos atenderle el {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la Dra. Gaby.",
+    campos: ["Nombre del paciente", "Día", "Hora"],
+    botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
+  },
+  {
+    nombre: "cita_cancelada",
+    titulo: "Avisar que se canceló su cita (bloqueo)",
+    texto:
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto tuvimos que cancelar su cita del {{2}} a las {{3}}; le ofrecemos una disculpa. La Dra. Gaby le escribirá para acomodarla, o toque el botón para hablar con ella.",
+    campos: ["Nombre del paciente", "Día", "Hora"],
+    botones: ["Hablar con Dra. Gaby"],
+  },
+];
+
 /** Texto final con los {{n}} reemplazados (para guardarlo y mostrarlo en el chat). */
 export function rellenar(texto, valores) {
   return texto.replace(/\{\{(\d+)\}\}/g, (_, n) => valores[Number(n) - 1] || `{{${n}}}`);

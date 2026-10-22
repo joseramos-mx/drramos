@@ -36,7 +36,12 @@ const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "o
 
 /** Botones del recordatorio (en el mismo orden que en WhatsApp Manager). */
 export const BOTONES_RECORDATORIO = ["confirmar", "cambiar", "cancelar"];
-const TITULOS = { confirmar: "Confirmo mi cita", cambiar: "Cambiar mi cita", cancelar: "Cancelar mi cita" };
+const TITULOS = {
+  confirmar: ["Confirmo mi cita"],
+  cambiar: ["Cambiar mi cita", "Elegir otro horario"],
+  cancelar: ["Cancelar mi cita"],
+  hablar: ["Hablar con Dra. Gaby"],
+};
 
 export const idBoton = (accion, citaId, dato = "") => `cita|${accion}|${citaId || ""}|${dato}`;
 
@@ -84,7 +89,7 @@ export function leerBoton(texto) {
     const [, accion, citaId, dato] = t.split("|");
     return { accion, citaId: citaId || null, dato: dato || "" };
   }
-  const accion = Object.keys(TITULOS).find((k) => TITULOS[k].toLowerCase() === t.trim().toLowerCase());
+  const accion = Object.keys(TITULOS).find((k) => TITULOS[k].some((x) => x.toLowerCase() === t.trim().toLowerCase()));
   return accion ? { accion, citaId: null, dato: "" } : null;
 }
 

@@ -109,7 +109,7 @@ export function bloqueosDelDia(bloqueos, fecha) {
     .filter((b) => b.desde_fecha <= fecha && b.hasta_fecha >= fecha)
     .map((b) => {
       const todoElDia = b.desde_min == null;
-      return { id: b.id, motivo: b.motivo, evento: Boolean(b.evento), todoElDia, desde: todoElDia ? h.abre : b.desde_min, hasta: todoElDia ? h.cierra : b.hasta_min };
+      return { id: b.id, motivo: b.motivo, nota: b.nota || null, evento: Boolean(b.evento), todoElDia, desde: todoElDia ? h.abre : b.desde_min, hasta: todoElDia ? h.cierra : b.hasta_min };
     });
 }
 

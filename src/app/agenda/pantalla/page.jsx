@@ -38,7 +38,7 @@ export default async function PantallaPage() {
 
   const { data: bloqueos } = await supabase
     .from("bloqueos")
-    .select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento")
+    .select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota")
     .lte("desde_fecha", fecha)
     .gte("hasta_fecha", fecha);
 

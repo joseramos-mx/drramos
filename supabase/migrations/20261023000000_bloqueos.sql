@@ -15,6 +15,8 @@ create table if not exists public.bloqueos (
   hasta_min int check (hasta_min between 0 and 1440),
   motivo text not null default 'Sin consulta' check (length(motivo) between 1 and 80),
   evento boolean not null default false,
+  -- Nota libre de la Dra. Gaby, con sus palabras ("Congreso en Monterrey, regreso el jueves")
+  nota text check (nota is null or length(nota) <= 200),
   check (not evento or desde_min is not null),
   check (hasta_fecha >= desde_fecha),
   check (
