@@ -42,6 +42,10 @@ const FUERA_DE_VENTANA = {
 /** Guarda lo que mandó el consultorio (service_role: el personal sólo tiene lectura). */
 async function guardarSalida(admin, fila) {
   const { data: paciente } = await admin.from("pacientes").select("id").eq("whatsapp", fila.telefono).limit(1).maybeSingle();
+  // Si ella contesta, el chat es suyo: el asistente no se mete (8 h desde su último mensaje)
+  if (paciente) {
+    await admin.from("pacientes").update({ atiende: "humano", atiende_desde: new Date().toISOString() }).eq("id", paciente.id);
+  }
   await admin.from("whatsapp_mensajes").upsert(
     { ...fila, direccion: "salida", via: "api", enviado_en: new Date().toISOString(), paciente_id: paciente?.id || null },
     { onConflict: "wa_id", ignoreDuplicates: true }
@@ -253,4 +257,67 @@ export async function enviarArchivoAction(telefonoRaw, tipo, ruta, mime, nombre,
     media_ruta: ruta,
   });
   return { ok: true, savedAt: Date.now() };
+}
+
+/** "Tomar el chat" (lo atiende ella) o "Devolver al asistente". */
+export async function cambiarQuienAtiendeAction(pacienteId, quien) {
+  if (!["asistente", "humano"].includes(quien)) return { error: "Opción no válida." };
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { data: p, error } = await supabase
+    .from("pacientes")
+    .update({ atiende: quien, atiende_desde: quien === "humano" ? new Date().toISOString() : null })
+    .eq("id", pacienteId)
+    .select("whatsapp")
+    .maybeSingle();
+  if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
+  if (p?.whatsapp) revalidatePath(`/crm/mensajes/${p.whatsapp}`);
+  return { ok: true };
+}
+
+/** Modo borrador: mandar tal cual, o descartar, la respuesta que preparó el asistente. */
+export async function resolverBorradorAction(borradorId, accion) {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { data: b } = await supabase.from("asistente_borradores").select("id, telefono, texto, estado").eq("id", borradorId).maybeSingle();
+  if (!b || b.estado !== "pendiente") return { error: "Ese borrador ya no está pendiente." };
+
+  if (accion === "descartar" || accion === "editar") {
+    await supabase.from("asistente_borradores").update({ estado: "descartado" }).eq("id", b.id);
+    revalidatePath(`/crm/mensajes/${b.telefono}`);
+    return { ok: true };
+  }
+  if (!(await ventanaDe(supabase, b.telefono))) return FUERA_DE_VENTANA;
+  const res = await enviarTexto(b.telefono, b.texto);
+  if (res.error) return res;
+  const admin = supabaseServicio();
+  await admin.from("asistente_borradores").update({ estado: "enviado" }).eq("id", b.id);
+  const { data: paciente } = await admin.from("pacientes").select("id").eq("whatsapp", b.telefono).limit(1).maybeSingle();
+  await admin.from("whatsapp_mensajes").upsert(
+    {
+      wa_id: res.wa_id || `local-${Date.now()}`,
+      telefono: b.telefono,
+      direccion: "salida",
+      via: "asistente",
+      tipo: "text",
+      texto: b.texto,
+      enviado_en: new Date().toISOString(),
+      paciente_id: paciente?.id || null,
+    },
+    { onConflict: "wa_id", ignoreDuplicates: true }
+  );
+  revalidatePath(`/crm/mensajes/${b.telefono}`);
+  revalidatePath("/crm/mensajes");
+  return { ok: true };
+}
+
+/** Prender, poner en borrador o apagar el asistente (para todos los chats). */
+export async function cambiarModoAsistenteAction(modo) {
+  if (!["automatico", "borrador", "apagado"].includes(modo)) return { error: "Opción no válida." };
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { error } = await supabase.from("asistente_config").upsert({ id: 1, modo, updated_at: new Date().toISOString() });
+  if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/ajustes");
+  return { ok: true };
 }

@@ -54,13 +54,18 @@ function vapidListo() {
  * bloqueada): sólo el nombre del paciente.
  */
 export async function avisarMensajeNuevo(admin, { nombre, telefono }) {
+  return avisar(admin, { titulo: nombre || "WhatsApp del consultorio", cuerpo: "Te escribió por WhatsApp", telefono });
+}
+
+/** Aviso genérico (mensaje nuevo, caso que pasa el asistente, borrador listo). Al tocarlo abre ese chat. */
+export async function avisar(admin, { titulo, cuerpo, telefono }) {
   if (!vapidListo()) return;
   const { data: subs } = await admin.from("push_suscripciones").select("id, endpoint, p256dh, auth");
   const payload = JSON.stringify({
-    title: nombre || "WhatsApp del consultorio",
-    body: "Te escribió por WhatsApp",
-    url: `/crm/mensajes/${telefono}`,
-    tag: `wa-${telefono}`,
+    title: titulo,
+    body: cuerpo,
+    url: telefono ? `/crm/mensajes/${telefono}` : "/crm/mensajes",
+    tag: telefono ? `wa-${telefono}` : "mensajes",
   });
   for (const s of subs || []) {
     try {

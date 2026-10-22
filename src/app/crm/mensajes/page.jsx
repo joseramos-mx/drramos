@@ -28,7 +28,7 @@ export default async function MensajesPage({ searchParams }) {
   const desde = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
   const { data: mensajes, error } = await supabase
     .from("whatsapp_mensajes")
-    .select("telefono, direccion, enviado_en, texto, tipo, paciente:pacientes(id, nombre, etiquetas)")
+    .select("telefono, direccion, via, enviado_en, texto, tipo, paciente:pacientes(id, nombre, etiquetas, atiende, atiende_desde)")
     .gte("enviado_en", desde)
     .order("enviado_en")
     .limit(10000);

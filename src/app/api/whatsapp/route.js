@@ -1,16 +1,19 @@
+import { after } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { parsearWebhook } from "./parsear";
 import { codigoEnMensaje } from "../../crm/resultados/fuentes";
 import { bajarMedia } from "@/lib/whatsapp";
 import { avisarMensajeNuevo, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
+import { atenderConAsistente } from "@/lib/asistente";
 
 /**
  * Buzón de WhatsApp: recibe los webhooks de la Cloud API de Meta
  * (número del consultorio, directo con Meta). Guarda cada mensaje, crea
  * al paciente la primera vez que escribe y detecta de qué fuente llegó
  * ("(ref G1)" o el click del anuncio). Si trae foto/audio la baja de
- * Meta al bucket privado, y avisa (web push) a los aparatos del
- * consultorio. Aquí NO se contesta (eso lo hace la bandeja "Mensajes").
+ * Meta al bucket privado. Si el asistente virtual está prendido y el chat
+ * no lo lleva la Dra. Gaby, él contesta (después de responder a Meta,
+ * con after()); si no, se avisa (web push) a los aparatos del consultorio.
  *
  * Seguridad (variables de entorno del servidor):
  *   META_APP_SECRET            con él se valida la firma X-Hub-Signature-256
@@ -26,6 +29,8 @@ import { avisarMensajeNuevo, guardarMedia, supabaseServicio } from "@/lib/mensaj
  */
 
 export const dynamic = "force-dynamic";
+// El asistente corre después de contestar a Meta (espera + Claude)
+export const maxDuration = 120;
 
 function iguales(a, b) {
   const x = Buffer.from(String(a || ""));
@@ -81,7 +86,7 @@ export async function POST(request) {
   }
 
   let guardados = 0;
-  const avisar = new Map(); // telefono → paciente_id, un aviso por paciente
+  const nuevosPorTel = new Map(); // telefono → { pacienteId, waId } del último mensaje del paciente
   for (const m of mensajes) {
     try {
       const pacienteId = await pacienteDe(supabase, m);
@@ -112,18 +117,26 @@ export async function POST(request) {
         const ruta = archivo && (await guardarMedia(supabase, m.telefono, m.wa_id, archivo.buffer, archivo.mime));
         if (ruta) await supabase.from("whatsapp_mensajes").update({ media_ruta: ruta }).eq("id", nuevos[0].id);
       }
-      if (m.via === "paciente") avisar.set(m.telefono, pacienteId);
+      if (m.via === "paciente") nuevosPorTel.set(m.telefono, { pacienteId, waId: m.wa_id });
     } catch (e) {
       console.error("[whatsapp] mensaje", m.wa_id, e?.message || e);
     }
   }
 
-  for (const [telefono, pacienteId] of avisar) {
+  const modo = await modoAsistente(supabase);
+  for (const [telefono, { pacienteId, waId }] of nuevosPorTel) {
     try {
       const { data: p } = pacienteId
-        ? await supabase.from("pacientes").select("nombre").eq("id", pacienteId).maybeSingle()
+        ? await supabase.from("pacientes").select("nombre, atiende, atiende_desde").eq("id", pacienteId).maybeSingle()
         : { data: null };
-      await avisarMensajeNuevo(supabase, { nombre: p?.nombre, telefono });
+      const loLlevaElla =
+        p?.atiende === "humano" && p.atiende_desde && Date.now() - new Date(p.atiende_desde).getTime() < 8 * 3600 * 1000;
+      if (modo !== "apagado" && !loLlevaElla) {
+        // Contesta el asistente; a la Dra. Gaby sólo le llega lo que él le pase
+        after(() => atenderConAsistente(supabaseServicio(), telefono, waId).catch((e) => console.error("[asistente]", e)));
+      } else {
+        await avisarMensajeNuevo(supabase, { nombre: p?.nombre, telefono });
+      }
     } catch (e) {
       console.error("[whatsapp] aviso", telefono, e?.message || e);
     }
@@ -188,4 +201,11 @@ async function fuenteDe(supabase, m) {
   }
   if (m.ctwa_clid || m.referencia?.source_type === "ad") return { origen: "anuncio", fuente_id: null };
   return null;
+}
+
+/** Modo del asistente; "apagado" si no hay llave de Claude o falta la tabla. */
+async function modoAsistente(supabase) {
+  if (!process.env.ANTHROPIC_API_KEY) return "apagado";
+  const { data } = await supabase.from("asistente_config").select("modo").eq("id", 1).maybeSingle();
+  return data?.modo || "apagado";
 }

@@ -42,6 +42,7 @@ export default function Globo({ m, archivoUrl }) {
         <p className="px-3 pb-0.5 pt-1 text-right text-[13px] tabular-nums text-[#8b8478]">
           {horaDe(m.enviado_en)}
           {m.via === "app" && " · desde el celular"}
+          {m.via === "asistente" && " · 🤖 asistente"}
         </p>
       </div>
     </li>

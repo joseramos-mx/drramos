@@ -7,6 +7,7 @@ import AutoRefresh from "../../../agenda/components/auto-refresh";
 import Cabecera from "./cabecera";
 import Chat from "./chat";
 import Responder from "./responder";
+import QuienAtiende from "./quien-atiende";
 
 export const dynamic = "force-dynamic";
 
@@ -20,19 +21,34 @@ export default async function ConversacionPage({ params }) {
   } = await supabase.auth.getUser();
   if (!user) redirect(`/crm/login?from=/crm/mensajes/${telefono}`);
 
-  const [{ data: mensajes }, { data: paciente }] = await Promise.all([
+  const [{ data: mensajes }, { data: paciente }, { data: config }, { data: borrador }] = await Promise.all([
     supabase
       .from("whatsapp_mensajes")
       .select("id, direccion, via, enviado_en, texto, tipo, media_id, media_ruta")
       .eq("telefono", telefono)
       .order("enviado_en")
       .limit(500),
-    supabase.from("pacientes").select("id, nombre, origen, etiquetas").eq("whatsapp", telefono).limit(1).maybeSingle(),
+    supabase.from("pacientes").select("id, nombre, origen, etiquetas, atiende, atiende_desde").eq("whatsapp", telefono).limit(1).maybeSingle(),
+    supabase.from("asistente_config").select("modo").eq("id", 1).maybeSingle(),
+    supabase
+      .from("asistente_borradores")
+      .select("id, texto")
+      .eq("telefono", telefono)
+      .eq("estado", "pendiente")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const ultimaEntrada = [...(mensajes || [])].reverse().find((m) => m.direccion === "entrada")?.enviado_en;
   const abierta = ventanaAbierta(ultimaEntrada);
   const nombre = paciente?.nombre || `WhatsApp ${telefono.slice(-10)}`;
+  const modo = config?.modo || "apagado";
+  // Lo lleva ella si lo tomó (o le pasaron el caso) hace menos de 8 h
+  const atiende =
+    paciente?.atiende === "humano" && paciente.atiende_desde && Date.now() - new Date(paciente.atiende_desde).getTime() < 8 * 3600 * 1000
+      ? "humano"
+      : "asistente";
 
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] flex-col bg-[#f5f1ea]">
@@ -46,6 +62,7 @@ export default async function ConversacionPage({ params }) {
         volver="/crm/mensajes"
         agendarHref={paciente ? `/agenda?paciente=${paciente.id}` : null}
       />
+      {paciente && modo !== "apagado" && <QuienAtiende key={atiende} pacienteId={paciente.id} atiende={atiende} />}
       <div className="flex flex-1 flex-col px-3">
         <Chat mensajes={mensajes || []} />
       </div>
@@ -56,6 +73,7 @@ export default async function ConversacionPage({ params }) {
           conectado={whatsappConfigurado()}
           nombre={nombre}
           sinMensajes={!mensajes?.length}
+          borrador={borrador}
         />
       </div>
     </main>

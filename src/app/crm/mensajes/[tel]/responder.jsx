@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { useFormStatus } from "react-dom";
 import { FileTextIcon, ImageIcon, LightningIcon, MicrophoneIcon, PaperPlaneRightIcon, PlusIcon, VideoCameraIcon, XIcon } from "@phosphor-icons/react";
 import { createClient } from "@/utils/supabase/client";
-import { enviarArchivoAction, enviarFotoAction, enviarMensajeAction, prepararArchivoAction } from "../actions";
+import { enviarArchivoAction, enviarFotoAction, enviarMensajeAction, prepararArchivoAction, resolverBorradorAction } from "../actions";
 import { ARCHIVOS, BUCKET_MEDIA, pesoLegible } from "../archivos";
 import { RESPUESTAS_RAPIDAS } from "../respuestas";
 import Hoja from "../hoja";
@@ -36,11 +36,14 @@ const redondo = "flex h-[52px] w-[52px] shrink-0 items-center justify-center rou
  * abre fotos, documentos (PDF: facturas, recetas), videos y las
  * respuestas rápidas del manual. Aviso claro si ya pasaron 24 h.
  */
-export default function Responder({ telefono, abierta, conectado, nombre, sinMensajes = false }) {
+export default function Responder({ telefono, abierta, conectado, nombre, sinMensajes = false, borrador = null }) {
   const [state, formAction] = useActionState(enviarMensajeAction, null);
   const [texto, setTexto] = useState("");
   const [menu, setMenu] = useState(false);
   const [voz, setVoz] = useState(false);
+  const [borradorVisible, setBorradorVisible] = useState(Boolean(borrador));
+  const [errorBorrador, setErrorBorrador] = useState(null);
+  const [resolviendo, startBorrador] = useTransition();
   const [foto, setFoto] = useState(null); // { archivo, url }
   const [errorFoto, setErrorFoto] = useState(null);
   const [mandandoFoto, startFoto] = useTransition();
@@ -204,6 +207,41 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
       <input ref={selector} type="file" accept="image/*" onChange={elegirFoto} className="hidden" />
       <input ref={selectorVideo} type="file" accept={ARCHIVOS.video.tipos.join(",")} onChange={elegirAdjunto("video")} className="hidden" />
       <input ref={selectorDoc} type="file" accept={ARCHIVOS.document.tipos.join(",")} onChange={elegirAdjunto("document")} className="hidden" />
+      {borrador && borradorVisible && (
+        <div className="mb-2.5 rounded-[20px] border-2 border-dashed border-[#b89968]/60 bg-[#fbf6ec] p-3">
+          <p className="px-1 text-[14px] font-semibold uppercase tracking-wide text-[#8a6d3f]">🤖 Respuesta propuesta</p>
+          <p className="whitespace-pre-wrap px-1 pt-1 text-[17px] leading-snug text-[#1c1a17]">{borrador.texto}</p>
+          <div className="mt-3 flex gap-2">
+            {[
+              ["mandar", "Mandar", "bg-[#b89968] text-white"],
+              ["editar", "Editar", "bg-white text-[#1c1a17]"],
+              ["descartar", "Descartar", "bg-white text-[#c0392b]"],
+            ].map(([accion, etiqueta, color]) => (
+              <button
+                key={accion}
+                type="button"
+                disabled={resolviendo}
+                onClick={() =>
+                  startBorrador(async () => {
+                    setErrorBorrador(null);
+                    const res = await resolverBorradorAction(borrador.id, accion);
+                    if (res?.error) return setErrorBorrador(res.error);
+                    if (accion === "editar") {
+                      setTexto(borrador.texto);
+                      setTimeout(() => ref.current?.focus(), 50);
+                    }
+                    setBorradorVisible(false);
+                  })
+                }
+                className={`h-12 flex-1 rounded-full text-[16px] font-semibold disabled:opacity-50 ${color}`}
+              >
+                {etiqueta}
+              </button>
+            ))}
+          </div>
+          {errorBorrador && <p role="alert" className="px-1 pt-2 text-[15px] font-medium text-[#c0392b]">{errorBorrador}</p>}
+        </div>
+      )}
       <div className="flex items-end gap-2">
         <button type="button" onClick={() => setMenu(true)} aria-label="Fotos, documentos, videos y respuestas rápidas" className={`${redondo} bg-[#f2efe9] text-[#1c1a17]`}>
           <PlusIcon size={26} weight="bold" />

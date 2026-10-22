@@ -19,13 +19,15 @@ export function conversaciones(mensajes) {
     c.ultimo = m; // vienen ordenados por hora
     if (m.paciente?.nombre) c.nombre = m.paciente.nombre;
     if (m.paciente?.etiquetas) c.etiquetas = m.paciente.etiquetas;
+    if (m.paciente) c.paraElla = m.paciente.atiende === "humano" && m.paciente.atiende_desde && Date.now() - new Date(m.paciente.atiende_desde).getTime() < 8 * 3600 * 1000;
     g.set(m.telefono, c);
   }
   return [...g.values()]
     .map((c) => ({
       ...c,
       nombre: c.nombre || `WhatsApp ${c.telefono.slice(-10)}`,
-      esperando: c.ultimo.direccion === "entrada",
+      // Falta contestar: el último mensaje es del paciente, o el asistente le pasó el caso a ella
+      esperando: c.ultimo.direccion === "entrada" || Boolean(c.paraElla && c.ultimo.via === "asistente"),
     }))
     .sort((a, b) => {
       if (a.esperando !== b.esperando) return a.esperando ? -1 : 1;

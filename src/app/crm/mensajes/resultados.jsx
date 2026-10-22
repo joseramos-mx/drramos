@@ -34,7 +34,7 @@ export default function Resultados({ q, chats, hits, base }) {
                       <span className="shrink-0 text-[14px] text-[#9a9388]">{horaCorta(m.enviado_en)}</span>
                     </span>
                     <span className="line-clamp-2 text-[16px] text-[#5b544a]">
-                      {m.direccion === "salida" && "Tú: "}
+                      {m.direccion === "salida" && (m.via === "asistente" ? "🤖 " : "Tú: ")}
                       {f.antes}
                       <mark className="rounded bg-[#efe3cc] px-0.5 font-semibold text-[#1c1a17]">{f.igual}</mark>
                       {f.despues}
