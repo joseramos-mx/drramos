@@ -294,12 +294,20 @@ async function citasEn(supabase, desdeFecha, hastaFecha, desdeMin, hastaMin) {
   return (data || []).filter((c) => new Date(c.inicio) < new Date(isoDesde(desdeFecha, hastaMin)) && new Date(c.fin) > new Date(isoDesde(desdeFecha, desdeMin))).length;
 }
 
-/** { tipo: "dia" | "varios" | "horas", desde, hasta, horaDesde, horaHasta, motivo } */
+/**
+ * { tipo: "dia" | "varios" | "horas", desde, hasta, horaDesde, horaHasta, motivo, evento? }
+ * `evento`: algo de la Dra. Gaby que ocupa tiempo (junta, laboratorio…); el nombre va en `motivo`
+ * y siempre es por horas. Se ve como bloque en la agenda; el asistente tampoco agenda encima.
+ */
 export async function crearBloqueoAction(datos) {
-  const tipo = datos?.tipo;
+  const evento = Boolean(datos?.evento);
+  const tipo = evento ? "horas" : datos?.tipo;
   const desde = String(datos?.desde || "");
   const hasta = tipo === "varios" ? String(datos?.hasta || "") : desde;
-  const motivo = MOTIVOS_OK.includes(datos?.motivo) ? datos.motivo : "Sin consulta";
+  const motivo = evento
+    ? String(datos?.motivo || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 80)
+    : MOTIVOS_OK.includes(datos?.motivo) ? datos.motivo : "Sin consulta";
+  if (evento && !motivo) return { error: "Escribe qué es el evento." };
   if (!["dia", "varios", "horas"].includes(tipo)) return { error: "Elige qué quieres bloquear." };
   if (!esFechaValida(desde) || !esFechaValida(hasta)) return { error: "Elige la fecha." };
   if (hasta < desde) return { error: "La fecha final va después de la inicial." };
@@ -315,7 +323,7 @@ export async function crearBloqueoAction(datos) {
   }
 
   const supabase = createClient(await cookies());
-  const { error } = await supabase.from("bloqueos").insert({ desde_fecha: desde, hasta_fecha: hasta, desde_min: desdeMin, hasta_min: hastaMin, motivo });
+  const { error } = await supabase.from("bloqueos").insert({ desde_fecha: desde, hasta_fecha: hasta, desde_min: desdeMin, hasta_min: hastaMin, motivo, evento });
   if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
   const citas = await citasEn(supabase, desde, hasta, desdeMin, hastaMin);
   revalidatePath("/agenda");

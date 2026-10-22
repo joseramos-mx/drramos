@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import AgendaDia from "../components/agenda-dia";
 import AutoRefresh from "../components/auto-refresh";
 import Reloj from "../components/reloj";
-import { CITA_SELECT, formatFechaLarga, hoyDurango, rangoDelDia } from "../lib";
+import { CITA_SELECT, bloqueosDelDia, formatFechaLarga, hoyDurango, rangoDelDia } from "../lib";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +36,12 @@ export default async function PantallaPage() {
     .eq("fecha", fecha)
     .order("created_at");
 
+  const { data: bloqueos } = await supabase
+    .from("bloqueos")
+    .select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento")
+    .lte("desde_fecha", fecha)
+    .gte("hasta_fecha", fecha);
+
   return (
     <main className="mx-auto w-full max-w-[1600px] px-6 py-6">
       <AutoRefresh segundos={60} />
@@ -45,7 +51,7 @@ export default async function PantallaPage() {
         </h1>
         <Reloj grande />
       </header>
-      <AgendaDia fecha={fecha} citas={citas || []} pendientes={pendientes || []} soloLectura ajustarAlto />
+      <AgendaDia fecha={fecha} citas={citas || []} pendientes={pendientes || []} soloLectura ajustarAlto bloqueos={bloqueosDelDia(bloqueos, fecha)} />
     </main>
   );
 }

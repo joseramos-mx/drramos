@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { agregarFestivosAction, crearBloqueoAction, quitarBloqueoAction } from "../actions";
-import { formatFechaLarga, formatHora } from "../lib";
+import { formatFechaLarga, formatHora, horarioDelDia } from "../lib";
 
 const TIPOS = [
   { value: "dia", label: "Un día" },
@@ -160,6 +160,115 @@ export default function Bloquear({ fecha, hoy, proximos = [], demo = false }) {
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+const EVENTOS_RAPIDOS = ["Junta", "Laboratorio", "Proveedor", "Trámite", "Curso"];
+
+/**
+ * Desde una hora tocada en la agenda: agregar un EVENTO (junta, laboratorio…)
+ * o BLOQUEAR sin consulta a partir de esa hora. Pocos toques: duración en botones.
+ */
+export function HoraRapida({ fecha, minutos, modo, onListo, demo = false }) {
+  const cierra = horarioDelDia(fecha)?.cierra ?? minutos + 60;
+  const duraciones = [
+    { value: 30, label: "30 min" },
+    { value: 60, label: "1 h" },
+    { value: 90, label: "1 h 30" },
+    { value: 120, label: "2 h" },
+    ...(modo === "evento" ? [{ value: 180, label: "3 h" }] : []),
+    ...(cierra - minutos > 120 ? [{ value: cierra - minutos, label: "Hasta cerrar" }] : []),
+    ...(modo === "bloquear" ? [{ value: "dia", label: "Todo el día" }] : []),
+  ];
+  const [duracion, setDuracion] = useState(60);
+  const [titulo, setTitulo] = useState("");
+  const [motivo, setMotivo] = useState("Sin consulta");
+  const [msg, setMsg] = useState(null);
+  const [pendiente, start] = useTransition();
+  const hasta = duracion === "dia" ? null : Math.min(minutos + duracion, 24 * 60);
+
+  function guardar() {
+    start(async () => {
+      if (modo === "evento" && !titulo.trim()) return setMsg({ tipo: "error", texto: "Escribe qué es (o toca uno de los botones)." });
+      if (demo) return onListo();
+      const r = await crearBloqueoAction(
+        duracion === "dia"
+          ? { tipo: "dia", desde: fecha, motivo }
+          : { tipo: "horas", desde: fecha, horaDesde: formatHora(minutos), horaHasta: formatHora(hasta), motivo: modo === "evento" ? titulo : motivo, evento: modo === "evento" }
+      );
+      if (r?.error) return setMsg({ tipo: "error", texto: r.error });
+      if (r.citas) return setMsg({ tipo: "aviso", texto: `Guardado ✓ Ojo: se encima con ${r.citas} cita${r.citas === 1 ? "" : "s"}.`, cerrar: true });
+      onListo();
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-5 px-5 pb-4">
+      {modo === "evento" ? (
+        <div>
+          <label htmlFor="evento-titulo" className={etiqueta}>
+            ¿Qué es?
+          </label>
+          <input
+            id="evento-titulo"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            maxLength={80}
+            autoComplete="off"
+            autoCapitalize="sentences"
+            placeholder="Ej. Junta con el laboratorio"
+            className={campo}
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {EVENTOS_RAPIDOS.map((t) => (
+              <button key={t} type="button" onClick={() => setTitulo(t)} className={chip(titulo === t)}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <span className={etiqueta}>Motivo</span>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Motivo">
+            {MOTIVOS.map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={motivo === m} onClick={() => setMotivo(m)} className={chip(motivo === m)}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <span className={etiqueta}>¿Cuánto tiempo?</span>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Duración">
+          {duraciones.map((d) => (
+            <button key={d.label} type="button" role="radio" aria-checked={duracion === d.value} onClick={() => setDuracion(d.value)} className={chip(duracion === d.value)}>
+              {d.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[15px] text-[#7a7368]">
+          {duracion === "dia" ? `Todo el ${formatFechaLarga(fecha)}` : `De ${formatHora(minutos)} a ${formatHora(hasta)}`}
+        </p>
+      </div>
+
+      {msg?.cerrar ? (
+        <button type="button" onClick={onListo} className="h-14 rounded-full bg-[#1c1a17] text-[18px] font-semibold text-white">
+          Listo
+        </button>
+      ) : (
+        <button type="button" onClick={guardar} disabled={pendiente} className="h-14 rounded-full bg-[#1c1a17] text-[18px] font-semibold text-white disabled:opacity-50">
+          {pendiente ? "Guardando…" : modo === "evento" ? "Agregar evento" : "Bloquear"}
+        </button>
+      )}
+      {msg && (
+        <p role={msg.tipo === "error" ? "alert" : "status"} className={`text-[16px] font-medium ${msg.tipo === "error" ? "text-[#c0392b]" : "text-[#9a5b16]"}`}>
+          {msg.texto}
+        </p>
+      )}
     </div>
   );
 }

@@ -18,6 +18,11 @@ import {
 import CitaSheet from "./cita-sheet";
 import Pendientes from "./pendientes";
 import { quitarBloqueoAction } from "../actions";
+import Hoja from "../../crm/mensajes/hoja";
+import { HoraRapida } from "./bloquear";
+import { CalendarPlusIcon, ProhibitIcon, UserPlusIcon } from "@phosphor-icons/react";
+
+const EVENTO = { bg: "#e9eef2", barra: "#5b7083" };
 
 const ROW_PX = 56; // alto de cada bloque de 30 min: cómodo para el dedo
 const ROW_MIN_PX = 18; // límite inferior al encoger para que quepa todo
@@ -35,6 +40,17 @@ const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado)
 export default function AgendaDia({ fecha, citas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false, bloqueos = [], demo = false }) {
   const [sheet, setSheet] = useState(null);
   const cerrar = useCallback(() => setSheet(null), []);
+  // Tocar una hora vacía: menú (paciente / evento / bloquear) → `menu`; luego `rapida` o el evento elegido
+  const [menu, setMenu] = useState(null); // { dentista, minutos }
+  const [rapida, setRapida] = useState(null); // { modo: "evento" | "bloquear", minutos }
+  const [verEvento, setVerEvento] = useState(null);
+  const cerrarMenus = useCallback(() => {
+    setMenu(null);
+    setRapida(null);
+    setVerEvento(null);
+  }, []);
+  const eventos = bloqueos.filter((b) => b.evento);
+  const franjas = bloqueos.filter((b) => !b.evento);
 
   const horario = horarioDelDia(fecha);
   // El rango visible cubre el horario y cualquier cita fuera de él (urgencias).
@@ -58,7 +74,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
           Domingo: consultorio cerrado. Puedes agendar una urgencia si hace falta.
         </p>
       )}
-      {bloqueos.map((b) => (
+      {franjas.map((b) => (
         <AvisoBloqueo key={b.id} b={b} soloLectura={soloLectura} demo={demo} />
       ))}
 
@@ -113,7 +129,9 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
                   type="button"
                   disabled={soloLectura}
                   aria-label={`Nueva cita ${d.label} ${formatHora(m)}`}
-                  onClick={() => setSheet({ modo: "nueva", dentista: d.value, minutos: m })}
+                  onClick={() =>
+                    preseleccion ? setSheet({ modo: "nueva", dentista: d.value, minutos: m }) : setMenu({ dentista: d.value, minutos: m })
+                  }
                   style={{ height: rowPx.alto }}
                   className={`block w-full border-b ${
                     m % 60 === 0 ? "border-[#1c1a17]/[0.10]" : "border-[#1c1a17]/[0.05]"
@@ -122,7 +140,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
               ))}
 
               {/* Franjas que el asistente no ofrece: comida del doctor y bloqueos (ella sí puede agendar encima) */}
-              {[{ id: "comida", desde: COMIDA.desde, hasta: COMIDA.hasta, motivo: "Comida" }, ...bloqueos].map((f) => {
+              {[{ id: "comida", desde: COMIDA.desde, hasta: COMIDA.hasta, motivo: "Comida" }, ...franjas].map((f) => {
                 const desde = Math.max(f.desde, abre);
                 const hasta = Math.min(f.hasta, cierra);
                 if (hasta <= desde || !horario) return null;
@@ -137,6 +155,10 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
                   </div>
                 );
               })}
+
+              {eventos.map((e) => (
+                <EventoBloque key={e.id} e={e} abre={abre} rowPx={rowPx.alto} onClick={soloLectura ? undefined : () => setVerEvento(e)} />
+              ))}
 
               {suyas.map((c) => (
                 <CitaBloque
@@ -154,6 +176,50 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
         })}
       </div>
       </div>
+
+      <Hoja abierta={Boolean(menu)} onCerrar={cerrarMenus} titulo={menu ? `${formatHora(menu.minutos)} · ¿Qué quieres agregar?` : ""}>
+        <div className="flex flex-col gap-2 px-5 pb-3">
+          {[
+            { icono: UserPlusIcon, titulo: "Agendar paciente", texto: "Nueva cita", accion: () => (setSheet({ modo: "nueva", dentista: menu.dentista, minutos: menu.minutos }), setMenu(null)) },
+            { icono: CalendarPlusIcon, titulo: "Agregar evento", texto: "Junta, laboratorio, proveedor, trámite…", accion: () => (setRapida({ modo: "evento", minutos: menu.minutos }), setMenu(null)) },
+            { icono: ProhibitIcon, titulo: "Bloquear horario", texto: "Sin consulta: el asistente no agenda aquí", accion: () => (setRapida({ modo: "bloquear", minutos: menu.minutos }), setMenu(null)) },
+          ].map(({ icono: Icono, titulo, texto, accion }) => (
+            <button key={titulo} type="button" onClick={accion} className="flex min-h-16 items-center gap-4 rounded-[20px] border-2 border-[#1c1a17]/10 bg-white px-4 py-3 text-left active:bg-[#f5f1ea]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f2efe9] text-[#8a6d3f]">
+                <Icono size={24} />
+              </span>
+              <span>
+                <span className="block text-[18px] font-semibold text-[#1c1a17]">{titulo}</span>
+                <span className="block text-[15px] text-[#7a7368]">{texto}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Hoja>
+
+      <Hoja abierta={Boolean(rapida)} onCerrar={cerrarMenus} titulo={rapida?.modo === "evento" ? `Evento · ${formatHora(rapida.minutos)}` : rapida ? `Bloquear desde las ${formatHora(rapida.minutos)}` : ""}>
+        {rapida && <HoraRapida fecha={fecha} minutos={rapida.minutos} modo={rapida.modo} onListo={cerrarMenus} demo={demo} />}
+      </Hoja>
+
+      <Hoja abierta={Boolean(verEvento)} onCerrar={cerrarMenus} titulo={verEvento?.motivo || ""}>
+        {verEvento && (
+          <div className="flex flex-col gap-4 px-5 pb-3">
+            <p className="text-[17px] text-[#5b544a]">
+              {formatHora(verEvento.desde)} a {formatHora(verEvento.hasta)} · el asistente no agenda en este horario.
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!demo) await quitarBloqueoAction(verEvento.id);
+                cerrarMenus();
+              }}
+              className="h-14 rounded-full bg-[#f2efe9] text-[17px] font-semibold text-[#c0392b]"
+            >
+              Quitar evento
+            </button>
+          </div>
+        )}
+      </Hoja>
 
       {sheet && (
         <CitaSheet
@@ -254,6 +320,10 @@ function Leyenda() {
         </div>
       ))}
       <div className="flex items-center gap-2.5">
+        <span aria-hidden className="h-5 w-7 shrink-0 rounded border border-l-4 border-[#1c1a17]/[0.08]" style={{ background: EVENTO.bg, borderLeftColor: EVENTO.barra }} />
+        <span className="text-[13px] font-normal text-[#3d372f]">Evento</span>
+      </div>
+      <div className="flex items-center gap-2.5">
         <span aria-hidden className="flex h-5 w-7 shrink-0 items-center justify-center">
           <span className="h-2 w-2 rounded-full bg-[#c0392b]" />
         </span>
@@ -306,6 +376,28 @@ function useAltoDeFila(ajustar, filas) {
   }, [ajustar, filas]);
 
   return { ref, alto };
+}
+
+/** Evento de la Dra. Gaby (junta, laboratorio…) como bloque en la columna. */
+function EventoBloque({ e, abre, rowPx, onClick }) {
+  const top = ((e.desde - abre) / SLOT_MIN) * rowPx;
+  const height = Math.max(((e.hasta - e.desde) / SLOT_MIN) * rowPx - 4, Math.min(28, rowPx - 2));
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      style={{ top: top + 2, height, left: 4, right: 4, background: EVENTO.bg, borderLeftColor: EVENTO.barra }}
+      className="absolute overflow-hidden rounded-lg border border-l-4 border-[#1c1a17]/[0.08] py-1 pl-2.5 pr-2 text-left text-[#1c1a17]"
+    >
+      <p className="truncate text-[14px] font-semibold md:text-[15px]">{e.motivo}</p>
+      {height >= 44 && (
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] opacity-70 md:text-[12px]">
+          {formatHora(e.desde)} a {formatHora(e.hasta)} · Evento
+        </p>
+      )}
+    </Tag>
+  );
 }
 
 /** Aviso arriba de la agenda cuando el día (o unas horas) está bloqueado. */

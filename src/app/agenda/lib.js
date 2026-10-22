@@ -100,7 +100,7 @@ const minutosAhora = (now = new Date()) => {
 };
 
 /**
- * Bloqueos (tabla `bloqueos`) que tocan un día → [{ id, desde, hasta, motivo, todoElDia }]
+ * Bloqueos (tabla `bloqueos`) que tocan un día → [{ id, desde, hasta, motivo, evento, todoElDia }]
  * en minutos. Un bloqueo de todo el día cubre el horario completo.
  */
 export function bloqueosDelDia(bloqueos, fecha) {
@@ -109,7 +109,7 @@ export function bloqueosDelDia(bloqueos, fecha) {
     .filter((b) => b.desde_fecha <= fecha && b.hasta_fecha >= fecha)
     .map((b) => {
       const todoElDia = b.desde_min == null;
-      return { id: b.id, motivo: b.motivo, todoElDia, desde: todoElDia ? h.abre : b.desde_min, hasta: todoElDia ? h.cierra : b.hasta_min };
+      return { id: b.id, motivo: b.motivo, evento: Boolean(b.evento), todoElDia, desde: todoElDia ? h.abre : b.desde_min, hasta: todoElDia ? h.cierra : b.hasta_min };
     });
 }
 

@@ -1,5 +1,7 @@
--- Días u horas sin consulta (vacaciones, congresos, días festivos).
--- La Dra. Gaby los pone desde la agenda (Calendario → Bloquear). El
+-- Días u horas sin consulta (vacaciones, congresos, días festivos) y
+-- EVENTOS de la Dra. Gaby (junta, laboratorio, proveedor…: `evento` = true,
+-- con nombre en `motivo`, siempre con horas). Se ponen desde la agenda
+-- (tocar una hora vacía, o Calendario → Bloquear). El
 -- asistente y los botones de "Mi cita" no ofrecen esos horarios; ella sí
 -- puede agendar encima a mano. Correr después de 20261022100000_recordatorios.sql.
 
@@ -12,6 +14,8 @@ create table if not exists public.bloqueos (
   desde_min int check (desde_min between 0 and 1440),
   hasta_min int check (hasta_min between 0 and 1440),
   motivo text not null default 'Sin consulta' check (length(motivo) between 1 and 80),
+  evento boolean not null default false,
+  check (not evento or desde_min is not null),
   check (hasta_fecha >= desde_fecha),
   check (
     (desde_min is null and hasta_min is null)
