@@ -26,7 +26,7 @@ export const PLANTILLAS = [
     nombre: "seguimiento_consulta",
     titulo: "Seguimiento",
     texto:
-      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo para dar seguimiento a su consulta. Responda este mensaje si tiene alguna duda o quiere agendar.",
+      "Hola {{1}}, ¿cómo se ha sentido después de su consulta con el Dr. Felipe? 😊 Si tiene cualquier duda o molestia, aquí estamos; puede responder este mensaje y con gusto le atendemos.",
     campos: ["Nombre del paciente"],
   },
 ];
@@ -40,17 +40,17 @@ export const PLANTILLAS_SISTEMA = [
     nombre: "cita_reagendar",
     titulo: "Pedir que cambie su cita (bloqueo)",
     texto:
-      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto no podremos atenderle el {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la Dra. Gaby.",
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto no podremos atenderle el {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la asistente del Dr. Felipe.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
+    botones: ["Elegir otro horario", "Hablar con la asistente del doctor"],
   },
   {
     nombre: "cita_cancelada",
     titulo: "Avisar que se canceló su cita (bloqueo)",
     texto:
-      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto tuvimos que cancelar su cita del {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la Dra. Gaby.",
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto tuvimos que cancelar su cita del {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la asistente del Dr. Felipe.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
+    botones: ["Elegir otro horario", "Hablar con la asistente del doctor"],
   },
   {
     nombre: "cita_agendada",
@@ -64,15 +64,15 @@ export const PLANTILLAS_SISTEMA = [
     nombre: "cita_falto",
     titulo: "Cuando no vino a su cita",
     texto:
-      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Notamos que no pudo venir a su cita del {{2}} a las {{3}}. Si gusta, toque un botón para elegir otro horario o hablar con la Dra. Gaby.",
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Notamos que no pudo venir a su cita del {{2}} a las {{3}}. Si gusta, toque un botón para elegir otro horario o hablar con la asistente del Dr. Felipe.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
+    botones: ["Elegir otro horario", "Hablar con la asistente del doctor"],
   },
   {
     nombre: "resena_google",
     titulo: "Pedir opinión en Google (al terminar su tratamiento)",
     texto:
-      "Hola {{1}}, gracias por su confianza en el consultorio del Dr. Felipe de Jesús Ramos Sotelo. Si quedó contento con su atención, nos ayudaría mucho que compartiera su opinión en Google: {{2}}",
+      "Hola {{1}}, gracias por su confianza en el consultorio del Dr. Felipe de Jesús Ramos Sotelo. Si quedó contento con su atención, nos ayudaría mucho que compartiera su opinión en Google: {{2}} ¡Muchas gracias!",
     campos: ["Nombre del paciente", "Link para dejar la opinión"],
     botones: [],
   },
