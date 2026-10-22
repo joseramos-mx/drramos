@@ -72,7 +72,7 @@ export const PLANTILLAS_SISTEMA = [
     nombre: "resena_google",
     titulo: "Pedir opinión en Google (al terminar su tratamiento)",
     texto:
-      "Hola {{1}}, gracias por su confianza en el consultorio del Dr. Felipe de Jesús Ramos Sotelo. Si quedó contento con su atención, nos ayudaría mucho que compartiera su opinión en Google: {{2}}",
+      "Hola {{1}}, gracias por su confianza en el consultorio del Dr. Felipe de Jesús Ramos Sotelo. Si quedó contento con su atención, nos ayudaría mucho que compartiera su opinión en Google: {{2}} ¡Muchas gracias!",
     campos: ["Nombre del paciente", "Link para dejar la opinión"],
     botones: [],
   },
