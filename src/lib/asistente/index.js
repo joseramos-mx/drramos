@@ -22,6 +22,7 @@ import { INSTRUCCIONES } from "./conocimiento";
 import { armar, catalogo, RESPUESTAS, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
+import { enviarMenuCita } from "@/lib/mi-cita";
 import {
   SLOT_MIN,
   esFechaValida,
@@ -45,7 +46,7 @@ const MAX_RESPUESTAS_HORA = 15;
 const MAX_CARACTERES_MENSAJE = 1500;
 
 const ORIGENES = ["facebook", "instagram", "google", "recomendacion", "ya_paciente", "otro"];
-const TERMINALES = new Set(["enviar_respuestas_aprobadas", "responder_libre", "pasar_a_dra_gaby"]);
+const TERMINALES = new Set(["enviar_respuestas_aprobadas", "responder_libre", "pasar_a_dra_gaby", "mostrar_opciones_de_cita"]);
 
 // Instrucciones + catálogo (con los textos que editó la Dra. Gaby). Van en caché:
 // sólo cambian cuando ella edita una respuesta.
@@ -120,9 +121,16 @@ const HERRAMIENTAS = [
     strict: true,
   },
   {
+    name: "mostrar_opciones_de_cita",
+    description:
+      "Si el paciente quiere cambiar, cancelar o confirmar su cita próxima, o pregunta por ella: le llegan botones para hacerlo él mismo (Cambiar / Cancelar / Hablar con la Dra. Gaby). El sistema manda el mensaje.",
+    input_schema: { type: "object", properties: {}, required: [], additionalProperties: false },
+    strict: true,
+  },
+  {
     name: "pasar_a_dra_gaby",
     description:
-      "Pasa la conversación a la Dra. Gaby (le suena el celular): urgencias, quejas, preguntas médicas, pacientes en tratamiento, cambios o cancelaciones de cita, quiere hablar con una persona, o no puedes contestar con certeza. El sistema manda solo la despedida aprobada.",
+      "Pasa la conversación a la Dra. Gaby (le suena el celular): urgencias, quejas, preguntas médicas, pacientes en tratamiento, cambios o cancelaciones de cita (si no tienes mostrar_opciones_de_cita), quiere hablar con una persona, o no puedes contestar con certeza. El sistema manda solo la despedida aprobada.",
     input_schema: {
       type: "object",
       properties: {
@@ -348,7 +356,7 @@ async function avisarSiAgendaMucho(admin) {
   }
 }
 
-async function pasarAHumano(admin, paciente, telefono, { motivo, urgente }) {
+export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente }) {
   const etiquetas = new Set(paciente.etiquetas || []);
   if (urgente) etiquetas.add("urgencia");
   await admin
@@ -370,8 +378,10 @@ async function pasarAHumano(admin, paciente, telefono, { motivo, urgente }) {
  * Decide la respuesta con el modelo (aprobadas → propia → Dra. Gaby).
  * Devuelve { tipo: "aprobada" | "libre" | "humano", texto, ids?, urgente?, motivo?, acciones }.
  */
-async function decidir(client, admin, { paciente, messages, contexto, puedeAgendar, textos, sistema }) {
-  const tools = puedeAgendar ? HERRAMIENTAS : HERRAMIENTAS.filter((t) => t.name !== "agendar_valoracion");
+async function decidir(client, admin, { paciente, messages, contexto, puedeAgendar, tieneCita = false, textos, sistema }) {
+  const tools = HERRAMIENTAS.filter(
+    (t) => (t.name !== "agendar_valoracion" || puedeAgendar) && (t.name !== "mostrar_opciones_de_cita" || (puedeAgendar && tieneCita))
+  );
   const acciones = [];
   const consultados = new Map(); // "lunes 26 de octubre" → horas libres que el modelo sí vio
   let agendada = null;
@@ -399,6 +409,7 @@ async function decidir(client, admin, { paciente, messages, contexto, puedeAgend
     // Si pidió pasar a la Dra. Gaby, eso manda
     const humano = usos.find((u) => u.name === "pasar_a_dra_gaby");
     if (humano) return { tipo: "humano", motivo: humano.input.motivo, urgente: Boolean(humano.input.urgente), acciones };
+    if (usos.some((u) => u.name === "mostrar_opciones_de_cita")) return { tipo: "menu_cita", acciones };
 
     const hayAgenda = usos.some((u) => !TERMINALES.has(u.name));
     const resultados = [];
@@ -512,7 +523,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
 
   const { data: proximas } = await admin
     .from("citas")
-    .select("inicio, tipo")
+    .select("id, inicio, tipo")
     .eq("paciente_id", paciente.id)
     .gte("inicio", new Date().toISOString())
     .neq("estado", "cancelada")
@@ -524,7 +535,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
     proximas?.length
-      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby.`
+      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa mostrar_opciones_de_cita." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
@@ -538,7 +549,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const client = new Anthropic();
   let d;
   try {
-    d = await decidir(client, admin, { paciente, messages: [...messages], contexto, puedeAgendar: modo === "automatico", textos, sistema });
+    d = await decidir(client, admin, { paciente, messages: [...messages], contexto, puedeAgendar: modo === "automatico", tieneCita: Boolean(proximas?.length), textos, sistema });
   } catch (e) {
     await registrar(admin, telefono, "error", { mensaje: String(e?.message || e).slice(0, 500) });
     d = { tipo: "humano", motivo: "error del asistente", acciones: [] };
@@ -559,6 +570,11 @@ export async function atenderConAsistente(admin, telefono, waId) {
 
   if (d.tipo === "nada") return registrar(admin, telefono, "omitido", { acciones: d.acciones });
   if ((await ultimoDelPaciente()) !== waId) return registrar(admin, telefono, "omitido", { motivo: "llegó otro mensaje", decision: d });
+  if (d.tipo === "menu_cita" && proximas?.length) {
+    const envio = await enviarMenuCita(admin, telefono, paciente, proximas[0]);
+    return registrar(admin, telefono, envio.error ? "error" : "menu_cita", { envio: envio.error || null });
+  }
+  if (d.tipo === "menu_cita") d = { ...d, tipo: "humano", motivo: "pregunta por una cita" };
 
   let texto;
   if (d.tipo === "humano") {
@@ -649,7 +665,7 @@ function agendaDePrueba({ llena = false } = {}) {
  * Devuelve la decisión final (después de filtro y verificador), lo que
  * agendó y los tokens que gastó.
  */
-export async function probarConversacion({ conversacion, agendaLlena = false, nombre = null, modo = "automatico", textos = textosEfectivos() }) {
+export async function probarConversacion({ conversacion, agendaLlena = false, citaProxima = false, nombre = null, modo = "automatico", textos = textosEfectivos() }) {
   const uso = { entrada: 0, salida: 0, cache: 0, llamadas: 0 };
   const real = new Anthropic();
   const client = {
@@ -678,7 +694,9 @@ export async function probarConversacion({ conversacion, agendaLlena = false, no
   const contexto = [
     `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
     `Nombre registrado del paciente: ${nombre || "todavía no lo sabemos"}.`,
-    "No tiene citas próximas.",
+    citaProxima
+      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa mostrar_opciones_de_cita.`
+      : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
     .filter(Boolean)
@@ -691,6 +709,7 @@ export async function probarConversacion({ conversacion, agendaLlena = false, no
       messages: historial(filas),
       contexto,
       puedeAgendar: modo === "automatico",
+      tieneCita: citaProxima,
       textos,
       sistema,
     });
@@ -703,6 +722,11 @@ export async function probarConversacion({ conversacion, agendaLlena = false, no
     d.veredicto = problema ? { aprobado: false, motivo: problema } : await verificar(client, d.texto, ultimos, sistema).catch(() => ({ aprobado: false, motivo: "falló el verificador" }));
     if (!d.veredicto.aprobado) d = { ...d, tipo: "humano", motivo: `respuesta propia rechazada: ${d.veredicto.motivo}`, borrador: d.texto };
   }
-  const texto = d.tipo === "humano" ? textos[d.urgente ? "pasar_urgencia" : "pasar_dra_gaby"] : d.texto || "";
+  const texto =
+    d.tipo === "humano"
+      ? textos[d.urgente ? "pasar_urgencia" : "pasar_dra_gaby"]
+      : d.tipo === "menu_cita"
+        ? "[Botones de su cita: Cambiar mi cita · Cancelar mi cita · Hablar con Dra. Gaby]"
+        : d.texto || "";
   return { tipo: d.tipo, ids: d.ids || [], urgente: Boolean(d.urgente), motivo: d.motivo || null, texto, borrador: d.borrador || null, agendadas, acciones: d.acciones || [], uso };
 }

@@ -5,6 +5,7 @@ import { codigoEnMensaje } from "../../crm/resultados/fuentes";
 import { bajarMedia } from "@/lib/whatsapp";
 import { avisarMensajeNuevo, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 import { atenderConAsistente } from "@/lib/asistente";
+import { atenderBotonCita, leerBoton } from "@/lib/mi-cita";
 
 /**
  * Buzón de WhatsApp: recibe los webhooks de la Cloud API de Meta
@@ -87,6 +88,7 @@ export async function POST(request) {
 
   let guardados = 0;
   const nuevosPorTel = new Map(); // telefono → { pacienteId, waId } del último mensaje del paciente
+  const botonesCita = []; // toques de botones de "Mi cita" (cambiar/cancelar/confirmar)
   for (const m of mensajes) {
     try {
       const pacienteId = await pacienteDe(supabase, m);
@@ -117,10 +119,18 @@ export async function POST(request) {
         const ruta = archivo && (await guardarMedia(supabase, m.telefono, m.wa_id, archivo.buffer, archivo.mime));
         if (ruta) await supabase.from("whatsapp_mensajes").update({ media_ruta: ruta }).eq("id", nuevos[0].id);
       }
-      if (m.via === "paciente") nuevosPorTel.set(m.telefono, { pacienteId, waId: m.wa_id });
+      if (m.via === "paciente" && leerBoton(m.respuesta)) {
+        // Tocó un botón de "Mi cita": se resuelve sin el asistente
+        botonesCita.push({ telefono: m.telefono, respuesta: m.respuesta });
+        nuevosPorTel.delete(m.telefono);
+      } else if (m.via === "paciente") nuevosPorTel.set(m.telefono, { pacienteId, waId: m.wa_id });
     } catch (e) {
       console.error("[whatsapp] mensaje", m.wa_id, e?.message || e);
     }
+  }
+
+  for (const { telefono, respuesta } of botonesCita) {
+    after(() => atenderBotonCita(supabaseServicio(), telefono, respuesta).catch((e) => console.error("[mi-cita]", e)));
   }
 
   const modo = await modoAsistente(supabase);

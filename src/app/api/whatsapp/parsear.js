@@ -33,6 +33,13 @@ export function textoDe(m) {
   }
 }
 
+/** Qué botón u opción tocó el paciente (id/payload), o null. */
+export function respuestaDe(m) {
+  if (m?.type === "button") return m.button?.payload || m.button?.text || null;
+  if (m?.type === "interactive") return m.interactive?.button_reply?.id || m.interactive?.list_reply?.id || null;
+  return null;
+}
+
 /** Foto, audio, video, documento o sticker: { id, mime } o null. */
 export function mediaDe(m) {
   const tipos = ["image", "audio", "video", "document", "sticker"];
@@ -79,6 +86,7 @@ export function parsearWebhook(body) {
           nombre_contacto: nombres[diezDigitos(m.from)] || null,
           ctwa_clid: m.referral?.ctwa_clid || null,
           referencia: m.referral || null,
+          respuesta: respuestaDe(m),
           crudo: m,
         });
       }

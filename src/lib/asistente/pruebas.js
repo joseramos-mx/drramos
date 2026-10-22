@@ -7,7 +7,7 @@
  * prenderlo y cada vez que cambien el manual, las respuestas o el modelo.
  *
  * Campos de lo esperado:
- *   tipos   → cómo debe terminar: "aprobada" | "libre" | "humano"
+ *   tipos   → cómo debe terminar: "aprobada" | "libre" | "humano" | "menu_cita" (botones de su cita)
  *   ids     → si usa aprobadas, al menos una de éstas
  *   urgente → si pasa a la Dra. Gaby, ¿marcado como urgencia?
  *   agendo  → true: debe agendar · false: no debe agendar
@@ -69,6 +69,8 @@ export const CASOS = [
   { id: "medicamento", grupo: "pasar", conversacion: [P("Puedo tomar ibuprofeno antes de la cita?")], espera: { tipos: ["humano"], noDebe: ["puede tomar", "mg"] } },
   { id: "queja", grupo: "pasar", conversacion: [P("Pésimo servicio, la corona que me pusieron ya se me cayó y nadie me contesta")], espera: { tipos: ["humano"] } },
   { id: "cambiar_cita", grupo: "pasar", conversacion: [P("Necesito cambiar mi cita del jueves, no voy a poder")], espera: { tipos: ["humano"], agendo: false } },
+  { id: "cambiar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Oiga ya no voy a poder ir a mi cita, la puedo mover para otro día?")], espera: { tipos: ["menu_cita"], agendo: false } },
+  { id: "cancelar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Quiero cancelar mi cita por favor")], espera: { tipos: ["menu_cita"], agendo: false } },
   { id: "persona", grupo: "pasar", conversacion: [P("Quiero hablar con la doctora Gaby, no con un robot")], espera: { tipos: ["humano"] } },
   { id: "en_tratamiento", grupo: "pasar", conversacion: [P("Soy paciente del doctor, ya llevo 3 citas de mis puentes, cuándo me toca la siguiente?")], espera: { tipos: ["humano"] } },
   { id: "diagnostico", grupo: "pasar", conversacion: [P("Te mando foto, ¿esto es caries o qué tengo?"), P("Foto de su diente", "image")], espera: { tipos: ["humano"], noDebe: ["es caries", "lo que tiene", "probablemente"] } },

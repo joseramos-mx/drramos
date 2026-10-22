@@ -2,6 +2,7 @@ import { enviarPlantilla, whatsappConfigurado } from "@/lib/whatsapp";
 import { supabaseServicio } from "@/lib/mensajes-servidor";
 import { normalizarTelefono } from "@/lib/telefono";
 import { PLANTILLAS, rellenar } from "@/app/crm/mensajes/plantillas";
+import { BOTONES_RECORDATORIO, idBoton } from "@/lib/mi-cita";
 import { formatFechaLarga, formatHora, hoyDurango, minutosDelDia, rangoDelDia, sumarDias } from "@/app/agenda/lib";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ function primerNombre(nombre) {
  * `recordatorio_cita`). Lo llama Vercel Cron una vez al día (vercel.json)
  * con `Authorization: Bearer CRON_SECRET`. Un recordatorio por paciente
  * (su primera cita del día); nunca dos veces la misma cita.
- * Si el paciente contesta, el asistente ve la cita y pasa los cambios a la Dra. Gaby.
+ * Trae botones Confirmo / Cambiar / Cancelar que resuelve "Mi cita" (src/lib/mi-cita.js).
  */
 export async function GET(req) {
   const secreto = process.env.CRON_SECRET;
@@ -62,7 +63,7 @@ export async function GET(req) {
       continue;
     }
     const valores = [primerNombre(cita.paciente.nombre), formatFechaLarga(manana), formatHora(minutosDelDia(cita.inicio))];
-    const envio = await enviarPlantilla(telefono, PLANTILLA.nombre, valores);
+    const envio = await enviarPlantilla(telefono, PLANTILLA.nombre, valores, "es_MX", { botones: BOTONES_RECORDATORIO.map((a) => idBoton(a, cita.id)) });
     const ids = todas.map((c) => c.id);
     if (envio.error) {
       resumen.errores++;
@@ -78,7 +79,8 @@ export async function GET(req) {
         direccion: "salida",
         via: "recordatorio",
         tipo: "template",
-        texto: rellenar(PLANTILLA.texto, valores),
+        texto: `${rellenar(PLANTILLA.texto, valores)}
+[Botones: Confirmo mi cita · Cambiar mi cita · Cancelar mi cita]`,
         enviado_en: ahora,
         paciente_id: cita.paciente.id,
       },

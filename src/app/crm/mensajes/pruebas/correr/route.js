@@ -24,6 +24,6 @@ export async function POST(req) {
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "Falta la llave ANTHROPIC_API_KEY." });
 
   const { data: editadas } = await supabase.from("asistente_respuestas").select("id, texto");
-  const r = await probarConversacion({ conversacion: caso.conversacion, agendaLlena: caso.agendaLlena, textos: textosEfectivos(editadas || []) });
+  const r = await probarConversacion({ conversacion: caso.conversacion, agendaLlena: caso.agendaLlena, citaProxima: caso.citaProxima, textos: textosEfectivos(editadas || []) });
   return Response.json({ ...calificar(caso, r), resultado: r });
 }

@@ -17,8 +17,10 @@ export const PLANTILLAS = [
     nombre: "recordatorio_cita",
     titulo: "Recordatorio de cita",
     texto:
-      "Hola {{1}}, le recordamos su cita en el consultorio del Dr. Felipe de Jesús Ramos Sotelo el {{2}} a las {{3}}. Si necesita cambiarla, responda este mensaje.",
+      "Hola {{1}}, le recordamos su cita en el consultorio del Dr. Felipe de Jesús Ramos Sotelo el {{2}} a las {{3}}. Si necesita cambiarla, toque un botón o responda este mensaje.",
     campos: ["Nombre del paciente", "Día (ej. jueves 23 de octubre)", "Hora (ej. 10:30)"],
+    // Respuestas rápidas, en este orden, idénticas en WhatsApp Manager
+    botones: ["Confirmo mi cita", "Cambiar mi cita", "Cancelar mi cita"],
   },
   {
     nombre: "seguimiento_consulta",

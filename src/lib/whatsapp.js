@@ -145,7 +145,7 @@ export async function enviarImagen(telefono, buffer, mime, pie) {
  * escribirle a alguien que no ha escrito, o pasadas 24 h). `params` son
  * los {{1}}, {{2}}… del cuerpo, en orden. Devuelve { ok, wa_id } o { error }.
  */
-export async function enviarPlantilla(telefono, nombre, params = [], idioma = "es_MX") {
+export async function enviarPlantilla(telefono, nombre, params = [], idioma = "es_MX", { botones = [] } = {}) {
   if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
   const to = normalizarTelefono(telefono);
   if (!to) return { error: "Teléfono inválido." };
@@ -153,6 +153,11 @@ export async function enviarPlantilla(telefono, nombre, params = [], idioma = "e
   if (params.length) {
     template.components = [{ type: "body", parameters: params.map((t) => ({ type: "text", text: String(t).slice(0, 200) })) }];
   }
+  // Botones de respuesta rápida: lo que regresa el webhook al tocarlos (p. ej. "cita|cambiar|<id>")
+  botones.forEach((payload, i) => {
+    template.components = template.components || [];
+    template.components.push({ type: "button", sub_type: "quick_reply", index: String(i), parameters: [{ type: "payload", payload }] });
+  });
   try {
     const res = await fetch(graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`), {
       method: "POST",
@@ -210,4 +215,58 @@ export async function enviarArchivo(telefono, tipo, link, { pie, nombre, voz = f
     console.error("[whatsapp] envío archivo", e);
     return { error: "No se pudo contactar a WhatsApp." };
   }
+}
+
+/** Manda un mensaje interactivo (botones o lista). Sólo dentro de la ventana de 24 h. */
+async function enviarInteractivo(telefono, interactive) {
+  if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
+  const to = normalizarTelefono(telefono);
+  if (!to) return { error: "Teléfono inválido." };
+  try {
+    const res = await fetch(graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`), {
+      method: "POST",
+      headers: { ...auth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "interactive", interactive }),
+      cache: "no-store",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) {
+      console.error("[whatsapp] interactivo", json.error?.code, json.error?.message);
+      return { error: "WhatsApp no aceptó el mensaje." };
+    }
+    return { ok: true, wa_id: json.messages?.[0]?.id || null, to };
+  } catch (e) {
+    console.error("[whatsapp] interactivo", e);
+    return { error: "No se pudo contactar a WhatsApp." };
+  }
+}
+
+/** Hasta 3 botones: [{ id, titulo }] (título máx. 20 letras). */
+export function enviarBotones(telefono, cuerpo, botones) {
+  return enviarInteractivo(telefono, {
+    type: "button",
+    body: { text: String(cuerpo).slice(0, 1024) },
+    action: { buttons: botones.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id.slice(0, 256), title: b.titulo.slice(0, 20) } })) },
+  });
+}
+
+/** Lista para elegir (hasta 10 filas): [{ id, titulo, descripcion? }]. `boton` = texto del botón que la abre. */
+export function enviarLista(telefono, cuerpo, boton, filas, tituloSeccion = "Opciones") {
+  return enviarInteractivo(telefono, {
+    type: "list",
+    body: { text: String(cuerpo).slice(0, 1024) },
+    action: {
+      button: boton.slice(0, 20),
+      sections: [
+        {
+          title: tituloSeccion.slice(0, 24),
+          rows: filas.slice(0, 10).map((f) => ({
+            id: f.id.slice(0, 200),
+            title: f.titulo.slice(0, 24),
+            ...(f.descripcion ? { description: f.descripcion.slice(0, 72) } : {}),
+          })),
+        },
+      ],
+    },
+  });
 }
