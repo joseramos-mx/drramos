@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WhatsappLogo, ArrowUp } from "@phosphor-icons/react";
+import { waConsultorio } from "@/lib/consultorio";
 
 export default function FloatingActions({
   showBadge = true,          // muestra el badge rojo con "1"
@@ -18,9 +19,7 @@ export default function FloatingActions({
 
   const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  const waHref = `https://wa.me/526182066760?text=${encodeURIComponent(
-    whatsappText
-  )}`;
+  const waHref = waConsultorio(whatsappText);
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3">

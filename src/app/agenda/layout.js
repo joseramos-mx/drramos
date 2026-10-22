@@ -1,8 +1,8 @@
 import CrmLayout from "../crm/layout";
 
 /**
- * La agenda usa las mismas fuentes y fondo que el CRM (y que la
- * landing /diseno-sonrisa). No se indexa.
+ * La agenda es parte de la app de la Dra. Gaby (junto con "Mensajes"):
+ * mismo tema claro, letra grande y menú de abajo. No se indexa.
  */
 export const metadata = {
   title: { absolute: "Agenda | Dr. Felipe Ramos" },
@@ -14,4 +14,12 @@ export const metadata = {
   },
 };
 
-export default CrmLayout;
+export const viewport = { themeColor: "#ffffff" };
+
+export default function AgendaLayout({ children }) {
+  return (
+    <CrmLayout>
+      <div className="min-h-[100dvh] bg-[#f7f5f1] text-[#1c1a17]">{children}</div>
+    </CrmLayout>
+  );
+}

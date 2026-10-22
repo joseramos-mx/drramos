@@ -46,6 +46,8 @@ export default function CierreWizard({ cita, onDone }) {
     pagadoMonto: montoInicial(cita.pagado_monto),
   });
   const [paso, setPaso] = useState(soloPalomita ? "cotizado" : completa ? "resumen" : "estado");
+  // Si no vino: mandarle mensaje con botones para elegir otro horario
+  const [avisarFalto, setAvisarFalto] = useState(true);
   const [marcando, startMarcar] = useTransition();
   const [errorMarcar, setErrorMarcar] = useState(null);
 
@@ -67,6 +69,8 @@ export default function CierreWizard({ cita, onDone }) {
   const vino = r.estado === "asistio";
 
   const pasos = listaPasos(r);
+  // Antes de contestar "¿vino?" se cuenta el camino largo ("sí vino"), no "1 de 1"
+  const totalPasos = listaPasos(r.estado ? r : { ...r, estado: "asistio" }).length - 1;
   const idx = Math.max(0, pasos.indexOf(paso));
   const progreso = ((idx + 1) / pasos.length) * 100;
 
@@ -94,6 +98,7 @@ export default function CierreWizard({ cita, onDone }) {
     const fd = new FormData();
     fd.set("id", cita.id);
     fd.set("estado", r.estado);
+    if (r.estado === "no_asistio" && avisarFalto) fd.set("avisar_falto", "1");
     if (vino) {
       if (r.cotizado && r.cotizado !== NADA) fd.append("cotizado", r.cotizado);
       if (r.cotizadoMonto && r.cotizado !== NADA) fd.set("cotizado_monto", r.cotizadoMonto);
@@ -104,17 +109,17 @@ export default function CierreWizard({ cita, onDone }) {
   }
 
   return (
-    <div className="border-t border-white/[0.06] pt-6">
+    <div className="border-t border-[#1c1a17]/[0.06] pt-6">
       {/* Barra de avance */}
-      <div className="h-[2px] w-full bg-white/[0.08]">
+      <div className="h-[2px] w-full bg-[#1c1a17]/[0.08]">
         <motion.div
           animate={{ width: `${progreso}%` }}
           transition={{ duration: 0.5, ease: EASE }}
           className="h-full bg-[#b89968]"
         />
       </div>
-      <p className="mt-5 font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.24em] text-[#b89968]">
-        {paso === "resumen" ? "Revisa y guarda" : `Paso ${idx + 1} de ${pasos.length - 1}`}
+      <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.24em] text-[#8a6d3f]">
+        {paso === "resumen" ? "Revisa y guarda" : `Paso ${idx + 1} de ${totalPasos}`}
       </p>
 
       <AnimatePresence mode="wait">
@@ -142,12 +147,12 @@ export default function CierreWizard({ cita, onDone }) {
                 type="button"
                 onClick={soloMarcarVino}
                 disabled={marcando}
-                className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 border border-dashed border-[#34d399]/60 px-5 font-[family-name:var(--font-albert)] text-[15px] text-[#f5f1ea] transition-colors hover:bg-[#34d399]/[0.08] disabled:opacity-60"
+                className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 border border-dashed border-[#1f8a5b]/60 px-5 text-[15px] text-[#1c1a17] transition-colors hover:bg-[#1f8a5b]/[0.08] disabled:opacity-60"
               >
-                <CheckIcon size={18} weight="bold" className="text-[#34d399]" />
+                <CheckIcon size={18} weight="bold" className="text-[#1f8a5b]" />
                 {marcando ? "Marcando..." : "Sólo marcar que vino (lo demás después)"}
               </button>
-              {errorMarcar && <p role="alert" className="mt-2 text-[13px] text-[#ff7a7a]">{errorMarcar}</p>}
+              {errorMarcar && <p role="alert" className="mt-2 text-[13px] text-[#c0392b]">{errorMarcar}</p>}
             </Pregunta>
           )}
 
@@ -200,7 +205,7 @@ export default function CierreWizard({ cita, onDone }) {
           )}
 
           {paso === "resumen" && (
-            <Resumen r={r} vino={vino} irA={ir} onGuardar={guardar} pending={pending} error={state?.error} />
+            <Resumen r={r} vino={vino} irA={ir} onGuardar={guardar} pending={pending} error={state?.error} avisarFalto={avisarFalto} setAvisarFalto={setAvisarFalto} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -209,7 +214,7 @@ export default function CierreWizard({ cita, onDone }) {
         <button
           type="button"
           onClick={anterior}
-          className="mt-6 inline-flex min-h-[44px] items-center gap-2 font-[family-name:var(--font-albert)] text-[12px] font-medium uppercase tracking-[0.18em] text-white/65 transition-colors hover:text-[#f5f1ea]"
+          className="mt-6 inline-flex min-h-[44px] items-center gap-2 text-[12px] font-medium uppercase tracking-[0.18em] text-[#5b544a] transition-colors hover:text-[#1c1a17]"
         >
           <ArrowLeftIcon size={14} weight="regular" />
           Anterior
@@ -225,7 +230,7 @@ export default function CierreWizard({ cita, onDone }) {
 function Pregunta({ titulo, children }) {
   return (
     <>
-      <h3 className="font-[family-name:var(--font-cormorant)] text-[clamp(24px,3vw,30px)] font-normal leading-[1.2] text-[#f5f1ea]">
+      <h3 className="tracking-tight text-[clamp(24px,3vw,30px)] font-bold leading-[1.2] text-[#1c1a17]">
         {titulo}
       </h3>
       <div className="mt-6">{children}</div>
@@ -244,19 +249,19 @@ function Opciones({ valor, opciones, onElegir }) {
             type="button"
             onClick={() => onElegir(o.value)}
             className={`group flex min-h-[60px] w-full items-center justify-between gap-4 border px-5 py-4 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${
-              sel ? "border-[#b89968] bg-[#b89968]/[0.12]" : "border-white/[0.18] hover:border-white/40 hover:bg-white/[0.03]"
+              sel ? "border-[#b89968] bg-[#b89968]/[0.12]" : "border-[#1c1a17]/[0.18] hover:border-[#1c1a17]/40 hover:bg-[#1c1a17]/[0.03]"
             }`}
           >
-            <span className="font-[family-name:var(--font-albert)] text-[17px] font-normal text-[#f5f1ea]">
+            <span className="text-[17px] font-normal text-[#1c1a17]">
               {o.label}
             </span>
             <span
               aria-hidden
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
-                sel ? "border-[#b89968] bg-[#b89968]" : "border-white/30 group-hover:border-white/50"
+                sel ? "border-[#b89968] bg-[#b89968]" : "border-[#1c1a17]/30 group-hover:border-[#1c1a17]/50"
               }`}
             >
-              {sel && <CheckIcon size={12} weight="bold" className="text-[#000000]" />}
+              {sel && <CheckIcon size={12} weight="bold" className="text-[#1c1a17]" />}
             </span>
           </button>
         );
@@ -280,7 +285,7 @@ function OpcionesTratamiento({ valor, primeras, onElegir }) {
       <button
         type="button"
         onClick={() => setVerOtros((v) => !v)}
-        className="mt-4 inline-flex min-h-[44px] items-center font-[family-name:var(--font-albert)] text-[13px] font-medium uppercase tracking-[0.14em] text-[#b89968] underline-offset-4 hover:underline"
+        className="mt-4 inline-flex min-h-[44px] items-center text-[13px] font-medium uppercase tracking-[0.14em] text-[#8a6d3f] underline-offset-4 hover:underline"
       >
         {verOtros ? "← Ver los principales" : "Otro tratamiento…"}
       </button>
@@ -291,8 +296,8 @@ function OpcionesTratamiento({ valor, primeras, onElegir }) {
 function Monto({ valor, onCambiar, onSiguiente, alternativa }) {
   return (
     <div>
-      <div className="flex items-center gap-3 border border-white/[0.22] bg-[#0d0d0d] px-5 focus-within:border-[#b89968]">
-        <span className="font-[family-name:var(--font-cormorant)] text-[28px] text-white/60">$</span>
+      <div className="flex items-center gap-3 rounded-2xl border-2 border-transparent bg-[#f2efe9] px-5 focus-within:border-[#b89968]">
+        <span className="tracking-tight text-[28px] text-[#5b544a]">$</span>
         <input
           autoFocus
           inputMode="numeric"
@@ -302,25 +307,25 @@ function Monto({ valor, onCambiar, onSiguiente, alternativa }) {
           value={valor}
           onChange={(e) => onCambiar(e.target.value.replace(/[^\d]/g, ""))}
           onKeyDown={(e) => e.key === "Enter" && valor && onSiguiente()}
-          className="min-h-[64px] w-full bg-transparent font-[family-name:var(--font-cormorant)] text-[32px] text-[#f5f1ea] placeholder:text-white/25 focus:outline-none"
+          className="min-h-[64px] w-full bg-transparent tracking-tight text-[32px] text-[#1c1a17] placeholder:text-[#8b8478] focus:outline-none"
         />
       </div>
       {valor && (
-        <p className="mt-2 font-[family-name:var(--font-albert)] text-[14px] text-white/70">{formatMoney(valor)}</p>
+        <p className="mt-2 text-[14px] text-[#5b544a]">{formatMoney(valor)}</p>
       )}
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           type="button"
           disabled={!valor}
           onClick={onSiguiente}
-          className="inline-flex min-h-[56px] items-center justify-between gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium text-[#000000] transition-colors hover:bg-white disabled:opacity-40 sm:min-w-[200px]"
+          className="inline-flex min-h-[56px] rounded-full items-center justify-between gap-3 bg-[#1c1a17] px-7 py-4 text-[15px] font-medium text-white transition-colors hover:bg-[#3d372f] disabled:opacity-40 sm:min-w-[200px]"
         >
           Siguiente <ArrowRightIcon size={18} weight="regular" />
         </button>
         <button
           type="button"
           onClick={alternativa.onClick}
-          className="inline-flex min-h-[56px] items-center justify-center border border-white/[0.18] px-6 font-[family-name:var(--font-albert)] text-[15px] text-white/85 transition-colors hover:border-white/40"
+          className="inline-flex min-h-[56px] rounded-full items-center justify-center border border-[#1c1a17]/[0.18] px-6 text-[15px] text-[#3d372f] transition-colors hover:border-[#1c1a17]/40"
         >
           {alternativa.label}
         </button>
@@ -329,7 +334,7 @@ function Monto({ valor, onCambiar, onSiguiente, alternativa }) {
   );
 }
 
-function Resumen({ r, vino, irA, onGuardar, pending, error }) {
+function Resumen({ r, vino, irA, onGuardar, pending, error, avisarFalto, setAvisarFalto }) {
   const filas = [
     { paso: "estado", pregunta: "¿Vino?", respuesta: { asistio: "Sí, vino", no_asistio: "No vino", cancelada: "Canceló" }[r.estado] },
     ...(vino
@@ -346,38 +351,49 @@ function Resumen({ r, vino, irA, onGuardar, pending, error }) {
 
   return (
     <>
-      <h3 className="font-[family-name:var(--font-cormorant)] text-[clamp(24px,3vw,30px)] font-normal leading-[1.2] text-[#f5f1ea]">
+      <h3 className="tracking-tight text-[clamp(24px,3vw,30px)] font-bold leading-[1.2] text-[#1c1a17]">
         ¿Todo bien?
       </h3>
-      <ul className="mt-5 border border-white/[0.1]">
+      <ul className="mt-5 border border-[#1c1a17]/[0.1]">
         {filas.map((f) => (
           <li key={f.paso}>
             <button
               type="button"
               onClick={() => irA(f.paso)}
-              className="flex min-h-[56px] w-full items-center justify-between gap-4 border-b border-white/[0.06] px-5 py-3 text-left last:border-0 hover:bg-white/[0.03]"
+              className="flex min-h-[56px] w-full items-center justify-between gap-4 border-b border-[#1c1a17]/[0.06] px-5 py-3 text-left last:border-0 hover:bg-[#1c1a17]/[0.03]"
             >
-              <span className="font-[family-name:var(--font-albert)] text-[12px] font-medium uppercase tracking-[0.14em] text-white/60">
+              <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#5b544a]">
                 {f.pregunta}
               </span>
-              <span className="font-[family-name:var(--font-albert)] text-[16px] text-[#f5f1ea]">
-                {f.respuesta} <span className="ml-2 text-[12px] text-[#b89968]">Cambiar</span>
+              <span className="text-[16px] text-[#1c1a17]">
+                {f.respuesta} <span className="ml-2 text-[12px] text-[#8a6d3f]">Cambiar</span>
               </span>
             </button>
           </li>
         ))}
       </ul>
+      {r.estado === "no_asistio" && (
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl bg-[#f2efe9] p-4">
+          <input type="checkbox" checked={avisarFalto} onChange={(e) => setAvisarFalto(e.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-[#b89968]" />
+          <span>
+            <span className="block text-[17px] font-semibold text-[#1c1a17]">Mandarle mensaje para reagendar</span>
+            <span className="block text-[14px] leading-snug text-[#7a7368]">
+              Le llega por WhatsApp &quot;notamos que no pudo venir&quot; con botones para elegir otro horario o hablar contigo.
+            </span>
+          </span>
+        </label>
+      )}
       <button
         type="button"
         onClick={onGuardar}
         disabled={pending}
-        className="mt-6 inline-flex min-h-[56px] w-full items-center justify-between gap-3 bg-[#f5f1ea] px-7 py-4 font-[family-name:var(--font-albert)] text-[15px] font-medium text-[#000000] transition-colors hover:bg-white disabled:opacity-60"
+        className="mt-6 inline-flex min-h-[56px] rounded-full w-full items-center justify-between gap-3 bg-[#1c1a17] px-7 py-4 text-[15px] font-medium text-white transition-colors hover:bg-[#3d372f] disabled:opacity-60"
       >
         {pending ? "Guardando..." : "Guardar"}
         {!pending && <CheckIcon size={18} weight="bold" />}
       </button>
       {error && (
-        <p role="alert" className="mt-3 font-[family-name:var(--font-albert)] text-[14px] text-[#ff7a7a]">
+        <p role="alert" className="mt-3 text-[14px] text-[#c0392b]">
           {error}
         </p>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { waConsultorio } from "@/lib/consultorio";
 
 export default function CTASection({ accent = "blue" }) {
   // "blue" | "lime"
@@ -35,7 +36,7 @@ export default function CTASection({ accent = "blue" }) {
               {/* Botones */}
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <CTAButton
-                  href="https://wa.me/526182066760?text=Hola%2C%20quiero%20agendar%20mi%20valoraci%C3%B3n%20con%20el%20Dr.%20Felipe%20Ramos"
+                  href={waConsultorio("Hola, quiero agendar mi valoración con el Dr. Felipe Ramos")}
                   label="Agendar por WhatsApp"
                   variant="solid"
                 />
