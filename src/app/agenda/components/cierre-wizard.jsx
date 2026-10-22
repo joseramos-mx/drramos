@@ -67,6 +67,8 @@ export default function CierreWizard({ cita, onDone }) {
   const vino = r.estado === "asistio";
 
   const pasos = listaPasos(r);
+  // Antes de contestar "¿vino?" se cuenta el camino largo ("sí vino"), no "1 de 1"
+  const totalPasos = listaPasos(r.estado ? r : { ...r, estado: "asistio" }).length - 1;
   const idx = Math.max(0, pasos.indexOf(paso));
   const progreso = ((idx + 1) / pasos.length) * 100;
 
@@ -114,7 +116,7 @@ export default function CierreWizard({ cita, onDone }) {
         />
       </div>
       <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.24em] text-[#8a6d3f]">
-        {paso === "resumen" ? "Revisa y guarda" : `Paso ${idx + 1} de ${pasos.length - 1}`}
+        {paso === "resumen" ? "Revisa y guarda" : `Paso ${idx + 1} de ${totalPasos}`}
       </p>
 
       <AnimatePresence mode="wait">
