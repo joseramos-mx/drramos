@@ -131,6 +131,9 @@ async function citaDel(admin, pacienteId, citaId) {
 
 const anotar = (notas, texto) => [notas, texto].filter(Boolean).join(" · ").slice(0, 1000);
 
+/** El paciente respondió a un aviso por bloqueo: ya no hay que llamarle. */
+const yaRespondio = (admin, pacienteId) => admin.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", pacienteId);
+
 /** Botones para una cita (los manda también el asistente cuando el paciente pregunta por su cita). */
 export async function enviarMenuCita(admin, telefono, paciente, cita) {
   const texto = `Su cita es el ${cuando(cita.inicio)}. ¿Qué desea hacer?`;
@@ -166,6 +169,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
   const nombre = paciente.nombre && !/^WhatsApp /.test(paciente.nombre) ? paciente.nombre : "Paciente";
 
   if (b.accion === "hablar") {
+    await yaRespondio(admin, paciente.id);
     await pasar(admin, telefono, paciente, "Pidió hablar con usted (desde los botones de su cita)");
     return true;
   }
@@ -285,6 +289,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
           fin: isoDesde(fecha, inicioMin + duracionDe(cita)),
           cambios_paciente: (cita.cambios_paciente || 0) + 1,
           recordatorio_enviado_en: null,
+          aviso_bloqueo_en: null,
           notas: anotar(cita.notas, `El paciente la cambió por WhatsApp (antes: ${antes})`),
         })
         .eq("id", cita.id);
@@ -309,7 +314,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
     }
 
     case "cancelar_si": {
-      await admin.from("citas").update({ estado: "cancelada", notas: anotar(cita.notas, "El paciente la canceló por WhatsApp") }).eq("id", cita.id);
+      await admin.from("citas").update({ estado: "cancelada", aviso_bloqueo_en: null, notas: anotar(cita.notas, "El paciente la canceló por WhatsApp") }).eq("id", cita.id);
       await decir(admin, telefono, paciente.id, "Su cita quedó cancelada. Cuando guste agendar de nuevo, aquí estamos 😊");
       await avisar(admin, { titulo: `❌ ${nombre} canceló su cita`, cuerpo: `Era el ${diaCorto(fechaDe(cita.inicio))}, ${formatHora(minutosDelDia(cita.inicio))}`, url: `/agenda?fecha=${fechaDe(cita.inicio)}` });
       return true;

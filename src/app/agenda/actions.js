@@ -21,6 +21,7 @@ import {
   formatFechaLarga,
   formatHora,
   minutosDelDia,
+  textoLlamar,
   hoyDurango,
   rangoDelDia,
   sumarDias,
@@ -109,7 +110,8 @@ export async function guardarCitaAction(_prev, formData) {
 
   const inicio = isoDesde(fecha, minutos);
   const fin = isoDesde(fecha, minutos + Number(duracion));
-  const base = { dentista, tipo, inicio, fin, notas: notas || null, updated_at: new Date().toISOString() };
+  // Si la mueve ella, ya no hay que llamarle por un bloqueo
+  const base = { dentista, tipo, inicio, fin, notas: notas || null, aviso_bloqueo_en: null, updated_at: new Date().toISOString() };
 
   if (id) {
     const { error } = await supabase.from("citas").update(base).eq("id", id);
@@ -208,6 +210,7 @@ export async function cerrarCitaAction(_prev, formData) {
     .from("citas")
     .update({
       estado,
+      aviso_bloqueo_en: null,
       cotizado: cotizado.length ? cotizado : null,
       cotizado_monto: asistio ? cotizadoMonto : null,
       realizado: realizado.length ? realizado : null,
@@ -241,7 +244,7 @@ export async function marcarVinoAction(id) {
   const supabase = createClient(await cookies());
   const { error } = await supabase
     .from("citas")
-    .update({ estado: "asistio", updated_at: new Date().toISOString() })
+    .update({ estado: "asistio", aviso_bloqueo_en: null, updated_at: new Date().toISOString() })
     .eq("id", String(id));
   if (error) return { error: error.message };
   revalidatePath("/agenda");
@@ -411,9 +414,18 @@ export async function crearBloqueoAction(datos) {
         que === "avisar"
           ? await avisarPaciente(admin, c, "cita_reagendar", [idBoton("cambiar", c.id), idBoton("hablar", c.id)])
           : await avisarPaciente(admin, c, "cita_cancelada", [idBoton("hablar", c.id)]);
-      if (r.sinWhatsapp) resultado.sinWhatsapp.push(resumenCita(c).nombre);
-      else if (r.error) resultado.errores.push(`${resumenCita(c).nombre}: ${r.error}`);
-      else resultado.avisados++;
+      if (r.sinWhatsapp || r.error) {
+        // No se le pudo avisar: a la libreta de hoy para llamarle
+        await supabase.from("pendientes").insert({
+          fecha: hoyDurango(),
+          texto: textoLlamar({ nombre: c.paciente?.nombre, whatsapp: c.paciente?.whatsapp, inicio: c.inicio, cancelada: que === "cancelar", sinWhatsapp: true }),
+        });
+        if (r.sinWhatsapp) resultado.sinWhatsapp.push(resumenCita(c).nombre);
+        else resultado.errores.push(`${resumenCita(c).nombre}: ${r.error}`);
+      } else {
+        await supabase.from("citas").update({ aviso_bloqueo_en: new Date().toISOString(), aviso_recordado_en: null }).eq("id", c.id);
+        resultado.avisados++;
+      }
     }
   }
   revalidatePath("/agenda");

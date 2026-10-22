@@ -266,6 +266,7 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
         >
           <span className="opacity-80">{formatHora(ini)}</span> {cita.paciente?.nombre || "Sin nombre"}
           {cita.estado === "asistio" && (cita.cierre_completo ? " ✓" : " ✓…")}
+          {cita.aviso_bloqueo_en && <span className="font-semibold text-[#9a5b16]"> · esperando respuesta</span>}
         </p>
       ) : (
         <>
@@ -281,6 +282,7 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
         {cita.estado === "asistio" && (cita.cierre_completo ? " · ✓ Vino" : " · ✓ Vino · por cerrar")}
         {cita.estado === "no_asistio" && " · No vino"}
         {cita.estado === "cancelada" && " · Canceló"}
+        {cita.aviso_bloqueo_en && " · Esperando respuesta"}
         </p>
         </>
       )}

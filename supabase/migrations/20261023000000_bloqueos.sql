@@ -32,3 +32,11 @@ alter table public.bloqueos enable row level security;
 create policy "staff gestiona bloqueos"
   on public.bloqueos for all to authenticated
   using (true) with check (true);
+
+-- Citas a las que el consultorio les avisó por un bloqueo (reagendar o cancelada).
+-- Se limpia sola si el paciente responde (elige horario, cancela, pide hablar) o si
+-- la Dra. Gaby la mueve/cierra. Si a la mañana siguiente sigue igual, se le deja un
+-- pendiente en su libreta para llamarle (aviso_recordado_en = ya se le recordó).
+alter table public.citas add column if not exists aviso_bloqueo_en timestamptz;
+alter table public.citas add column if not exists aviso_recordado_en timestamptz;
+create index if not exists citas_aviso_bloqueo_idx on public.citas (aviso_bloqueo_en) where aviso_bloqueo_en is not null;

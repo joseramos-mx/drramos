@@ -8,7 +8,7 @@ export const TZ_OFFSET = "-06:00";
 const TZ_OFFSET_MIN = -6 * 60;
 
 export const CITA_SELECT =
-  "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen)";
+  "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, cierre_completo, aviso_bloqueo_en, paciente:pacientes(id, nombre, whatsapp, origen)";
 
 // Columnas de la agenda. Para sumar un dentista, agregarlo aquí.
 // Hoy sólo atiende el Dr. Felipe (la Dra. Gaby lleva la agenda, no tiene
@@ -296,4 +296,22 @@ export function idsEncimados(citas) {
     }
   }
   return out;
+}
+
+/**
+ * Pendiente para la libreta cuando un paciente avisado por un bloqueo no respondió
+ * (o no tiene WhatsApp): "Llamar a Ana Ruiz (618 123 4567): no eligió otro horario…".
+ */
+export function textoLlamar({ nombre, whatsapp, inicio, cancelada = false, sinWhatsapp = false }) {
+  const tel = String(whatsapp || "").replace(/\D/g, "").slice(-10);
+  const telTexto = tel.length === 10 ? ` (${tel.slice(0, 3)} ${tel.slice(3, 6)} ${tel.slice(6)})` : "";
+  const cuando = `${formatFechaLarga(hoyDurango(new Date(inicio)))}, ${formatHora(minutosDelDia(inicio))}`;
+  const que = sinWhatsapp
+    ? cancelada
+      ? `se canceló su cita del ${cuando} y no tiene WhatsApp; ofrécele otro horario`
+      : `su cita del ${cuando} quedó en horario bloqueado y no tiene WhatsApp; cámbiala`
+    : cancelada
+      ? `se le canceló su cita del ${cuando} y no ha respondido; ofrécele otro horario`
+      : `no eligió otro horario para su cita del ${cuando}; confírmale el cambio o la cancelación`;
+  return `Llamar a ${nombre || "paciente"}${telTexto}: ${que}`.slice(0, 300);
 }
