@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import AgendaDia from "./components/agenda-dia";
 import Reloj from "./components/reloj";
+import BotonesDia from "./components/botones-dia";
+import { BarraInferior } from "../crm/mensajes/encabezado";
 import {
   CITA_SELECT,
+  bloqueosDelDia,
   esFechaValida,
   formatFechaLarga,
   hoyDurango,
@@ -34,55 +37,110 @@ export default async function AgendaPage({ searchParams }) {
     .lt("inicio", hasta)
     .order("inicio");
 
+  // Viene de "Agendar" en Mensajes: el paciente ya va elegido
+  const { data: preseleccion } = sp.paciente
+    ? await supabase.from("pacientes").select("id, nombre, whatsapp").eq("id", String(sp.paciente)).maybeSingle()
+    : { data: null };
+
   const { data: pendientes } = await supabase
     .from("pendientes")
     .select("id, texto, hecho")
     .eq("fecha", fecha)
     .order("created_at");
 
+  const extra = preseleccion ? `&paciente=${preseleccion.id}` : "";
+
+  // Puntos del calendario del mes: cuántas citas hay cada día
+  const primero = `${fecha.slice(0, 7)}-01`;
+  const sigMes = new Date(`${primero}T00:00:00Z`);
+  sigMes.setUTCMonth(sigMes.getUTCMonth() + 1);
+  const { data: delMes } = await supabase
+    .from("citas")
+    .select("inicio")
+    .gte("inicio", rangoDelDia(primero).desde)
+    .lt("inicio", rangoDelDia(sigMes.toISOString().slice(0, 10)).desde)
+    .neq("estado", "cancelada");
+  const conteo = {};
+  for (const c of delMes || []) {
+    const dia = hoyDurango(new Date(c.inicio));
+    conteo[dia] = (conteo[dia] || 0) + 1;
+  }
+
+  // Días u horas sin consulta: los del mes (calendario y este día) y los que vienen (para quitarlos)
+  const finMes = sumarDias(sigMes.toISOString().slice(0, 10), -1);
+  const [{ data: bloqueosMes }, { data: proximos }] = await Promise.all([
+    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota").lte("desde_fecha", finMes).gte("hasta_fecha", primero),
+    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota").gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
+  ]);
+  const bloqueados = [];
+  for (let f = primero; f <= finMes; f = sumarDias(f, 1)) {
+    if (bloqueosDelDia(bloqueosMes, f).some((b) => b.todoElDia)) bloqueados.push(f);
+  }
+
   return (
-    <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-8 md:py-10">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-5">
-        <div>
-          <p className="font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.24em] text-[#b89968]">
-            Agenda
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-[clamp(26px,4vw,40px)] font-light leading-[1.1] first-letter:uppercase text-[#f5f1ea]">
-            {formatFechaLarga(fecha)}
-            {fecha === hoy && <span className="normal-case text-white/45"> · hoy</span>}
-          </h1>
+    <main className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6">
+      <header className="pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-[30px] font-bold tracking-tight text-[#1c1a17]">Agenda</h1>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block">
+              <Reloj />
+            </div>
+            <BotonesDia fecha={fecha} hoy={hoy} pendientes={pendientes || []} conteo={conteo} extra={extra} bloqueados={bloqueados} proximos={proximos || []} />
+          </div>
         </div>
-
-        <Reloj />
-
-        <nav className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
-          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}`} label="← Ayer" />
-          {fecha !== hoy && <NavBtn href="/agenda" label="Hoy" />}
-          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}`} label="Mañana →" />
-          <NavBtn href={`/agenda/pantalla`} label="Pantalla" />
-        </nav>
+        <p className="text-[18px] font-semibold text-[#5b544a] first-letter:uppercase">
+            {formatFechaLarga(fecha)}
+            {fecha === hoy && <span className="text-[#8a6d3f]"> · hoy</span>}
+          </p>
       </header>
+
+      <nav className="mt-2 flex gap-2" aria-label="Cambiar de día">
+        <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}${extra}`} label="‹ Ayer" />
+        <NavBtn href={`/agenda?fecha=${hoy}${extra}`} label="Hoy" activo={fecha === hoy} />
+        <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}${extra}`} label="Mañana ›" />
+      </nav>
 
       {error && (
         <div
           role="alert"
-          className="mt-6 border border-[#ff7a7a]/30 bg-[#ff7a7a]/[0.06] p-4 font-[family-name:var(--font-albert)] text-[13px] font-light text-[#ffb1b1]"
+          className="mt-6 border border-[#c0392b]/30 bg-[#c0392b]/[0.06] p-4 text-[13px] font-normal text-[#9b2424]"
         >
           No pudimos cargar la agenda. Recarga la página; si sigue, avisa a
           quien administra el sistema.
         </div>
       )}
 
-      <AgendaDia fecha={fecha} citas={citas || []} pendientes={pendientes || []} ajustarAlto="auto" />
+      {preseleccion && (
+        <p className="mt-4 rounded-2xl bg-[#fbf3e3] px-5 py-4 text-[17px] text-[#1c1a17]">
+          Toca un hueco para agendar a <strong className="font-bold">{preseleccion.nombre}</strong>.
+          <Link href={`/agenda?fecha=${fecha}`} className="ml-3 text-[15px] font-semibold text-[#8a6d3f] underline underline-offset-4">
+            Cancelar
+          </Link>
+        </p>
+      )}
+
+      <AgendaDia
+        fecha={fecha}
+        citas={citas || []}
+        pendientes={null}
+        preseleccion={preseleccion}
+        ajustarAlto="auto"
+        bloqueos={bloqueosDelDia(bloqueosMes, fecha)}
+      />
+      <BarraInferior activo="agenda" />
     </main>
   );
 }
 
-function NavBtn({ href, label }) {
+function NavBtn({ href, label, activo = false }) {
   return (
     <Link
       href={href}
-      className="inline-flex min-h-[44px] items-center border border-white/[0.12] px-4 py-2 font-[family-name:var(--font-albert)] text-[13px] font-normal tracking-[0.02em] text-white/85 transition-colors duration-200 hover:border-white/30 hover:text-[#f5f1ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968]"
+      aria-current={activo ? "page" : undefined}
+      className={`inline-flex h-12 flex-1 items-center justify-center rounded-full text-[16px] font-semibold sm:flex-none sm:px-6 ${
+        activo ? "bg-[#1c1a17] text-white" : "border-2 border-[#1c1a17]/10 bg-white text-[#3d372f]"
+      }`}
     >
       {label}
     </Link>

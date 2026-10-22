@@ -49,12 +49,14 @@ export function normalizeWhatsapp(raw) {
   return d;
 }
 
+/**
+ * Abre su chat en "Mensajes" (se le escribe desde el número del consultorio).
+ * Antes era wa.me, que abría la app de WhatsApp del celular: el número personal.
+ */
 export function buildWhatsappLink(lead) {
   const phone = normalizeWhatsapp(lead.whatsapp);
   if (!phone) return null;
-  const firstName = String(lead.nombre || "").trim().split(/\s+/)[0] || "";
-  const text = `Hola ${firstName}, te contactamos del consultorio del Dr. Felipe Ramos por tu solicitud de valoración.`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  return `/crm/mensajes/${phone}`;
 }
 
 export function formatDateMX(iso) {

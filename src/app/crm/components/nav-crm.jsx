@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-/** Pestañas del área interna: Leads, Resultados y Agenda. */
+/** Pestañas del área interna: Mensajes, Leads, Resultados y Agenda. */
 export default function NavCrm({ activo }) {
   const items = [
+    { href: "/crm/mensajes", key: "mensajes", label: "Mensajes" },
     { href: "/crm", key: "leads", label: "Leads" },
     { href: "/crm/resultados", key: "resultados", label: "Resultados" },
     { href: "/agenda", key: "agenda", label: "Agenda" },

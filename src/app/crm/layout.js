@@ -23,7 +23,13 @@ export const metadata = {
     follow: false,
     googleBot: { index: false, follow: false },
   },
+  // Se instala como app "Mensajes" en el celular y el iPad del consultorio
+  manifest: "/mensajes.webmanifest",
+  appleWebApp: { capable: true, title: "Mensajes", statusBarStyle: "black" },
+  icons: { apple: "/fav/apple-touch-icon.png" },
 };
+
+export const viewport = { themeColor: "#000000" };
 
 export default function CrmLayout({ children }) {
   return (

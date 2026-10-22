@@ -18,7 +18,7 @@ export default function Reloj({ grande = false }) {
   return (
     <p
       aria-label="Hora actual"
-      className={`font-[family-name:var(--font-cormorant)] font-light tabular-nums leading-none text-[#b89968] ${
+      className={`tracking-tight font-bold tabular-nums leading-none text-[#8a6d3f] ${
         grande ? "text-[clamp(32px,3.5vw,52px)]" : "text-[clamp(28px,4vw,40px)]"
       }`}
     >

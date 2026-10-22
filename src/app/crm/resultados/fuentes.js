@@ -4,7 +4,8 @@
  * Funciones puras, sin Supabase.
  */
 
-export const WHATSAPP_CONSULTORIO = "526182066760";
+import { WHATSAPP_CONSULTORIO } from "@/lib/consultorio";
+export { WHATSAPP_CONSULTORIO };
 
 // Mismos valores que pacientes.origen / fuentes.canal
 export const CANALES = [
@@ -73,19 +74,27 @@ export function gastoPorCanal({ fuentes, gastos, rango, gastoMeta }) {
  * gasto y retorno. Ordena por dinero cobrado (lo que más trae arriba);
  * el retorno dice si una fuente de paga se justifica.
  */
-export function tablaFuentes(porOrigen, gastos) {
+export function tablaFuentes(porOrigen, gastos, escribieron = {}) {
+  const vacia = (canal) => ({ origen: canal, pacientes: 0, vinieron: 0, pagaron: 0, cobrado: 0, presupuestado: 0 });
   const filas = new Map();
   for (const o of porOrigen || []) filas.set(o.origen, { ...o });
+  // Fuentes que sólo tienen gente que escribió por WhatsApp (aún sin cita)
+  for (const canal of Object.keys(escribieron || {})) {
+    if (!filas.has(canal)) filas.set(canal, vacia(canal));
+  }
   for (const canal of Object.keys(gastos || {})) {
     if (!filas.has(canal)) {
-      filas.set(canal, { origen: canal, pacientes: 0, vinieron: 0, pagaron: 0, cobrado: 0, presupuestado: 0 });
+      filas.set(canal, vacia(canal));
     }
   }
   const div = (a, b) => (b > 0 ? a / b : null);
   const rows = [...filas.values()].map((f) => {
     const gasto = gastos?.[f.origen] ?? null;
+    const wa = escribieron?.[f.origen];
     return {
       ...f,
+      escribieron: wa?.escribieron ?? 0,
+      agendoDeWhatsapp: wa?.escribieron ? wa.agendaron / wa.escribieron : null,
       gasto,
       costoPaciente: gasto != null ? div(gasto, f.pacientes) : null,
       costoPacientePago: gasto != null ? div(gasto, f.pagaron) : null,

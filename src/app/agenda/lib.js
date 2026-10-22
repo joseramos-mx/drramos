@@ -8,7 +8,7 @@ export const TZ_OFFSET = "-06:00";
 const TZ_OFFSET_MIN = -6 * 60;
 
 export const CITA_SELECT =
-  "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen)";
+  "id, dentista, inicio, fin, tipo, estado, cotizado, cotizado_monto, realizado, pagado_monto, notas, cierre_completo, aviso_bloqueo_en, paciente:pacientes(id, nombre, whatsapp, origen)";
 
 // Columnas de la agenda. Para sumar un dentista, agregarlo aquí.
 // Hoy sólo atiende el Dr. Felipe (la Dra. Gaby lleva la agenda, no tiene
@@ -71,10 +71,10 @@ export const ORIGENES = [
 // Colores de las citas: una sola fuente para las fichas y la leyenda.
 // Fondos sólidos + barra a la izquierda. Paleta de /diseno-sonrisa.
 export const TONOS = {
-  agendada: { label: "Agendada",          bg: "#1d1913", barra: "#b89968" },
-  asistio:  { label: "Vino",              bg: "#0f1d17", barra: "#34d399" },
-  urgencia: { label: "Urgencia",          bg: "#241212", barra: "#ff7a7a" },
-  apagada:  { label: "No vino / canceló", bg: "#111111", barra: "rgba(255,255,255,0.18)" },
+  agendada: { label: "Agendada",          bg: "#fbf3e3", barra: "#b89968" },
+  asistio:  { label: "Vino",              bg: "#e6f4ec", barra: "#1f8a5b" },
+  urgencia: { label: "Urgencia",          bg: "#fdeaea", barra: "#c0392b" },
+  apagada:  { label: "No vino / canceló", bg: "#f2efe9", barra: "#cfc8bc" },
 };
 
 export function tonoDeCita(cita) {
@@ -82,6 +82,80 @@ export function tonoDeCita(cita) {
   if (cita.estado === "asistio") return "asistio";
   if (cita.tipo === "urgencia") return "urgencia";
   return "agendada";
+}
+
+/**
+ * Comida del doctor (1 a 4 p.m.). El asistente y los botones de "Mi cita"
+ * NUNCA ofrecen este horario; la Dra. Gaby sí puede agendar ahí a mano
+ * (pacientes de tratamiento que ella decida).
+ */
+export const COMIDA = { desde: 13 * 60, hasta: 16 * 60 };
+
+/** Horas en que no le suena el celular a la Dra. Gaby (21:00 a 8:00); a las 9 le llega un resumen. */
+export const DESCANSO = { desde: 21 * 60, hasta: 8 * 60 };
+
+const minutosAhora = (now = new Date()) => {
+  const local = new Date(now.getTime() + TZ_OFFSET_MIN * 60000);
+  return local.getUTCHours() * 60 + local.getUTCMinutes();
+};
+
+/**
+ * Bloqueos (tabla `bloqueos`) que tocan un día → [{ id, desde, hasta, motivo, evento, todoElDia }]
+ * en minutos. Un bloqueo de todo el día cubre el horario completo.
+ */
+export function bloqueosDelDia(bloqueos, fecha) {
+  const h = horarioDelDia(fecha) || { abre: 9 * 60, cierra: 14 * 60 };
+  return (bloqueos || [])
+    .filter((b) => b.desde_fecha <= fecha && b.hasta_fecha >= fecha)
+    .map((b) => {
+      const todoElDia = b.desde_min == null;
+      return { id: b.id, motivo: b.motivo, nota: b.nota || null, evento: Boolean(b.evento), todoElDia, desde: todoElDia ? h.abre : b.desde_min, hasta: todoElDia ? h.cierra : b.hasta_min };
+    });
+}
+
+/** Días festivos oficiales de México (Ley Federal del Trabajo) de un año → [{ fecha, motivo }]. */
+export function festivosOficiales(anio) {
+  const enesimoLunes = (mes, n) => {
+    const d = new Date(Date.UTC(anio, mes - 1, 1));
+    const primerLunes = 1 + ((8 - d.getUTCDay()) % 7);
+    return `${anio}-${String(mes).padStart(2, "0")}-${String(primerLunes + 7 * (n - 1)).padStart(2, "0")}`;
+  };
+  return [
+    { fecha: `${anio}-01-01`, motivo: "Año Nuevo" },
+    { fecha: enesimoLunes(2, 1), motivo: "Día de la Constitución" },
+    { fecha: enesimoLunes(3, 3), motivo: "Natalicio de Benito Juárez" },
+    { fecha: `${anio}-05-01`, motivo: "Día del Trabajo" },
+    { fecha: `${anio}-09-16`, motivo: "Día de la Independencia" },
+    { fecha: enesimoLunes(11, 3), motivo: "Día de la Revolución" },
+    { fecha: `${anio}-12-25`, motivo: "Navidad" },
+  ];
+}
+
+/** ¿El consultorio está abierto en este momento? `cerrados`: fechas bloqueadas todo el día. */
+export function abiertoAhora(now = new Date(), cerrados = new Set()) {
+  if (cerrados.has(hoyDurango(now))) return false;
+  const h = horarioDelDia(hoyDurango(now));
+  const m = minutosAhora(now);
+  return Boolean(h && m >= h.abre && m < h.cierra);
+}
+
+export function enDescanso(now = new Date()) {
+  const m = minutosAhora(now);
+  return m >= DESCANSO.desde || m < DESCANSO.hasta;
+}
+
+/** Cuándo vuelve a abrir: { fecha, texto: "hoy" | "mañana" | "el lunes" | "el lunes, 3 de noviembre", hora: "9:00" }. */
+export function proximaApertura(now = new Date(), cerrados = new Set()) {
+  const hoy = hoyDurango(now);
+  for (let i = 0; i < 60; i++) {
+    const fecha = sumarDias(hoy, i);
+    const h = horarioDelDia(fecha);
+    if (!h || cerrados.has(fecha) || (i === 0 && minutosAhora(now) >= h.abre)) continue;
+    const dia = new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", timeZone: "UTC" });
+    const texto = i === 0 ? "hoy" : i === 1 ? "mañana" : i < 7 ? `el ${dia}` : `el ${formatFechaLarga(fecha)}`;
+    return { fecha, texto, hora: formatHora(h.abre) };
+  }
+  return { fecha: sumarDias(hoy, 1), texto: "mañana", hora: "9:00" };
 }
 
 // Horario de atención (de la landing): L-V 9-19, sáb 9-14, dom cerrado.
@@ -222,4 +296,26 @@ export function idsEncimados(citas) {
     }
   }
   return out;
+}
+
+/**
+ * Pendiente para la libreta cuando un paciente avisado por un bloqueo no respondió
+ * (o no tiene WhatsApp): "Llamar a Ana Ruiz (618 123 4567): no eligió otro horario…".
+ */
+export function textoLlamar({ nombre, whatsapp, inicio, cancelada = false, sinWhatsapp = false, escribio = false }) {
+  const tel = String(whatsapp || "").replace(/\D/g, "").slice(-10);
+  const telTexto = tel.length === 10 ? ` (${tel.slice(0, 3)} ${tel.slice(3, 6)} ${tel.slice(6)})` : "";
+  const cuando = `${formatFechaLarga(hoyDurango(new Date(inicio)))}, ${formatHora(minutosDelDia(inicio))}`;
+  const que = sinWhatsapp
+    ? cancelada
+      ? `se canceló su cita del ${cuando} y no tiene WhatsApp; ofrécele otro horario`
+      : `su cita del ${cuando} quedó en horario bloqueado y no tiene WhatsApp; cámbiala`
+    : escribio
+      ? cancelada
+        ? `se le canceló su cita del ${cuando}; escribió pero no eligió otro horario, revisa su chat y confírmale`
+        : `su cita del ${cuando} quedó en horario bloqueado; escribió pero no eligió otro horario, revisa su chat y confírmale`
+      : cancelada
+        ? `se le canceló su cita del ${cuando} y no ha respondido; ofrécele otro horario`
+        : `no eligió otro horario para su cita del ${cuando}; confírmale el cambio o la cancelación`;
+  return `Llamar a ${nombre || "paciente"}${telTexto}: ${que}`.slice(0, 300);
 }
