@@ -34,6 +34,9 @@ import {
   minutosDelDia,
   rangoDelDia,
   sumarDias,
+  COMIDA,
+  abiertoAhora,
+  proximaApertura,
 } from "@/app/agenda/lib";
 
 const MODELO = process.env.ASISTENTE_MODELO || "claude-sonnet-5-5";
@@ -311,6 +314,7 @@ export async function disponibilidad(admin, fecha, { duracion = SLOT_MIN, ignora
     .lt("inicio", hasta)
     .neq("estado", "cancelada");
   const ocupado = (citas || []).filter((c) => !ignorar || c.id !== ignorar).map((c) => [minutosDelDia(c.inicio), minutosDelDia(c.fin)]);
+  ocupado.push([COMIDA.desde, COMIDA.hasta]); // la comida del doctor nunca se ofrece
   // Hoy: sólo horarios con al menos 1 h de anticipación
   const ahora = fecha === hoy ? minutosDelDia(new Date().toISOString()) + 60 : 0;
 
@@ -371,6 +375,16 @@ async function avisarSiAgendaMucho(admin) {
   if (count >= AVISO_CITAS_DIA && (count - AVISO_CITAS_DIA) % 4 === 0) {
     await avisar(admin, { titulo: `📅 El asistente lleva ${count} citas hoy`, cuerpo: "Échales un ojo en la agenda", url: "/agenda" });
   }
+}
+
+/**
+ * Lo que se le dice al paciente cuando el caso es de la Dra. Gaby. Con el
+ * consultorio cerrado no se le promete "en un momento": se le dice cuándo.
+ */
+export function textoAlPasar(textos, { urgente = false } = {}, now = new Date()) {
+  if (abiertoAhora(now)) return textos[urgente ? "pasar_urgencia" : "pasar_dra_gaby"];
+  const a = proximaApertura(now);
+  return textos[urgente ? "urgencia_cerrado" : "pasar_dra_gaby_cerrado"].replaceAll("{dia}", a.texto);
 }
 
 export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente }) {
@@ -551,6 +565,9 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const ahora = new Date();
   const contexto = [
     `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
+    abiertoAhora(ahora)
+      ? ""
+      : `El consultorio está CERRADO en este momento; abre ${proximaApertura(ahora).texto} a las ${proximaApertura(ahora).hora}. Si la persona quiere cita, ofrécele lugar desde esa hora.`,
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
     proximas?.length
       ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
@@ -596,9 +613,15 @@ export async function atenderConAsistente(admin, telefono, waId) {
   if (d.tipo === "cita") d = { ...d, tipo: "humano", motivo: "pregunta por una cita" };
 
   let texto;
-  if (d.tipo === "humano") {
+  if (d.tipo === "humano" && d.urgente && !abiertoAhora()) {
+    // Urgencia con el consultorio cerrado: no se despierta a nadie. Se le dice cuándo
+    // abrimos y que, si es grave, acuda a un hospital; el asistente le puede apartar
+    // lugar a primera hora. La Dra. Gaby la ve marcada como urgencia en la mañana.
+    await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "urgencia"])] }).eq("id", paciente.id);
+    texto = textoAlPasar(textos, { urgente: true });
+  } else if (d.tipo === "humano") {
     await pasarAHumano(admin, paciente, telefono, d);
-    texto = textos[d.urgente ? "pasar_urgencia" : "pasar_dra_gaby"];
+    texto = textoAlPasar(textos, d);
   } else {
     texto = d.texto;
   }
@@ -743,7 +766,7 @@ export async function probarConversacion({ conversacion, agendaLlena = false, ci
   }
   const texto =
     d.tipo === "humano"
-      ? textos[d.urgente ? "pasar_urgencia" : "pasar_dra_gaby"]
+      ? textoAlPasar(textos, d)
       : d.tipo === "cita"
         ? `[Flujo de su cita: ${d.accion}${d.fecha ? ` ${d.fecha}` : ""}${d.hora ? ` ${d.hora}` : ""}]`
         : d.texto || "";

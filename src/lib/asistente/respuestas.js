@@ -79,13 +79,23 @@ export const RESPUESTAS = {
   pasar_dra_gaby: "Con gusto, le comunico con la Dra. Gaby para que le atienda personalmente. En un momento le escribe 😊",
   pasar_urgencia:
     "Le comunico de inmediato con la Dra. Gaby para atenderle 🙏 Si es muy urgente, puede llamar al 618 568 0916.",
+  pasar_dra_gaby_cerrado:
+    "Ya le dejé su mensaje a la Dra. Gaby 🙏 En este momento el consultorio está cerrado; ella le escribe {dia} a partir de las 9:00.",
+  urgencia_cerrado:
+    "Lamentamos mucho su molestia 🙏 En este momento el consultorio está cerrado. Abrimos {dia} a las 9:00 y con gusto le apartamos un lugar a primera hora; ¿quiere que se lo aparte? Si tiene sangrado que no para, hinchazón que le dificulta respirar o tragar, o fiebre alta, acuda a urgencias de un hospital.",
 };
 
 /** Primer renglón del primer mensaje a un paciente nuevo (lo agrega el código, el modelo no lo elige). */
 export const PRESENTACION = "Hola, soy el asistente virtual del consultorio del Dr. Felipe Ramos 😊";
 
 /** Respuestas que llevan datos y cuáles (el sistema los llena con la agenda). */
-export const VARIABLES = { ofrecer_horarios: ["dia", "horarios"], sin_horarios: ["dia"], confirmar_cita: ["dia", "hora"] };
+export const VARIABLES = {
+  ofrecer_horarios: ["dia", "horarios"],
+  sin_horarios: ["dia"],
+  confirmar_cita: ["dia", "hora"],
+  pasar_dra_gaby_cerrado: ["dia"],
+  urgencia_cerrado: ["dia"],
+};
 
 /** Cómo se ven los datos al editar: la Dra. Gaby ve [DÍA] en vez de {dia}. */
 export const ETIQUETAS_DATO = { dia: "DÍA", hora: "HORA", horarios: "HORARIOS", nombre: "NOMBRE" };
@@ -122,6 +132,8 @@ export const SECCIONES = [
     ["gracias", "Cuando dicen gracias"], ["no_escribir_mas", "Cuando piden que ya no les escriban"],
     ["escribir_audio", "Cuando mandan nota de voz"], ["solo_consultorio", "Cuando preguntan cosas que no son del consultorio"],
     ["pasar_dra_gaby", "Cuando le pasa el chat a la Dra. Gaby"], ["pasar_urgencia", "Cuando es urgencia"],
+    ["pasar_dra_gaby_cerrado", "Le pasa el chat con el consultorio cerrado ([DÍA] = mañana, el lunes…)"],
+    ["urgencia_cerrado", "Urgencia con el consultorio cerrado (de noche o domingo)"],
   ]],
 ];
 

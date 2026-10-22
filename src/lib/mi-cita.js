@@ -25,7 +25,7 @@
 
 import { enviarBotones, enviarLista, enviarTexto } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
-import { disponibilidad, pasarAHumano } from "@/lib/asistente";
+import { disponibilidad, pasarAHumano, textoAlPasar } from "@/lib/asistente";
 import { textosEfectivos } from "@/lib/asistente/respuestas";
 import { SLOT_MIN, esFechaValida, formatFechaLarga, formatHora, hoyDurango, isoDesde, minutosDelDia, sumarDias } from "@/app/agenda/lib";
 
@@ -141,7 +141,7 @@ export async function enviarMenuCita(admin, telefono, paciente, cita) {
 async function pasar(admin, telefono, paciente, motivo, texto) {
   await pasarAHumano(admin, paciente, telefono, { motivo, urgente: false });
   const { data: editadas } = await admin.from("asistente_respuestas").select("id, texto");
-  await decir(admin, telefono, paciente.id, texto || textosEfectivos(editadas || []).pasar_dra_gaby);
+  await decir(admin, telefono, paciente.id, texto || textoAlPasar(textosEfectivos(editadas || [])));
 }
 
 /**

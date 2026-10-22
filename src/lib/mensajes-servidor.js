@@ -13,6 +13,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { enDescanso } from "@/app/agenda/lib";
 
 export const BUCKET = "whatsapp-media";
 
@@ -57,9 +58,13 @@ export async function avisarMensajeNuevo(admin, { nombre, telefono }) {
   return avisar(admin, { titulo: nombre || "WhatsApp del consultorio", cuerpo: "Te escribió por WhatsApp", telefono });
 }
 
-/** Aviso genérico (mensaje nuevo, caso que pasa el asistente, borrador listo). Al tocarlo abre ese chat. */
-export async function avisar(admin, { titulo, cuerpo, telefono, url }) {
+/**
+ * Aviso genérico (mensaje nuevo, caso que pasa el asistente, borrador listo). Al tocarlo abre ese chat.
+ * De 21:00 a 8:00 no suena (descanso de la Dra. Gaby): lo de la noche llega en el resumen de las 9.
+ */
+export async function avisar(admin, { titulo, cuerpo, telefono, url, siempre = false }) {
   if (!vapidListo()) return;
+  if (enDescanso() && !siempre) return;
   const { data: subs } = await admin.from("push_suscripciones").select("id, endpoint, p256dh, auth");
   const payload = JSON.stringify({
     title: titulo,

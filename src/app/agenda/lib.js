@@ -84,6 +84,46 @@ export function tonoDeCita(cita) {
   return "agendada";
 }
 
+/**
+ * Comida del doctor (1 a 4 p.m.). El asistente y los botones de "Mi cita"
+ * NUNCA ofrecen este horario; la Dra. Gaby sí puede agendar ahí a mano
+ * (pacientes de tratamiento que ella decida).
+ */
+export const COMIDA = { desde: 13 * 60, hasta: 16 * 60 };
+
+/** Horas en que no le suena el celular a la Dra. Gaby (21:00 a 8:00); a las 9 le llega un resumen. */
+export const DESCANSO = { desde: 21 * 60, hasta: 8 * 60 };
+
+const minutosAhora = (now = new Date()) => {
+  const local = new Date(now.getTime() + TZ_OFFSET_MIN * 60000);
+  return local.getUTCHours() * 60 + local.getUTCMinutes();
+};
+
+/** ¿El consultorio está abierto en este momento (horario de atención)? */
+export function abiertoAhora(now = new Date()) {
+  const h = horarioDelDia(hoyDurango(now));
+  const m = minutosAhora(now);
+  return Boolean(h && m >= h.abre && m < h.cierra);
+}
+
+export function enDescanso(now = new Date()) {
+  const m = minutosAhora(now);
+  return m >= DESCANSO.desde || m < DESCANSO.hasta;
+}
+
+/** Cuándo vuelve a abrir: { fecha, texto: "hoy" | "mañana" | "el lunes", hora: "9:00" }. */
+export function proximaApertura(now = new Date()) {
+  const hoy = hoyDurango(now);
+  for (let i = 0; i < 8; i++) {
+    const fecha = sumarDias(hoy, i);
+    const h = horarioDelDia(fecha);
+    if (!h || (i === 0 && minutosAhora(now) >= h.abre)) continue;
+    const dia = new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", timeZone: "UTC" });
+    return { fecha, texto: i === 0 ? "hoy" : i === 1 ? "mañana" : `el ${dia}`, hora: formatHora(h.abre) };
+  }
+  return { fecha: sumarDias(hoy, 1), texto: "mañana", hora: "9:00" };
+}
+
 // Horario de atención (de la landing): L-V 9-19, sáb 9-14, dom cerrado.
 export function horarioDelDia(fecha) {
   const dow = diaSemana(fecha);
