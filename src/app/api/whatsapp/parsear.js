@@ -1,6 +1,7 @@
 /**
- * Convierte lo que manda WhatsApp (Cloud API vía 360dialog, número en
- * coexistencia) en una lista plana de mensajes. Funciones puras: no
+ * Convierte lo que manda la WhatsApp Cloud API de Meta en una lista
+ * plana de mensajes (también entiende ecos e historial de coexistencia,
+ * por si algún día se usa). Funciones puras: no
  * tocan la base, para poder probarlas con ejemplos.
  *
  * Campos que se leen (formato de Meta):
@@ -32,6 +33,13 @@ export function textoDe(m) {
   }
 }
 
+/** Foto, audio, video, documento o sticker: { id, mime } o null. */
+export function mediaDe(m) {
+  const tipos = ["image", "audio", "video", "document", "sticker"];
+  if (!m || !tipos.includes(m.type) || !m[m.type]?.id) return null;
+  return { id: m[m.type].id, mime: m[m.type].mime_type || null };
+}
+
 /** Saca los cambios (field + value) de un cuerpo de webhook. */
 function cambios(body) {
   if (Array.isArray(body?.entry)) {
@@ -45,7 +53,7 @@ function cambios(body) {
 /**
  * @returns {{ campos: string[], mensajes: Array<{
  *   wa_id, telefono, direccion, via, tipo, texto, enviado_en,
- *   nombre_contacto, ctwa_clid, referencia }> }}
+ *   nombre_contacto, ctwa_clid, referencia, media_id, media_mime }> }}
  */
 export function parsearWebhook(body) {
   const mensajes = [];
@@ -71,6 +79,7 @@ export function parsearWebhook(body) {
           nombre_contacto: nombres[diezDigitos(m.from)] || null,
           ctwa_clid: m.referral?.ctwa_clid || null,
           referencia: m.referral || null,
+          crudo: m,
         });
       }
     }
@@ -88,6 +97,7 @@ export function parsearWebhook(body) {
           nombre_contacto: null,
           ctwa_clid: null,
           referencia: null,
+          crudo: m,
         });
       }
     }
@@ -108,6 +118,7 @@ export function parsearWebhook(body) {
               nombre_contacto: null,
               ctwa_clid: null,
               referencia: null,
+              crudo: m,
             });
           }
         }
@@ -115,5 +126,11 @@ export function parsearWebhook(body) {
     }
   }
 
-  return { campos, mensajes: mensajes.filter((m) => m.wa_id && m.telefono) };
+  // El mensaje original sigue en `crudo` para sacar foto/audio si trae
+  return {
+    campos,
+    mensajes: mensajes
+      .filter((m) => m.wa_id && m.telefono)
+      .map(({ crudo, ...m }) => ({ ...m, media_id: mediaDe(crudo)?.id || null, media_mime: mediaDe(crudo)?.mime || null })),
+  };
 }

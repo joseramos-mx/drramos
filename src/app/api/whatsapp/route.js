@@ -1,14 +1,16 @@
-import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { parsearWebhook } from "./parsear";
 import { codigoEnMensaje } from "../../crm/resultados/fuentes";
+import { bajarMedia } from "@/lib/whatsapp";
+import { avisarMensajeNuevo, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 
 /**
  * Buzón de WhatsApp: recibe los webhooks de la Cloud API de Meta
  * (número del consultorio, directo con Meta). Guarda cada mensaje, crea
  * al paciente la primera vez que escribe y detecta de qué fuente llegó
- * ("(ref G1)" o el click del anuncio). Aquí NO se mandan mensajes (eso
- * lo hace la bandeja "Mensajes" del CRM con src/lib/whatsapp.js).
+ * ("(ref G1)" o el click del anuncio). Si trae foto/audio la baja de
+ * Meta al bucket privado, y avisa (web push) a los aparatos del
+ * consultorio. Aquí NO se contesta (eso lo hace la bandeja "Mensajes").
  *
  * Seguridad (variables de entorno del servidor):
  *   META_APP_SECRET            con él se valida la firma X-Hub-Signature-256
@@ -51,12 +53,6 @@ function postAutorizado(request, crudo) {
   return tokenValido(new URL(request.url).searchParams.get("token"));
 }
 
-function supabaseServicio() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-}
-
 // Verificación de Meta al registrar el webhook (Verify token)
 export async function GET(request) {
   const u = new URL(request.url);
@@ -85,10 +81,11 @@ export async function POST(request) {
   }
 
   let guardados = 0;
+  const avisar = new Map(); // telefono → paciente_id, un aviso por paciente
   for (const m of mensajes) {
     try {
       const pacienteId = await pacienteDe(supabase, m);
-      const { error } = await supabase.from("whatsapp_mensajes").upsert(
+      const { data: nuevos, error } = await supabase.from("whatsapp_mensajes").upsert(
         {
           wa_id: m.wa_id,
           telefono: m.telefono,
@@ -100,13 +97,35 @@ export async function POST(request) {
           paciente_id: pacienteId,
           ctwa_clid: m.ctwa_clid,
           referencia: m.referencia,
+          media_id: m.media_id,
+          media_mime: m.media_mime,
         },
         { onConflict: "wa_id", ignoreDuplicates: true }
-      );
+      )
+        .select("id");
       if (error) throw error;
+      if (!nuevos?.length) continue; // Meta reintentó un mensaje que ya teníamos
       guardados++;
+
+      if (m.media_id) {
+        const archivo = await bajarMedia(m.media_id);
+        const ruta = archivo && (await guardarMedia(supabase, m.telefono, m.wa_id, archivo.buffer, archivo.mime));
+        if (ruta) await supabase.from("whatsapp_mensajes").update({ media_ruta: ruta }).eq("id", nuevos[0].id);
+      }
+      if (m.via === "paciente") avisar.set(m.telefono, pacienteId);
     } catch (e) {
       console.error("[whatsapp] mensaje", m.wa_id, e?.message || e);
+    }
+  }
+
+  for (const [telefono, pacienteId] of avisar) {
+    try {
+      const { data: p } = pacienteId
+        ? await supabase.from("pacientes").select("nombre").eq("id", pacienteId).maybeSingle()
+        : { data: null };
+      await avisarMensajeNuevo(supabase, { nombre: p?.nombre, telefono });
+    } catch (e) {
+      console.error("[whatsapp] aviso", telefono, e?.message || e);
     }
   }
 

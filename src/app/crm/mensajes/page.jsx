@@ -1,19 +1,22 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import SignOutButton from "../components/sign-out-button";
 import NavCrm from "../components/nav-crm";
 import AutoRefresh from "../../agenda/components/auto-refresh";
-import { conversaciones, horaCorta } from "./lib";
+import { ETIQUETAS, conversaciones } from "./lib";
+import Avisos from "./avisos";
+import Lista from "./lista";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Bandeja de WhatsApp del consultorio: una fila por paciente, primero
- * las que esperan respuesta. Se actualiza sola cada 15 s.
+ * las que esperan respuesta. Se actualiza sola cada 15 s. Filtros por
+ * "sin contestar" y por etiqueta (?f=).
  */
-export default async function MensajesPage() {
+export default async function MensajesPage({ searchParams }) {
+  const { f } = await searchParams;
   const supabase = createClient(await cookies());
   const {
     data: { user },
@@ -23,13 +26,19 @@ export default async function MensajesPage() {
   const desde = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
   const { data: mensajes, error } = await supabase
     .from("whatsapp_mensajes")
-    .select("telefono, direccion, enviado_en, texto, tipo, paciente:pacientes(id, nombre)")
+    .select("telefono, direccion, enviado_en, texto, tipo, paciente:pacientes(id, nombre, etiquetas)")
     .gte("enviado_en", desde)
     .order("enviado_en")
     .limit(10000);
 
-  const lista = conversaciones(mensajes || []);
-  const pendientes = lista.filter((c) => c.esperando).length;
+  const todas = conversaciones(mensajes || []);
+  const pendientes = todas.filter((c) => c.esperando).length;
+  const lista = !f ? todas : f === "esperan" ? todas.filter((c) => c.esperando) : todas.filter((c) => c.etiquetas.includes(f));
+  const filtros = [
+    { id: null, label: "Todos" },
+    { id: "esperan", label: `Sin contestar${pendientes ? ` (${pendientes})` : ""}` },
+    ...ETIQUETAS.map((e) => ({ id: e.id, label: e.label })),
+  ];
 
   return (
     <main className="mx-auto w-full max-w-[900px] px-4 py-6 sm:px-8 md:py-10">
@@ -64,40 +73,9 @@ export default async function MensajesPage() {
         )}
       </p>
 
-      <ul className="mt-4 border border-white/[0.1]">
-        {lista.length === 0 && (
-          <li className="p-6 font-[family-name:var(--font-albert)] text-[14px] text-white/65">
-            Todavía no hay conversaciones. Cuando un paciente escriba al WhatsApp del consultorio, aparecerá aquí.
-          </li>
-        )}
-        {lista.map((c) => (
-          <li key={c.telefono}>
-            <Link
-              href={`/crm/mensajes/${c.telefono}`}
-              className={`flex min-h-[68px] items-center gap-4 border-b border-white/[0.06] px-4 py-3 last:border-0 hover:bg-white/[0.03] ${
-                c.esperando ? "bg-[#b89968]/[0.06]" : ""
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`h-2.5 w-2.5 shrink-0 rounded-full ${c.esperando ? "bg-[#b89968]" : "bg-transparent"}`}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-[family-name:var(--font-albert)] text-[16px] font-medium text-[#f5f1ea]">
-                  {c.nombre}
-                </p>
-                <p className="truncate font-[family-name:var(--font-albert)] text-[14px] text-white/70">
-                  {c.ultimo.direccion === "salida" && <span className="text-white/45">Tú: </span>}
-                  {c.ultimo.texto || "📎 Archivo o mensaje sin texto"}
-                </p>
-              </div>
-              <span className="shrink-0 font-[family-name:var(--font-albert)] text-[12px] tabular-nums text-white/60">
-                {horaCorta(c.ultimo.enviado_en)}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <Avisos />
+
+      <Lista lista={lista} filtros={filtros} f={f} base="/crm/mensajes" />
     </main>
   );
 }

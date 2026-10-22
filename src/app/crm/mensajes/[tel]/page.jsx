@@ -6,7 +6,8 @@ import { normalizarTelefono } from "@/lib/telefono";
 import { ventanaAbierta, whatsappConfigurado } from "@/lib/whatsapp";
 import AutoRefresh from "../../../agenda/components/auto-refresh";
 import { labelCanal } from "../../resultados/fuentes";
-import { horaCorta } from "../lib";
+import Etiquetas from "../etiquetas";
+import Chat from "./chat";
 import Responder from "./responder";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +25,11 @@ export default async function ConversacionPage({ params }) {
   const [{ data: mensajes }, { data: paciente }] = await Promise.all([
     supabase
       .from("whatsapp_mensajes")
-      .select("id, direccion, via, enviado_en, texto, tipo")
+      .select("id, direccion, via, enviado_en, texto, tipo, media_id, media_ruta")
       .eq("telefono", telefono)
       .order("enviado_en")
       .limit(500),
-    supabase.from("pacientes").select("id, nombre, origen").eq("whatsapp", telefono).limit(1).maybeSingle(),
+    supabase.from("pacientes").select("id, nombre, origen, etiquetas").eq("whatsapp", telefono).limit(1).maybeSingle(),
   ]);
 
   const ultimaEntrada = [...(mensajes || [])].reverse().find((m) => m.direccion === "entrada")?.enviado_en;
@@ -61,28 +62,9 @@ export default async function ConversacionPage({ params }) {
         )}
       </header>
 
-      <ol className="flex-1 space-y-2 py-4">
-        {(mensajes || []).map((m) => {
-          const mio = m.direccion === "salida";
-          return (
-            <li key={m.id} className={`flex ${mio ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] border px-3.5 py-2 ${
-                  mio ? "border-[#b89968]/40 bg-[#b89968]/[0.14]" : "border-white/[0.1] bg-white/[0.04]"
-                }`}
-              >
-                <p className="whitespace-pre-wrap break-words font-[family-name:var(--font-albert)] text-[15px] leading-snug text-[#f5f1ea]">
-                  {m.texto || <span className="italic text-white/55">📎 {m.tipo || "archivo"}</span>}
-                </p>
-                <p className="mt-1 text-right font-[family-name:var(--font-albert)] text-[11px] tabular-nums text-white/50">
-                  {horaCorta(m.enviado_en)}
-                  {m.via === "app" && " · desde el celular"}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+      {paciente && <Etiquetas pacienteId={paciente.id} actuales={paciente.etiquetas} />}
+
+      <Chat mensajes={mensajes || []} />
 
       <div className="sticky bottom-0 border-t border-white/[0.08] bg-[#000000] pb-3 pt-3">
         <Responder telefono={telefono} abierta={abierta} conectado={whatsappConfigurado()} />
