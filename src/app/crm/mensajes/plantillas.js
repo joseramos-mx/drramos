@@ -26,7 +26,7 @@ export const PLANTILLAS = [
     nombre: "seguimiento_consulta",
     titulo: "Seguimiento",
     texto:
-      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo para dar seguimiento a su consulta. Responda este mensaje si tiene alguna duda o quiere agendar.",
+      "Hola {{1}}, ¿cómo se ha sentido después de su consulta con el Dr. Felipe? 😊 Si tiene cualquier duda o molestia, aquí estamos; puede responder este mensaje y con gusto le atendemos.",
     campos: ["Nombre del paciente"],
   },
 ];
