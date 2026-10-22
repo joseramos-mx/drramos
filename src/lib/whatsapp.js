@@ -180,13 +180,15 @@ export async function enviarPlantilla(telefono, nombre, params = [], idioma = "e
  * del `link` (link firmado temporal). Así el archivo no pasa por la
  * función de Vercel (límite ~4 MB). Devuelve { ok, wa_id } o { error }.
  */
-export async function enviarArchivo(telefono, tipo, link, { pie, nombre } = {}) {
+export async function enviarArchivo(telefono, tipo, link, { pie, nombre, voz = false } = {}) {
   if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
-  if (tipo !== "video" && tipo !== "document") return { error: "Tipo de archivo no permitido." };
+  if (!["video", "document", "audio"].includes(tipo)) return { error: "Tipo de archivo no permitido." };
   const to = normalizarTelefono(telefono);
   if (!to) return { error: "Teléfono inválido." };
   const media = { link };
-  if (pie?.trim()) media.caption = pie.trim().slice(0, 1024);
+  if (pie?.trim() && tipo !== "audio") media.caption = pie.trim().slice(0, 1024);
+  // OGG/Opus con voice=true llega como nota de voz (con onda), no como archivo
+  if (voz) media.voice = true;
   if (tipo === "document" && nombre) media.filename = String(nombre).slice(0, 120);
   try {
     const res = await fetch(graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`), {
@@ -196,6 +198,8 @@ export async function enviarArchivo(telefono, tipo, link, { pie, nombre } = {}) 
       cache: "no-store",
     });
     const json = await res.json().catch(() => ({}));
+    // Si esta versión de la API no conoce "voice", se reintenta como audio normal
+    if (voz && json.error?.code === 100) return enviarArchivo(telefono, tipo, link, { pie, nombre, voz: false });
     if (!res.ok || json.error) {
       console.error("[whatsapp] envío archivo", json.error?.code, json.error?.message);
       if (json.error?.code === 131047) return { error: "Pasaron más de 24 h: sólo se puede mandar una plantilla aprobada." };

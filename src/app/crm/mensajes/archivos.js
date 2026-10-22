@@ -4,6 +4,8 @@ export const BUCKET_MEDIA = "whatsapp-media";
 /** Videos y documentos que acepta WhatsApp (los límites de Meta, con margen). */
 export const ARCHIVOS = {
   video: { tipos: ["video/mp4", "video/3gpp"], max: 16 * 1024 * 1024 },
+  // Notas de voz: OGG/Opus (Chrome, convertido) o MP4/AAC (iPhone/iPad)
+  audio: { tipos: ["audio/ogg", "audio/mp4", "audio/aac", "audio/mpeg"], max: 16 * 1024 * 1024 },
   document: {
     tipos: [
       "application/pdf",

@@ -2,13 +2,14 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { FileTextIcon, ImageIcon, LightningIcon, PaperPlaneRightIcon, PlusIcon, VideoCameraIcon, XIcon } from "@phosphor-icons/react";
+import { FileTextIcon, ImageIcon, LightningIcon, MicrophoneIcon, PaperPlaneRightIcon, PlusIcon, VideoCameraIcon, XIcon } from "@phosphor-icons/react";
 import { createClient } from "@/utils/supabase/client";
 import { enviarArchivoAction, enviarFotoAction, enviarMensajeAction, prepararArchivoAction } from "../actions";
 import { ARCHIVOS, BUCKET_MEDIA, pesoLegible } from "../archivos";
 import { RESPUESTAS_RAPIDAS } from "../respuestas";
 import Hoja from "../hoja";
 import Plantilla from "./plantilla";
+import NotaDeVoz from "./nota-de-voz";
 
 /**
  * Reduce la foto en el navegador (lado mayor 1600 px, JPEG) para que
@@ -31,7 +32,7 @@ const campo =
 const redondo = "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full";
 
 /**
- * Barra para contestar, como WhatsApp: [+] [mensaje] [enviar]. El "+"
+ * Barra para contestar, como WhatsApp: [+] [mensaje] [enviar o 🎤]. El "+"
  * abre fotos, documentos (PDF: facturas, recetas), videos y las
  * respuestas rápidas del manual. Aviso claro si ya pasaron 24 h.
  */
@@ -39,6 +40,7 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
   const [state, formAction] = useActionState(enviarMensajeAction, null);
   const [texto, setTexto] = useState("");
   const [menu, setMenu] = useState(false);
+  const [voz, setVoz] = useState(false);
   const [foto, setFoto] = useState(null); // { archivo, url }
   const [errorFoto, setErrorFoto] = useState(null);
   const [mandandoFoto, startFoto] = useTransition();
@@ -116,6 +118,10 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
       setAdjunto(null);
       setTexto("");
     });
+  }
+
+  if (voz) {
+    return <NotaDeVoz telefono={telefono} onCerrar={() => setVoz(false)} />;
   }
 
   if (adjunto) {
@@ -213,7 +219,18 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
           placeholder="Mensaje"
           className={`min-h-[52px] resize-none py-3.5 ${campo}`}
         />
-        <Enviar disabled={!texto.trim()} />
+        {texto.trim() ? (
+          <Enviar />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setVoz(true)}
+            aria-label="Grabar nota de voz"
+            className={`${redondo} bg-[#b89968] text-white`}
+          >
+            <MicrophoneIcon size={26} weight="fill" />
+          </button>
+        )}
       </div>
       {state?.error && (
         <p role="alert" className="px-2 pt-2 text-[16px] font-medium text-[#c0392b]">
@@ -284,7 +301,7 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
   );
 }
 
-function Enviar({ disabled }) {
+function Enviar({ disabled = false }) {
   const { pending } = useFormStatus();
   return (
     <button

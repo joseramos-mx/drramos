@@ -206,17 +206,23 @@ export async function prepararArchivoAction(telefonoRaw, tipo, mime, tamano, nom
   const regla = ARCHIVOS[tipo];
   if (!telefono || !regla) return { error: "Archivo no permitido." };
   if (!regla.tipos.includes(mime)) {
-    return { error: tipo === "video" ? "El video debe ser MP4 (el normal del celular)." : "El documento debe ser PDF, Word o Excel." };
+    return {
+      error: { video: "El video debe ser MP4 (el normal del celular).", audio: "No se pudo preparar la nota de voz." }[tipo] || "El documento debe ser PDF, Word o Excel.",
+    };
   }
   if (tamano > regla.max) {
-    return { error: tipo === "video" ? "El video pesa más de 16 MB. Manda uno más corto (≈1 minuto)." : "El documento pesa más de 25 MB." };
+    return {
+      error: { video: "El video pesa más de 16 MB. Manda uno más corto (≈1 minuto).", audio: "La nota de voz es demasiado larga." }[tipo] || "El documento pesa más de 25 MB.",
+    };
   }
 
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
   if (!(await ventanaDe(supabase, telefono))) return FUERA_DE_VENTANA;
 
-  const ext = String(nombre || "").split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || (tipo === "video" ? "mp4" : "pdf");
+  const ext =
+    String(nombre || "").split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) ||
+    { video: "mp4", audio: "ogg", document: "pdf" }[tipo];
   const ruta = `${telefono}/salida-${Date.now()}.${ext}`;
   const { data, error } = await supabaseServicio().storage.from(BUCKET).createSignedUploadUrl(ruta);
   if (error || !data?.token) return { error: "No se pudo preparar el envío. Intenta de nuevo." };
@@ -236,13 +242,13 @@ export async function enviarArchivoAction(telefonoRaw, tipo, ruta, mime, nombre,
   const { data: firmado } = await admin.storage.from(BUCKET).createSignedUrl(ruta, 60 * 60);
   if (!firmado?.signedUrl) return { error: "No encontramos el archivo subido. Intenta de nuevo." };
 
-  const res = await enviarArchivo(telefono, tipo, firmado.signedUrl, { pie, nombre });
+  const res = await enviarArchivo(telefono, tipo, firmado.signedUrl, { pie, nombre, voz: tipo === "audio" && mime === "audio/ogg" });
   if (res.error) return res;
   await guardarSalida(admin, {
     wa_id: res.wa_id || `local-${Date.now()}`,
     telefono,
     tipo,
-    texto: pie?.trim() || (tipo === "document" ? nombre : null),
+    texto: tipo === "audio" ? null : pie?.trim() || (tipo === "document" ? nombre : null),
     media_mime: mime,
     media_ruta: ruta,
   });
