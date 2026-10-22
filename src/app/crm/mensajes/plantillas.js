@@ -48,9 +48,33 @@ export const PLANTILLAS_SISTEMA = [
     nombre: "cita_cancelada",
     titulo: "Avisar que se canceló su cita (bloqueo)",
     texto:
-      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto tuvimos que cancelar su cita del {{2}} a las {{3}}; le ofrecemos una disculpa. La Dra. Gaby le escribirá para acomodarla, o toque el botón para hablar con ella.",
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto tuvimos que cancelar su cita del {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la Dra. Gaby.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Hablar con Dra. Gaby"],
+    botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
+  },
+  {
+    nombre: "cita_agendada",
+    titulo: "Confirmación al agendar (la Dra. Gaby en la agenda)",
+    texto:
+      "Hola {{1}}, su cita en el consultorio del Dr. Felipe de Jesús Ramos Sotelo quedó el {{2}} a las {{3}}. Le esperamos en Prol. Gómez Palacio 501 Pte., Zona Centro. Si necesita cambiarla, toque un botón.",
+    campos: ["Nombre del paciente", "Día", "Hora"],
+    botones: ["Confirmo mi cita", "Cambiar mi cita", "Cancelar mi cita"],
+  },
+  {
+    nombre: "cita_falto",
+    titulo: "Cuando no vino a su cita",
+    texto:
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Notamos que no pudo venir a su cita del {{2}} a las {{3}}. Si gusta, toque un botón para elegir otro horario o hablar con la Dra. Gaby.",
+    campos: ["Nombre del paciente", "Día", "Hora"],
+    botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
+  },
+  {
+    nombre: "seguimiento_presupuesto",
+    titulo: "Seguimiento del plan de tratamiento (3 días y 1 mes después)",
+    texto:
+      "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. ¿Pudo revisar el plan de tratamiento que le preparamos en su cita del {{2}}? Si tiene dudas o quiere agendar, con gusto le ayudamos.",
+    campos: ["Nombre del paciente", "Día de la valoración"],
+    botones: ["Quiero agendar", "Tengo una duda", "Ya no, gracias"],
   },
 ];
 

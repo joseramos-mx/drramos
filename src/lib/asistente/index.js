@@ -683,6 +683,10 @@ export async function atenderConAsistente(admin, telefono, waId) {
     },
     { onConflict: "wa_id", ignoreDuplicates: true }
   );
+  // "Ya no me escriban": se marca para que no le lleguen mensajes automáticos
+  if (d.ids?.includes("no_escribir_mas")) {
+    await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "no_contactar"])] }).eq("id", paciente.id);
+  }
   const accion = d.tipo === "humano" ? "paso_a_humano" : d.acciones?.some((a) => a.herramienta === "agendar_valoracion" && a.resultado?.ok) ? "agendo" : `respondio_${d.tipo}`;
   return registrar(admin, telefono, accion, { decision: d });
 }

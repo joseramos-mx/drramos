@@ -14,6 +14,6 @@ export default async function AjustesPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/crm/login?from=/crm/mensajes/ajustes");
 
-  const { data: config } = await supabase.from("asistente_config").select("modo, libres, recordatorios").eq("id", 1).maybeSingle();
-  return <Ajustes email={user.email} admin={esAdmin(user.email)} modo={config?.modo || "apagado"} libres={config?.libres || "aprobar"} recordatorios={config?.recordatorios !== false} />;
+  const { data: config } = await supabase.from("asistente_config").select("modo, libres, recordatorios, aviso_falto, seguimientos").eq("id", 1).maybeSingle();
+  return <Ajustes email={user.email} admin={esAdmin(user.email)} modo={config?.modo || "apagado"} libres={config?.libres || "aprobar"} automaticos={{ recordatorios: config?.recordatorios, aviso_falto: config?.aviso_falto, seguimientos: config?.seguimientos }} />;
 }

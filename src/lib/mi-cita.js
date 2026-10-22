@@ -13,6 +13,8 @@
  *   cancelar  → "¿Seguro?" → cancelar_si → cita cancelada (se queda en la agenda
  *               marcada como cancelada para que cuente en Resultados; el horario se libera)
  *   hablar    → pasa el chat a la Dra. Gaby
+ *   reagendar → (de una cita pasada/cancelada: faltó o la canceló el consultorio) rdia → rhora → cita NUEVA
+ *   presupuesto_si / _duda / _no → respuestas al seguimiento de un presupuesto
  *
  * Duración: cada cita conserva el espacio que la Dra. Gaby le apartó en la
  * agenda (fin − inicio): una cirugía de 3 h sólo ve huecos donde caben 3 h.
@@ -36,11 +38,23 @@ const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "o
 
 /** Botones del recordatorio (en el mismo orden que en WhatsApp Manager). */
 export const BOTONES_RECORDATORIO = ["confirmar", "cambiar", "cancelar"];
+/** Botones de las plantillas del sistema, en el mismo orden que en WhatsApp Manager. */
+export const BOTONES_PLANTILLA = {
+  recordatorio_cita: ["confirmar", "cambiar", "cancelar"],
+  cita_agendada: ["confirmar", "cambiar", "cancelar"],
+  cita_reagendar: ["cambiar", "hablar"],
+  cita_cancelada: ["reagendar", "hablar"],
+  cita_falto: ["reagendar", "hablar"],
+  seguimiento_presupuesto: ["presupuesto_si", "presupuesto_duda", "presupuesto_no"],
+};
 const TITULOS = {
   confirmar: ["Confirmo mi cita"],
   cambiar: ["Cambiar mi cita", "Elegir otro horario"],
   cancelar: ["Cancelar mi cita"],
   hablar: ["Hablar con Dra. Gaby"],
+  presupuesto_si: ["Quiero agendar"],
+  presupuesto_duda: ["Tengo una duda"],
+  presupuesto_no: ["Ya no, gracias"],
 };
 
 export const idBoton = (accion, citaId, dato = "") => `cita|${accion}|${citaId || ""}|${dato}`;
@@ -146,6 +160,128 @@ export async function enviarMenuCita(admin, telefono, paciente, cita) {
   return envio;
 }
 
+/** Lista de días con lugar para la duración de `cita`. `accionDia`: "dia" (mover) o "rdia" (cita nueva). */
+async function enviarDias(admin, telefono, paciente, cita, accionDia, texto, desde = desdeCuando(cita)) {
+  const filas = [];
+  for (let i = 0; i < DIAS_A_OFRECER && filas.length < 9; i++) {
+    const fecha = sumarDias(desde, i);
+    const r = await libresPara(admin, cita, fecha);
+    const n = Array.isArray(r.horarios_libres) ? r.horarios_libres.length : 0;
+    if (n) filas.push({ id: idBoton(accionDia, cita.id, fecha), titulo: diaCorto(fecha), descripcion: `${n} horario${n === 1 ? "" : "s"} libre${n === 1 ? "" : "s"}` });
+  }
+  if (!filas.length) return false;
+  filas.push({ id: idBoton("hablar", cita.id), titulo: "Hablar con Dra. Gaby", descripcion: "Si ningún día le acomoda" });
+  const envio = await enviarLista(telefono, texto, "Ver días", filas, "Días con lugar");
+  await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Lista de días]`);
+  return true;
+}
+
+/** Lista de horas libres de un día (máx. 10, repartidas). `accionHora`: "hora" (mover) o "rhora" (cita nueva). */
+async function enviarHoras(admin, telefono, paciente, cita, fecha, accionHora) {
+  const r = await libresPara(admin, cita, fecha);
+  const libres = Array.isArray(r.horarios_libres) ? r.horarios_libres : [];
+  if (!libres.length) return false;
+  const horas = libres.length <= 10 ? libres : Array.from({ length: 10 }, (_, i) => libres[Math.round((i * (libres.length - 1)) / 9)]);
+  const texto = `Horarios libres el ${formatFechaLarga(fecha)}. Toque el que le acomode:`;
+  const envio = await enviarLista(
+    telefono,
+    texto,
+    "Ver horarios",
+    horas.map((h) => ({ id: idBoton(accionHora, cita.id, `${fecha}T${h}`), titulo: rango(h, duracionDe(cita)), descripcion: diaCorto(fecha) })),
+    "Horarios"
+  );
+  await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Lista de horarios]`);
+  return true;
+}
+
+/**
+ * Botones que salen de una cita PASADA o CANCELADA: faltó ("No vino"), el
+ * consultorio la canceló por un bloqueo, o el seguimiento de un presupuesto.
+ *   reagendar → rdia → rhora: se crea una cita NUEVA (mismo tipo y duración)
+ *   presupuesto_si / presupuesto_duda → a la Dra. Gaby · presupuesto_no → ya no se le escribe de eso
+ */
+async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
+  const { data: previa } = await admin
+    .from("citas")
+    .select("id, inicio, fin, tipo, dentista, estado, notas")
+    .eq("id", b.citaId || "")
+    .eq("paciente_id", paciente.id)
+    .maybeSingle();
+  if (!previa) {
+    await decir(admin, telefono, paciente.id, "No encontré esa cita. Si quiere agendar, con gusto le ayudo por aquí 😊");
+    return true;
+  }
+
+  if (b.accion.startsWith("presupuesto_")) {
+    await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", previa.id);
+    if (b.accion === "presupuesto_si") {
+      await pasar(admin, telefono, paciente, "Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La Dra. Gaby le escribe para agendar su tratamiento 😊");
+    } else if (b.accion === "presupuesto_duda") {
+      await pasar(admin, telefono, paciente, "Tiene una duda sobre su plan de tratamiento (seguimiento de presupuesto)");
+    } else {
+      await decir(admin, telefono, paciente.id, "Entendido, gracias por avisarnos. Aquí estamos cuando guste 😊");
+    }
+    return true;
+  }
+
+  // Reagendar: sólo si ya no tiene otra cita próxima
+  const proxima = await citaDel(admin, paciente.id, null);
+  if (proxima) {
+    await decir(admin, telefono, paciente.id, `Ya tiene cita el ${cuando(proxima.inicio)} 😊`);
+    await enviarMenuCita(admin, telefono, paciente, proxima);
+    return true;
+  }
+  if (!["no_asistio", "cancelada"].includes(previa.estado)) {
+    await pasar(admin, telefono, paciente, "Quiere reagendar su cita");
+    return true;
+  }
+  const desde = hoyDurango();
+
+  if (b.accion === "reagendar") {
+    const ok = await enviarDias(admin, telefono, paciente, previa, "rdia", "¿Para qué día le agendamos su nueva cita?", desde);
+    if (!ok) await pasar(admin, telefono, paciente, "Quiere reagendar y no hay lugar en 2 semanas");
+    return true;
+  }
+  if (b.accion === "rdia") {
+    if (!esFechaValida(b.dato) || b.dato < desde) return atenderBotonCita(admin, telefono, idBoton("reagendar", previa.id));
+    if (!(await enviarHoras(admin, telefono, paciente, previa, b.dato, "rhora"))) {
+      await decir(admin, telefono, paciente.id, "Ese día ya se llenó 🙏");
+      return atenderBotonCita(admin, telefono, idBoton("reagendar", previa.id));
+    }
+    return true;
+  }
+  // rhora: crear la cita nueva
+  const [fecha, hora] = b.dato.split("T");
+  const [h, m] = String(hora || "").split(":").map(Number);
+  if (!esFechaValida(fecha) || !Number.isFinite(h) || fecha < desde) return atenderBotonCita(admin, telefono, idBoton("reagendar", previa.id));
+  const inicioMin = h * 60 + (m || 0);
+  const r = await libresPara(admin, previa, fecha);
+  if (!Array.isArray(r.horarios_libres) || !r.horarios_libres.includes(formatHora(inicioMin))) {
+    await decir(admin, telefono, paciente.id, "Ese horario se acaba de ocupar 🙏 Le muestro los que siguen libres:");
+    return atenderBotonCita(admin, telefono, idBoton("rdia", previa.id, fecha));
+  }
+  const nuevoInicio = isoDesde(fecha, inicioMin);
+  const { error } = await admin.from("citas").insert({
+    paciente_id: paciente.id,
+    dentista: previa.dentista,
+    tipo: previa.tipo,
+    inicio: nuevoInicio,
+    fin: isoDesde(fecha, inicioMin + duracionDe(previa)),
+    estado: "agendada",
+    notas: `Reagendada por el paciente por WhatsApp (la anterior era el ${cuando(previa.inicio)})`,
+    // Si es para mañana, esta confirmación ya hace de recordatorio
+    recordatorio_enviado_en: fecha <= sumarDias(hoyDurango(), 1) ? new Date().toISOString() : null,
+  });
+  if (error) {
+    await pasar(admin, telefono, paciente, "Quiso reagendar su cita y no se pudo guardar");
+    return true;
+  }
+  await yaRespondio(admin, paciente.id);
+  await decir(admin, telefono, paciente.id, `¡Listo! ✅ Su nueva cita quedó el ${cuando(nuevoInicio)}. Le esperamos en Prol. Gómez Palacio 501 Pte., Zona Centro.`);
+  await avisar(admin, { titulo: `📅 ${nombre} reagendó su cita`, cuerpo: `${diaCorto(fecha)}, ${formatHora(inicioMin)}`, url: `/agenda?fecha=${fecha}` });
+  return true;
+}
+
 async function pasar(admin, telefono, paciente, motivo, texto) {
   await pasarAHumano(admin, paciente, telefono, { motivo, urgente: false });
   const { data: editadas } = await admin.from("asistente_respuestas").select("id, texto");
@@ -174,6 +310,10 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
     return true;
   }
 
+  if (["reagendar", "rdia", "rhora", "presupuesto_si", "presupuesto_duda", "presupuesto_no"].includes(b.accion)) {
+    return atenderCitaAnterior(admin, telefono, paciente, nombre, b);
+  }
+
   const cita = await citaDel(admin, paciente.id, b.citaId);
   if (!cita) {
     await decir(admin, telefono, paciente.id, "No encontré una cita próxima a su nombre. Si quiere agendar una valoración, con gusto le ayudo por aquí 😊");
@@ -196,23 +336,11 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
         await pasar(admin, telefono, paciente, `Quiere mover otra vez su cita (ya la movió ${MAX_CAMBIOS} veces)`);
         return true;
       }
-      const filas = [];
-      const inicio = desdeCuando(cita);
-      for (let i = 0; i < DIAS_A_OFRECER && filas.length < 9; i++) {
-        const fecha = sumarDias(inicio, i);
-        const r = await libresPara(admin, cita, fecha);
-        const n = Array.isArray(r.horarios_libres) ? r.horarios_libres.length : 0;
-        if (n) filas.push({ id: idBoton("dia", cita.id, fecha), titulo: diaCorto(fecha), descripcion: `${n} horario${n === 1 ? "" : "s"} libre${n === 1 ? "" : "s"}` });
-      }
-      if (!filas.length) {
-        await pasar(admin, telefono, paciente, "Quiere cambiar su cita y no hay lugar en 2 semanas");
-        return true;
-      }
-      filas.push({ id: idBoton("hablar", cita.id), titulo: "Hablar con Dra. Gaby", descripcion: "Si ningún día le acomoda" });
       const dur = duracionDe(cita);
       const texto = `Su cita es el ${cuando(cita.inicio)}${dur > SLOT_MIN ? ` (dura ${dur >= 60 ? `${dur / 60} h` : `${dur} min`})` : ""}. ¿Para qué día la cambiamos?`;
-      const envio = await enviarLista(telefono, texto, "Ver días", filas, "Días con lugar");
-      await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Lista de días]`);
+      if (!(await enviarDias(admin, telefono, paciente, cita, "dia", texto))) {
+        await pasar(admin, telefono, paciente, "Quiere cambiar su cita y no hay lugar en 2 semanas");
+      }
       return true;
     }
 
@@ -222,23 +350,10 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
         await pasar(admin, telefono, paciente, `Quiere adelantar su cita de tratamiento al ${formatFechaLarga(b.dato)}`, "Para adelantar una cita de tratamiento, la Dra. Gaby revisa que su trabajo esté listo y le escribe en un momento 🙏");
         return true;
       }
-      const r = await libresPara(admin, cita, b.dato);
-      const libres = Array.isArray(r.horarios_libres) ? r.horarios_libres : [];
-      if (!libres.length) {
+      if (!(await enviarHoras(admin, telefono, paciente, cita, b.dato, "hora"))) {
         await decir(admin, telefono, paciente.id, "Ese día ya se llenó 🙏");
         return atenderBotonCita(admin, telefono, idBoton("cambiar", cita.id));
       }
-      // Máximo 10 filas: si hay más horas, se reparten a lo largo del día
-      const horas = libres.length <= 10 ? libres : Array.from({ length: 10 }, (_, i) => libres[Math.round((i * (libres.length - 1)) / 9)]);
-      const texto = `Horarios libres el ${formatFechaLarga(b.dato)}. Toque el que le acomode:`;
-      const envio = await enviarLista(
-        telefono,
-        texto,
-        "Ver horarios",
-        horas.map((h) => ({ id: idBoton("hora", cita.id, `${b.dato}T${h}`), titulo: rango(h, duracionDe(cita)), descripcion: diaCorto(b.dato) })),
-        "Horarios"
-      );
-      await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Lista de horarios]`);
       return true;
     }
 

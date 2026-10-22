@@ -4,10 +4,8 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { normalizarTelefono } from "@/lib/telefono";
-import { enviarPlantilla } from "@/lib/whatsapp";
 import { supabaseServicio } from "@/lib/mensajes-servidor";
-import { idBoton } from "@/lib/mi-cita";
-import { PLANTILLAS_SISTEMA, rellenar } from "../crm/mensajes/plantillas";
+import { mandarPlantillaCita } from "@/lib/avisos-cita";
 import {
   DENTISTAS,
   TIPOS,
@@ -98,6 +96,7 @@ export async function guardarCitaAction(_prev, formData) {
   const dentista = String(formData.get("dentista") || "");
   const tipo = String(formData.get("tipo") || "");
   const notas = String(formData.get("notas") ?? "").trim();
+  const avisar = formData.get("avisar") === "1";
 
   if (!esFechaValida(fecha) || !Number.isInteger(minutos) || minutos < 0 || minutos >= 24 * 60) {
     return { error: "Fecha u hora inválida." };
@@ -114,8 +113,14 @@ export async function guardarCitaAction(_prev, formData) {
   const base = { dentista, tipo, inicio, fin, notas: notas || null, aviso_bloqueo_en: null, updated_at: new Date().toISOString() };
 
   if (id) {
-    const { error } = await supabase.from("citas").update(base).eq("id", id);
+    const { data: antes } = await supabase.from("citas").select("inicio").eq("id", id).maybeSingle();
+    const cambioHora = antes && new Date(antes.inicio).getTime() !== new Date(inicio).getTime();
+    const { error } = await supabase
+      .from("citas")
+      .update(cambioHora ? { ...base, recordatorio_enviado_en: null } : base)
+      .eq("id", id);
     if (error) return { error: error.message };
+    if (cambioHora && avisar) await confirmarPorWhatsApp(supabase, id);
     revalidatePath("/agenda");
     return { ok: true };
   }
@@ -123,11 +128,30 @@ export async function guardarCitaAction(_prev, formData) {
   const pacienteId = await resolverPaciente(supabase, formData);
   if (pacienteId?.error) return pacienteId;
 
-  const { error } = await supabase.from("citas").insert({ ...base, paciente_id: pacienteId });
+  const { data: nueva, error } = await supabase.from("citas").insert({ ...base, paciente_id: pacienteId }).select("id").single();
   if (error) return { error: error.message };
+  if (avisar) await confirmarPorWhatsApp(supabase, nueva.id);
 
   revalidatePath("/agenda");
   return { ok: true };
+}
+
+/**
+ * Le manda al paciente su cita por WhatsApp con botones Confirmo / Cambiar /
+ * Cancelar (plantilla cita_agendada). Si es para hoy o mañana, eso ya cuenta
+ * como su recordatorio (el automático corre a las 11 y pudo haber pasado).
+ */
+async function confirmarPorWhatsApp(supabase, citaId) {
+  const { data: cita } = await supabase
+    .from("citas")
+    .select("id, inicio, paciente:pacientes(id, nombre, whatsapp, etiquetas)")
+    .eq("id", citaId)
+    .maybeSingle();
+  if (!cita || new Date(cita.inicio) < new Date()) return;
+  const r = await mandarPlantillaCita(supabaseServicio(), cita, "cita_agendada");
+  if (r.ok && hoyDurango(new Date(cita.inicio)) <= sumarDias(hoyDurango(), 1)) {
+    await supabase.from("citas").update({ recordatorio_enviado_en: new Date().toISOString() }).eq("id", cita.id);
+  }
 }
 
 /**
@@ -192,6 +216,7 @@ async function resolverPaciente(supabase, formData) {
 export async function cerrarCitaAction(_prev, formData) {
   const id = String(formData.get("id") || "");
   const estado = String(formData.get("estado") || "");
+  const avisarFalto = formData.get("avisar_falto") === "1";
   const cotizadoMonto = monto(formData.get("cotizado_monto"));
   const pagadoMonto = monto(formData.get("pagado_monto"));
 
@@ -222,6 +247,21 @@ export async function cerrarCitaAction(_prev, formData) {
     .select("paciente_id")
     .single();
   if (error) return { error: error.message };
+
+  // No vino: mensaje con botones para elegir otro horario (una sola vez por cita)
+  if (estado === "no_asistio" && avisarFalto) {
+    const admin = supabaseServicio();
+    const { data: config } = await admin.from("asistente_config").select("aviso_falto").eq("id", 1).maybeSingle();
+    const { data: c } = await admin
+      .from("citas")
+      .select("id, inicio, falto_avisado_en, paciente:pacientes(id, nombre, whatsapp, etiquetas)")
+      .eq("id", id)
+      .maybeSingle();
+    if (config?.aviso_falto !== false && c && !c.falto_avisado_en) {
+      const r = await mandarPlantillaCita(admin, c, "cita_falto");
+      if (r.ok) await admin.from("citas").update({ falto_avisado_en: new Date().toISOString() }).eq("id", id);
+    }
+  }
 
   // Si el paciente vino del formulario, su lead avanza en el embudo del CRM.
   if (asistio && pagadoMonto > 0) {
@@ -296,7 +336,7 @@ const hhmm = (v) => {
 async function citasEn(supabase, desdeFecha, hastaFecha, desdeMin, hastaMin) {
   const { data } = await supabase
     .from("citas")
-    .select("id, inicio, fin, estado, notas, paciente:pacientes(id, nombre, whatsapp)")
+    .select("id, inicio, fin, estado, notas, paciente:pacientes(id, nombre, whatsapp, etiquetas)")
     .gte("inicio", rangoDelDia(desdeFecha).desde)
     .lt("inicio", rangoDelDia(hastaFecha).hasta)
     .neq("estado", "cancelada")
@@ -353,31 +393,6 @@ export async function revisarBloqueoAction(datos) {
   return { citas: citas.map(resumenCita) };
 }
 
-/** Avisa a un paciente por WhatsApp (plantilla del sistema) y lo deja en su chat. */
-async function avisarPaciente(admin, cita, plantilla, botones) {
-  const tel = normalizarTelefono(cita.paciente?.whatsapp);
-  if (!tel) return { sinWhatsapp: true };
-  const p = PLANTILLAS_SISTEMA.find((x) => x.nombre === plantilla);
-  const nombre = cita.paciente?.nombre && !/^WhatsApp /.test(cita.paciente.nombre) ? cita.paciente.nombre.trim().split(/\s+/)[0] : "estimado paciente";
-  const valores = [nombre, formatFechaLarga(hoyDurango(new Date(cita.inicio))), formatHora(minutosDelDia(cita.inicio))];
-  const envio = await enviarPlantilla(tel, p.nombre, valores, "es_MX", { botones });
-  if (envio.error) return { error: envio.error };
-  await admin.from("whatsapp_mensajes").upsert(
-    {
-      wa_id: envio.wa_id || `bloqueo-${cita.id}-${Date.now()}`,
-      telefono: tel,
-      direccion: "salida",
-      via: "api",
-      tipo: "template",
-      texto: `${rellenar(p.texto, valores)}\n[Botones: ${p.botones.join(" · ")}]`,
-      enviado_en: new Date().toISOString(),
-      paciente_id: cita.paciente.id,
-    },
-    { onConflict: "wa_id", ignoreDuplicates: true }
-  );
-  return { ok: true };
-}
-
 /**
  * { tipo: "dia" | "varios" | "horas", desde, hasta, horaDesde, horaHasta, motivo, evento?, citas? }
  * `evento`: algo de la Dra. Gaby que ocupa tiempo (junta, laboratorio…); el nombre va en `motivo`
@@ -410,17 +425,14 @@ export async function crearBloqueoAction(datos) {
           notas: [c.notas, nota].filter(Boolean).join(" · ").slice(0, 1000),
         })
         .eq("id", c.id);
-      const r =
-        que === "avisar"
-          ? await avisarPaciente(admin, c, "cita_reagendar", [idBoton("cambiar", c.id), idBoton("hablar", c.id)])
-          : await avisarPaciente(admin, c, "cita_cancelada", [idBoton("hablar", c.id)]);
-      if (r.sinWhatsapp || r.error) {
+      const r = await mandarPlantillaCita(admin, c, que === "avisar" ? "cita_reagendar" : "cita_cancelada");
+      if (r.sinWhatsapp || r.noContactar || r.error) {
         // No se le pudo avisar: a la libreta de hoy para llamarle
         await supabase.from("pendientes").insert({
           fecha: hoyDurango(),
           texto: textoLlamar({ nombre: c.paciente?.nombre, whatsapp: c.paciente?.whatsapp, inicio: c.inicio, cancelada: que === "cancelar", sinWhatsapp: true }),
         });
-        if (r.sinWhatsapp) resultado.sinWhatsapp.push(resumenCita(c).nombre);
+        if (r.sinWhatsapp || r.noContactar) resultado.sinWhatsapp.push(resumenCita(c).nombre);
         else resultado.errores.push(`${resumenCita(c).nombre}: ${r.error}`);
       } else {
         await supabase.from("citas").update({ aviso_bloqueo_en: new Date().toISOString(), aviso_recordado_en: null }).eq("id", c.id);

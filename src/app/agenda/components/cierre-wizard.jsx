@@ -46,6 +46,8 @@ export default function CierreWizard({ cita, onDone }) {
     pagadoMonto: montoInicial(cita.pagado_monto),
   });
   const [paso, setPaso] = useState(soloPalomita ? "cotizado" : completa ? "resumen" : "estado");
+  // Si no vino: mandarle mensaje con botones para elegir otro horario
+  const [avisarFalto, setAvisarFalto] = useState(true);
   const [marcando, startMarcar] = useTransition();
   const [errorMarcar, setErrorMarcar] = useState(null);
 
@@ -96,6 +98,7 @@ export default function CierreWizard({ cita, onDone }) {
     const fd = new FormData();
     fd.set("id", cita.id);
     fd.set("estado", r.estado);
+    if (r.estado === "no_asistio" && avisarFalto) fd.set("avisar_falto", "1");
     if (vino) {
       if (r.cotizado && r.cotizado !== NADA) fd.append("cotizado", r.cotizado);
       if (r.cotizadoMonto && r.cotizado !== NADA) fd.set("cotizado_monto", r.cotizadoMonto);
@@ -202,7 +205,7 @@ export default function CierreWizard({ cita, onDone }) {
           )}
 
           {paso === "resumen" && (
-            <Resumen r={r} vino={vino} irA={ir} onGuardar={guardar} pending={pending} error={state?.error} />
+            <Resumen r={r} vino={vino} irA={ir} onGuardar={guardar} pending={pending} error={state?.error} avisarFalto={avisarFalto} setAvisarFalto={setAvisarFalto} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -331,7 +334,7 @@ function Monto({ valor, onCambiar, onSiguiente, alternativa }) {
   );
 }
 
-function Resumen({ r, vino, irA, onGuardar, pending, error }) {
+function Resumen({ r, vino, irA, onGuardar, pending, error, avisarFalto, setAvisarFalto }) {
   const filas = [
     { paso: "estado", pregunta: "¿Vino?", respuesta: { asistio: "Sí, vino", no_asistio: "No vino", cancelada: "Canceló" }[r.estado] },
     ...(vino
@@ -369,6 +372,17 @@ function Resumen({ r, vino, irA, onGuardar, pending, error }) {
           </li>
         ))}
       </ul>
+      {r.estado === "no_asistio" && (
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl bg-[#f2efe9] p-4">
+          <input type="checkbox" checked={avisarFalto} onChange={(e) => setAvisarFalto(e.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-[#b89968]" />
+          <span>
+            <span className="block text-[17px] font-semibold text-[#1c1a17]">Mandarle mensaje para reagendar</span>
+            <span className="block text-[14px] leading-snug text-[#7a7368]">
+              Le llega por WhatsApp &quot;notamos que no pudo venir&quot; con botones para elegir otro horario o hablar contigo.
+            </span>
+          </span>
+        </label>
+      )}
       <button
         type="button"
         onClick={onGuardar}

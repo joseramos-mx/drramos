@@ -1,27 +1,24 @@
-import { enviarPlantilla, whatsappConfigurado } from "@/lib/whatsapp";
+import { whatsappConfigurado } from "@/lib/whatsapp";
 import { supabaseServicio } from "@/lib/mensajes-servidor";
 import { normalizarTelefono } from "@/lib/telefono";
-import { PLANTILLAS, rellenar } from "@/app/crm/mensajes/plantillas";
-import { BOTONES_RECORDATORIO, idBoton } from "@/lib/mi-cita";
-import { formatFechaLarga, formatHora, hoyDurango, minutosDelDia, rangoDelDia, sumarDias } from "@/app/agenda/lib";
+import { mandarPlantillaCita } from "@/lib/avisos-cita";
+import { hoyDurango, rangoDelDia, sumarDias } from "@/app/agenda/lib";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const PLANTILLA = PLANTILLAS.find((p) => p.nombre === "recordatorio_cita");
-
-/** "María Fernanda López" → "María"; si no hay nombre real, saludo general. */
-function primerNombre(nombre) {
-  if (!nombre || /^WhatsApp /.test(nombre)) return "estimado paciente";
-  return nombre.trim().split(/\s+/)[0];
-}
+/** Días después de la valoración en que se manda el seguimiento del presupuesto (1.º y 2.º). */
+const SEGUIMIENTO_DIAS = [3, 30];
+/** Más allá de esto ya no se da seguimiento (para no escribirle a alguien de hace meses). */
+const SEGUIMIENTO_MAX_DIAS = 45;
 
 /**
- * Recordatorio de cita, un día antes, por WhatsApp (plantilla
- * `recordatorio_cita`). Lo llama Vercel Cron una vez al día (vercel.json)
- * con `Authorization: Bearer CRON_SECRET`. Un recordatorio por paciente
- * (su primera cita del día); nunca dos veces la misma cita.
- * Trae botones Confirmo / Cambiar / Cancelar que resuelve "Mi cita" (src/lib/mi-cita.js).
+ * Tareas de las 11:00 (Vercel Cron, vercel.json, `Authorization: Bearer CRON_SECRET`):
+ *  1. Recordatorio de cita un día antes (plantilla recordatorio_cita con botones de "Mi cita").
+ *     Una por paciente (su primera cita del día); nunca dos veces la misma cita.
+ *  2. Seguimiento de presupuestos no aceptados: a los 3 días y al mes de la valoración
+ *     (plantilla seguimiento_presupuesto: Quiero agendar · Tengo una duda · Ya no, gracias).
+ * Cada una se apaga en Ajustes. No se le escribe a quien pidió que ya no ("no_contactar").
  */
 export async function GET(req) {
   const secreto = process.env.CRON_SECRET;
@@ -31,19 +28,24 @@ export async function GET(req) {
   if (!whatsappConfigurado()) return Response.json({ omitido: "WhatsApp todavía no está conectado" });
 
   const admin = supabaseServicio();
-  const { data: config } = await admin.from("asistente_config").select("recordatorios").eq("id", 1).maybeSingle();
-  if (config && config.recordatorios === false) return Response.json({ omitido: "Recordatorios apagados en Ajustes" });
+  const { data: config } = await admin.from("asistente_config").select("recordatorios, seguimientos").eq("id", 1).maybeSingle();
+  return Response.json({
+    recordatorios: config?.recordatorios === false ? "apagados en Ajustes" : await recordatorios(admin),
+    seguimientos: config?.seguimientos === false ? "apagados en Ajustes" : await seguimientos(admin),
+  });
+}
 
+async function recordatorios(admin) {
   const manana = sumarDias(hoyDurango(), 1);
   const { desde, hasta } = rangoDelDia(manana);
   const { data: citas, error } = await admin
     .from("citas")
-    .select("id, inicio, estado, recordatorio_enviado_en, paciente:pacientes(id, nombre, whatsapp)")
+    .select("id, inicio, estado, recordatorio_enviado_en, paciente:pacientes(id, nombre, whatsapp, etiquetas)")
     .gte("inicio", desde)
     .lt("inicio", hasta)
     .neq("estado", "cancelada")
     .order("inicio");
-  if (error) return Response.json({ error: "No se pudo leer la agenda" }, { status: 500 });
+  if (error) return { error: "No se pudo leer la agenda" };
 
   // Una por teléfono: la primera cita del día. Si ya se le mandó por otra cita, no se repite.
   const porTelefono = new Map();
@@ -55,38 +57,78 @@ export async function GET(req) {
     else ya.otras.push(c);
   }
 
-  const resumen = { enviados: 0, ya_enviados: 0, sin_whatsapp: (citas || []).filter((c) => !normalizarTelefono(c.paciente?.whatsapp)).length, errores: 0 };
-  for (const [telefono, { cita, otras }] of porTelefono) {
+  const resumen = { fecha: manana, enviados: 0, ya_enviados: 0, sin_whatsapp: (citas || []).filter((c) => !normalizarTelefono(c.paciente?.whatsapp)).length, errores: 0 };
+  for (const { cita, otras } of porTelefono.values()) {
     const todas = [cita, ...otras];
     if (todas.some((c) => c.recordatorio_enviado_en)) {
       resumen.ya_enviados++;
       continue;
     }
-    const valores = [primerNombre(cita.paciente.nombre), formatFechaLarga(manana), formatHora(minutosDelDia(cita.inicio))];
-    const envio = await enviarPlantilla(telefono, PLANTILLA.nombre, valores, "es_MX", { botones: BOTONES_RECORDATORIO.map((a) => idBoton(a, cita.id)) });
     const ids = todas.map((c) => c.id);
-    if (envio.error) {
+    const r = await mandarPlantillaCita(admin, cita, "recordatorio_cita", { via: "recordatorio" });
+    if (r.error) {
       resumen.errores++;
-      await admin.from("citas").update({ recordatorio_error: envio.error }).in("id", ids);
+      await admin.from("citas").update({ recordatorio_error: r.error }).in("id", ids);
       continue;
     }
-    const ahora = new Date().toISOString();
-    await admin.from("citas").update({ recordatorio_enviado_en: ahora, recordatorio_error: null }).in("id", ids);
-    await admin.from("whatsapp_mensajes").upsert(
-      {
-        wa_id: envio.wa_id || `recordatorio-${cita.id}`,
-        telefono,
-        direccion: "salida",
-        via: "recordatorio",
-        tipo: "template",
-        texto: `${rellenar(PLANTILLA.texto, valores)}
-[Botones: Confirmo mi cita · Cambiar mi cita · Cancelar mi cita]`,
-        enviado_en: ahora,
-        paciente_id: cita.paciente.id,
-      },
-      { onConflict: "wa_id", ignoreDuplicates: true }
-    );
-    resumen.enviados++;
+    if (r.ok) {
+      await admin.from("citas").update({ recordatorio_enviado_en: new Date().toISOString(), recordatorio_error: null }).in("id", ids);
+      resumen.enviados++;
+    }
   }
-  return Response.json({ fecha: manana, ...resumen });
+  return resumen;
+}
+
+/**
+ * Valoraciones con presupuesto (cotizado) donde no se hizo ni se pagó nada, el
+ * paciente no tiene otra cita después y no dijo que no. Una por paciente por día.
+ */
+async function seguimientos(admin) {
+  const hoy = hoyDurango();
+  const { data: candidatas, error } = await admin
+    .from("citas")
+    .select("id, inicio, cotizado, realizado, pagado_monto, seguimiento_enviados, paciente_id, paciente:pacientes(id, nombre, whatsapp, etiquetas)")
+    .eq("estado", "asistio")
+    .not("cotizado", "is", null)
+    .eq("seguimiento_cerrado", false)
+    .lt("seguimiento_enviados", SEGUIMIENTO_DIAS.length)
+    .gte("inicio", rangoDelDia(sumarDias(hoy, -SEGUIMIENTO_MAX_DIAS)).desde)
+    .lt("inicio", rangoDelDia(sumarDias(hoy, -SEGUIMIENTO_DIAS[0])).hasta)
+    .order("inicio", { ascending: false });
+  if (error) return { error: "No se pudo leer la agenda" };
+
+  const vistos = new Set();
+  const resumen = { enviados: 0, cerrados: 0, errores: 0 };
+  for (const c of candidatas || []) {
+    if (vistos.has(c.paciente_id)) continue;
+    vistos.add(c.paciente_id);
+    // ¿Ya le toca? (3 días para el primero, 30 para el segundo)
+    const toca = SEGUIMIENTO_DIAS[c.seguimiento_enviados || 0];
+    if (hoyDurango(new Date(c.inicio)) > sumarDias(hoy, -toca)) continue;
+    // Aceptó (se hizo o pagó algo) o ya tiene otra cita después → ya no
+    const { count } = await admin
+      .from("citas")
+      .select("id", { count: "exact", head: true })
+      .eq("paciente_id", c.paciente_id)
+      .neq("estado", "cancelada")
+      .gt("inicio", c.inicio);
+    if ((c.realizado && c.realizado.length) || Number(c.pagado_monto) > 0 || count) {
+      await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", c.id);
+      resumen.cerrados++;
+      continue;
+    }
+    const r = await mandarPlantillaCita(admin, c, "seguimiento_presupuesto");
+    if (r.ok) {
+      await admin
+        .from("citas")
+        .update({ seguimiento_enviados: (c.seguimiento_enviados || 0) + 1, seguimiento_ultimo: new Date().toISOString() })
+        .eq("id", c.id);
+      resumen.enviados++;
+    } else if (r.sinWhatsapp || r.noContactar) {
+      await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", c.id);
+    } else {
+      resumen.errores++;
+    }
+  }
+  return resumen;
 }

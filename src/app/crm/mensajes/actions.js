@@ -335,13 +335,14 @@ export async function cambiarLibresAction(libres) {
   return { ok: true };
 }
 
-/** Ajustes: prender o apagar el recordatorio automático un día antes de la cita. */
-export async function cambiarRecordatoriosAction(prendido) {
+/** Ajustes: prender o apagar un mensaje automático (recordatorio, aviso a quien faltó, seguimiento de presupuestos). */
+export async function cambiarAutomaticoAction(campo, prendido) {
+  if (!["recordatorios", "aviso_falto", "seguimientos"].includes(campo)) return { error: "Opción no válida." };
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
   const { error } = await supabase
     .from("asistente_config")
-    .update({ recordatorios: Boolean(prendido), updated_at: new Date().toISOString() })
+    .update({ [campo]: Boolean(prendido), updated_at: new Date().toISOString() })
     .eq("id", 1);
   if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
   revalidatePath("/crm/mensajes/ajustes");

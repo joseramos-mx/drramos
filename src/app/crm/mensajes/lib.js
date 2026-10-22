@@ -7,6 +7,8 @@ export const ETIQUETAS = [
   { id: "seguimiento", label: "Seguimiento" },
   { id: "urgencia", label: "Urgencia" },
   { id: "paciente", label: "Ya es paciente" },
+  // Pidió que ya no le escriban: no le llegan recordatorios, seguimientos ni avisos automáticos
+  { id: "no_contactar", label: "No escribirle" },
 ];
 
 export const etiquetaLabel = (id) => ETIQUETAS.find((e) => e.id === id)?.label || id;

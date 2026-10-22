@@ -148,6 +148,8 @@ function NuevaCita({ fecha, dentista: dentistaInicial, minutos: minutosIniciales
         <input id="notas" name="notas" autoComplete="off" className={inputClass} />
       </div>
 
+      <AvisarWhatsApp id="avisar-nueva" texto="Mandarle su cita por WhatsApp" detalle="Con botones para confirmar, cambiar o cancelar (si tiene WhatsApp)." />
+
       <Acciones state={state} label="Agendar" />
     </form>
   );
@@ -341,6 +343,7 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
         <FieldLabel htmlFor="notas-edit">Nota</FieldLabel>
         <input id="notas-edit" name="notas" defaultValue={cita.notas || ""} autoComplete="off" className={inputClass} />
       </div>
+      <AvisarWhatsApp id="avisar-editar" texto="Si cambió la hora, avisarle por WhatsApp" detalle="Le llega su nueva hora con botones para confirmar o cambiar." />
       <Acciones state={state} label="Guardar cambios" onCancel={onCancel} />
     </form>
   );
@@ -349,6 +352,19 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
 // ─────────────────────────────────────────────────────────────
 //  Piezas
 // ─────────────────────────────────────────────────────────────
+/** Palomita (prendida por omisión) para mandarle la cita al paciente por WhatsApp. */
+function AvisarWhatsApp({ id, texto, detalle }) {
+  return (
+    <label htmlFor={id} className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#f2efe9] p-4">
+      <input id={id} type="checkbox" name="avisar" value="1" defaultChecked className="mt-1 h-6 w-6 shrink-0 accent-[#b89968]" />
+      <span>
+        <span className="block text-[17px] font-semibold text-[#1c1a17]">{texto}</span>
+        <span className="block text-[14px] leading-snug text-[#7a7368]">{detalle}</span>
+      </span>
+    </label>
+  );
+}
+
 function Acciones({ state, label, disabled, onCancel }) {
   return (
     <div className="flex flex-wrap items-center gap-4 border-t border-[#1c1a17]/[0.06] pt-5">
