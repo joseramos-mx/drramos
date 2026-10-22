@@ -2,6 +2,7 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
+  COMIDA,
   DENTISTAS,
   SLOT_MIN,
   carrilesColumna,
@@ -16,6 +17,7 @@ import {
 } from "../lib";
 import CitaSheet from "./cita-sheet";
 import Pendientes from "./pendientes";
+import { quitarBloqueoAction } from "../actions";
 
 const ROW_PX = 56; // alto de cada bloque de 30 min: cómodo para el dedo
 const ROW_MIN_PX = 18; // límite inferior al encoger para que quepa todo
@@ -30,7 +32,7 @@ const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado)
  * (monitor del consultorio); "auto" = sólo en pantallas anchas, en el
  * celular se queda con bloques altos para el dedo.
  */
-export default function AgendaDia({ fecha, citas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false }) {
+export default function AgendaDia({ fecha, citas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false, bloqueos = [], demo = false }) {
   const [sheet, setSheet] = useState(null);
   const cerrar = useCallback(() => setSheet(null), []);
 
@@ -56,6 +58,9 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
           Domingo: consultorio cerrado. Puedes agendar una urgencia si hace falta.
         </p>
       )}
+      {bloqueos.map((b) => (
+        <AvisoBloqueo key={b.id} b={b} soloLectura={soloLectura} demo={demo} />
+      ))}
 
       <div className="mt-6 flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
       {/* A un costado (arriba en celular): pendientes del día y colores */}
@@ -115,6 +120,23 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
                   } transition-colors hover:bg-[#1c1a17]/[0.03] focus-visible:bg-[#b89968]/[0.08] focus-visible:outline-none disabled:hover:bg-transparent`}
                 />
               ))}
+
+              {/* Franjas que el asistente no ofrece: comida del doctor y bloqueos (ella sí puede agendar encima) */}
+              {[{ id: "comida", desde: COMIDA.desde, hasta: COMIDA.hasta, motivo: "Comida" }, ...bloqueos].map((f) => {
+                const desde = Math.max(f.desde, abre);
+                const hasta = Math.min(f.hasta, cierra);
+                if (hasta <= desde || !horario) return null;
+                return (
+                  <div
+                    key={f.id}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 flex justify-end bg-[repeating-linear-gradient(135deg,rgba(28,26,23,0.045)_0_8px,transparent_8px_16px)] px-2 pt-1"
+                    style={{ top: ((desde - abre) / SLOT_MIN) * rowPx.alto, height: ((hasta - desde) / SLOT_MIN) * rowPx.alto }}
+                  >
+                    <span className="text-[12px] font-semibold text-[#9a9388]">{f.motivo}</span>
+                  </div>
+                );
+              })}
 
               {suyas.map((c) => (
                 <CitaBloque
@@ -284,4 +306,31 @@ function useAltoDeFila(ajustar, filas) {
   }, [ajustar, filas]);
 
   return { ref, alto };
+}
+
+/** Aviso arriba de la agenda cuando el día (o unas horas) está bloqueado. */
+function AvisoBloqueo({ b, soloLectura, demo }) {
+  const [quitado, setQuitado] = useState(false);
+  if (quitado) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#f2efe9] px-5 py-3">
+      <p className="text-[16px] text-[#1c1a17]">
+        <strong className="font-bold">{b.motivo}</strong>
+        {b.todoElDia ? " · Sin consulta todo el día." : ` · ${formatHora(b.desde)} a ${formatHora(b.hasta)} sin consulta.`}
+        <span className="block text-[14px] text-[#7a7368]">El asistente no ofrece este horario.</span>
+      </p>
+      {!soloLectura && (
+        <button
+          type="button"
+          onClick={async () => {
+            if (!demo) await quitarBloqueoAction(b.id);
+            setQuitado(true);
+          }}
+          className="h-10 shrink-0 rounded-full bg-white px-4 text-[15px] font-semibold text-[#1c1a17]"
+        >
+          Quitar
+        </button>
+      )}
+    </div>
+  );
 }

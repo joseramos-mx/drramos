@@ -36,6 +36,7 @@ import {
   sumarDias,
   COMIDA,
   abiertoAhora,
+  bloqueosDelDia,
   proximaApertura,
 } from "@/app/agenda/lib";
 
@@ -313,8 +314,17 @@ export async function disponibilidad(admin, fecha, { duracion = SLOT_MIN, ignora
     .gte("inicio", desde)
     .lt("inicio", hasta)
     .neq("estado", "cancelada");
+  const { data: bloqueos } = await admin
+    .from("bloqueos")
+    .select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo")
+    .lte("desde_fecha", fecha)
+    .gte("hasta_fecha", fecha);
+  const delDia = bloqueosDelDia(bloqueos || [], fecha);
+  if (delDia.some((b) => b.todoElDia)) return { fecha, dia: formatFechaLarga(fecha), horarios_libres: "Ese día no hay consulta" };
+
   const ocupado = (citas || []).filter((c) => !ignorar || c.id !== ignorar).map((c) => [minutosDelDia(c.inicio), minutosDelDia(c.fin)]);
   ocupado.push([COMIDA.desde, COMIDA.hasta]); // la comida del doctor nunca se ofrece
+  for (const b of delDia) ocupado.push([b.desde, b.hasta]);
   // Hoy: sólo horarios con al menos 1 h de anticipación
   const ahora = fecha === hoy ? minutosDelDia(new Date().toISOString()) + 60 : 0;
 
@@ -377,13 +387,30 @@ async function avisarSiAgendaMucho(admin) {
   }
 }
 
+/** Fechas bloqueadas TODO el día en los próximos 60 días (vacaciones, festivos). */
+export async function diasCerrados(admin) {
+  const hoy = hoyDurango();
+  const fin = sumarDias(hoy, 60);
+  const { data } = await admin
+    .from("bloqueos")
+    .select("desde_fecha, hasta_fecha, desde_min")
+    .is("desde_min", null)
+    .lte("desde_fecha", fin)
+    .gte("hasta_fecha", hoy);
+  const cerrados = new Set();
+  for (const b of data || []) {
+    for (let f = b.desde_fecha < hoy ? hoy : b.desde_fecha; f <= b.hasta_fecha && f <= fin; f = sumarDias(f, 1)) cerrados.add(f);
+  }
+  return cerrados;
+}
+
 /**
  * Lo que se le dice al paciente cuando el caso es de la Dra. Gaby. Con el
  * consultorio cerrado no se le promete "en un momento": se le dice cuándo.
  */
-export function textoAlPasar(textos, { urgente = false } = {}, now = new Date()) {
-  if (abiertoAhora(now)) return textos[urgente ? "pasar_urgencia" : "pasar_dra_gaby"];
-  const a = proximaApertura(now);
+export function textoAlPasar(textos, { urgente = false } = {}, now = new Date(), cerrados = new Set()) {
+  if (abiertoAhora(now, cerrados)) return textos[urgente ? "pasar_urgencia" : "pasar_dra_gaby"];
+  const a = proximaApertura(now, cerrados);
   return textos[urgente ? "urgencia_cerrado" : "pasar_dra_gaby_cerrado"].replaceAll("{dia}", a.texto);
 }
 
@@ -563,11 +590,12 @@ export async function atenderConAsistente(admin, telefono, waId) {
     .limit(3);
 
   const ahora = new Date();
+  const cerrados = await diasCerrados(admin);
   const contexto = [
     `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
-    abiertoAhora(ahora)
+    abiertoAhora(ahora, cerrados)
       ? ""
-      : `El consultorio está CERRADO en este momento; abre ${proximaApertura(ahora).texto} a las ${proximaApertura(ahora).hora}. Si la persona quiere cita, ofrécele lugar desde esa hora.`,
+      : `El consultorio está CERRADO en este momento; abre ${proximaApertura(ahora, cerrados).texto} a las ${proximaApertura(ahora, cerrados).hora}. Si la persona quiere cita, ofrécele lugar desde esa hora.`,
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
     proximas?.length
       ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
@@ -613,15 +641,15 @@ export async function atenderConAsistente(admin, telefono, waId) {
   if (d.tipo === "cita") d = { ...d, tipo: "humano", motivo: "pregunta por una cita" };
 
   let texto;
-  if (d.tipo === "humano" && d.urgente && !abiertoAhora()) {
+  if (d.tipo === "humano" && d.urgente && !abiertoAhora(ahora, cerrados)) {
     // Urgencia con el consultorio cerrado: no se despierta a nadie. Se le dice cuándo
     // abrimos y que, si es grave, acuda a un hospital; el asistente le puede apartar
     // lugar a primera hora. La Dra. Gaby la ve marcada como urgencia en la mañana.
     await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "urgencia"])] }).eq("id", paciente.id);
-    texto = textoAlPasar(textos, { urgente: true });
+    texto = textoAlPasar(textos, { urgente: true }, ahora, cerrados);
   } else if (d.tipo === "humano") {
     await pasarAHumano(admin, paciente, telefono, d);
-    texto = textoAlPasar(textos, d);
+    texto = textoAlPasar(textos, d, ahora, cerrados);
   } else {
     texto = d.texto;
   }
@@ -674,7 +702,9 @@ function agendaDePrueba({ llena = false } = {}) {
       eq: () => q,
       neq: () => q,
       gte: () => q,
+      lte: () => q,
       lt: () => q,
+      is: () => q,
       like: () => q,
       limit: () => q,
       update: () => q,

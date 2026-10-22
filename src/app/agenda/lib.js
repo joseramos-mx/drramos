@@ -99,8 +99,41 @@ const minutosAhora = (now = new Date()) => {
   return local.getUTCHours() * 60 + local.getUTCMinutes();
 };
 
-/** ¿El consultorio está abierto en este momento (horario de atención)? */
-export function abiertoAhora(now = new Date()) {
+/**
+ * Bloqueos (tabla `bloqueos`) que tocan un día → [{ id, desde, hasta, motivo, todoElDia }]
+ * en minutos. Un bloqueo de todo el día cubre el horario completo.
+ */
+export function bloqueosDelDia(bloqueos, fecha) {
+  const h = horarioDelDia(fecha) || { abre: 9 * 60, cierra: 14 * 60 };
+  return (bloqueos || [])
+    .filter((b) => b.desde_fecha <= fecha && b.hasta_fecha >= fecha)
+    .map((b) => {
+      const todoElDia = b.desde_min == null;
+      return { id: b.id, motivo: b.motivo, todoElDia, desde: todoElDia ? h.abre : b.desde_min, hasta: todoElDia ? h.cierra : b.hasta_min };
+    });
+}
+
+/** Días festivos oficiales de México (Ley Federal del Trabajo) de un año → [{ fecha, motivo }]. */
+export function festivosOficiales(anio) {
+  const enesimoLunes = (mes, n) => {
+    const d = new Date(Date.UTC(anio, mes - 1, 1));
+    const primerLunes = 1 + ((8 - d.getUTCDay()) % 7);
+    return `${anio}-${String(mes).padStart(2, "0")}-${String(primerLunes + 7 * (n - 1)).padStart(2, "0")}`;
+  };
+  return [
+    { fecha: `${anio}-01-01`, motivo: "Año Nuevo" },
+    { fecha: enesimoLunes(2, 1), motivo: "Día de la Constitución" },
+    { fecha: enesimoLunes(3, 3), motivo: "Natalicio de Benito Juárez" },
+    { fecha: `${anio}-05-01`, motivo: "Día del Trabajo" },
+    { fecha: `${anio}-09-16`, motivo: "Día de la Independencia" },
+    { fecha: enesimoLunes(11, 3), motivo: "Día de la Revolución" },
+    { fecha: `${anio}-12-25`, motivo: "Navidad" },
+  ];
+}
+
+/** ¿El consultorio está abierto en este momento? `cerrados`: fechas bloqueadas todo el día. */
+export function abiertoAhora(now = new Date(), cerrados = new Set()) {
+  if (cerrados.has(hoyDurango(now))) return false;
   const h = horarioDelDia(hoyDurango(now));
   const m = minutosAhora(now);
   return Boolean(h && m >= h.abre && m < h.cierra);
@@ -111,15 +144,16 @@ export function enDescanso(now = new Date()) {
   return m >= DESCANSO.desde || m < DESCANSO.hasta;
 }
 
-/** Cuándo vuelve a abrir: { fecha, texto: "hoy" | "mañana" | "el lunes", hora: "9:00" }. */
-export function proximaApertura(now = new Date()) {
+/** Cuándo vuelve a abrir: { fecha, texto: "hoy" | "mañana" | "el lunes" | "el lunes, 3 de noviembre", hora: "9:00" }. */
+export function proximaApertura(now = new Date(), cerrados = new Set()) {
   const hoy = hoyDurango(now);
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 60; i++) {
     const fecha = sumarDias(hoy, i);
     const h = horarioDelDia(fecha);
-    if (!h || (i === 0 && minutosAhora(now) >= h.abre)) continue;
+    if (!h || cerrados.has(fecha) || (i === 0 && minutosAhora(now) >= h.abre)) continue;
     const dia = new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", timeZone: "UTC" });
-    return { fecha, texto: i === 0 ? "hoy" : i === 1 ? "mañana" : `el ${dia}`, hora: formatHora(h.abre) };
+    const texto = i === 0 ? "hoy" : i === 1 ? "mañana" : i < 7 ? `el ${dia}` : `el ${formatFechaLarga(fecha)}`;
+    return { fecha, texto, hora: formatHora(h.abre) };
   }
   return { fecha: sumarDias(hoy, 1), texto: "mañana", hora: "9:00" };
 }

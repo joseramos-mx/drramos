@@ -8,6 +8,7 @@ import BotonesDia from "./components/botones-dia";
 import { BarraInferior } from "../crm/mensajes/encabezado";
 import {
   CITA_SELECT,
+  bloqueosDelDia,
   esFechaValida,
   formatFechaLarga,
   hoyDurango,
@@ -65,6 +66,17 @@ export default async function AgendaPage({ searchParams }) {
     conteo[dia] = (conteo[dia] || 0) + 1;
   }
 
+  // Días u horas sin consulta: los del mes (calendario y este día) y los que vienen (para quitarlos)
+  const finMes = sumarDias(sigMes.toISOString().slice(0, 10), -1);
+  const [{ data: bloqueosMes }, { data: proximos }] = await Promise.all([
+    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo").lte("desde_fecha", finMes).gte("hasta_fecha", primero),
+    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo").gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
+  ]);
+  const bloqueados = [];
+  for (let f = primero; f <= finMes; f = sumarDias(f, 1)) {
+    if (bloqueosDelDia(bloqueosMes, f).some((b) => b.todoElDia)) bloqueados.push(f);
+  }
+
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6">
       <header className="pb-2">
@@ -74,7 +86,7 @@ export default async function AgendaPage({ searchParams }) {
             <div className="hidden sm:block">
               <Reloj />
             </div>
-            <BotonesDia fecha={fecha} hoy={hoy} pendientes={pendientes || []} conteo={conteo} extra={extra} />
+            <BotonesDia fecha={fecha} hoy={hoy} pendientes={pendientes || []} conteo={conteo} extra={extra} bloqueados={bloqueados} proximos={proximos || []} />
           </div>
         </div>
         <p className="text-[18px] font-semibold text-[#5b544a] first-letter:uppercase">
@@ -114,6 +126,7 @@ export default async function AgendaPage({ searchParams }) {
         pendientes={null}
         preseleccion={preseleccion}
         ajustarAlto="auto"
+        bloqueos={bloqueosDelDia(bloqueosMes, fecha)}
       />
       <BarraInferior activo="agenda" />
     </main>

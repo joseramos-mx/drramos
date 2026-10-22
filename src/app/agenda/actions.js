@@ -13,6 +13,10 @@ import {
   ORIGENES,
   esFechaValida,
   isoDesde,
+  festivosOficiales,
+  hoyDurango,
+  rangoDelDia,
+  sumarDias,
 } from "./lib";
 
 /**
@@ -267,4 +271,79 @@ export async function borrarPendienteAction(id) {
   if (error) return { error: error.message };
   revalidatePath("/agenda");
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Bloqueos: días u horas sin consulta (el asistente no los ofrece)
+// ─────────────────────────────────────────────────────────────
+const MOTIVOS_OK = ["Vacaciones", "Congreso o curso", "Día festivo", "Sin consulta"];
+const hhmm = (v) => {
+  const m = String(v || "").match(/^(\d{1,2}):(\d{2})$/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+};
+
+/** Cuántas citas (no canceladas) hay entre esas fechas: para avisarle que las mueva. */
+async function citasEn(supabase, desdeFecha, hastaFecha, desdeMin, hastaMin) {
+  const { data } = await supabase
+    .from("citas")
+    .select("inicio, fin")
+    .gte("inicio", rangoDelDia(desdeFecha).desde)
+    .lt("inicio", rangoDelDia(hastaFecha).hasta)
+    .neq("estado", "cancelada");
+  if (desdeMin == null) return (data || []).length;
+  return (data || []).filter((c) => new Date(c.inicio) < new Date(isoDesde(desdeFecha, hastaMin)) && new Date(c.fin) > new Date(isoDesde(desdeFecha, desdeMin))).length;
+}
+
+/** { tipo: "dia" | "varios" | "horas", desde, hasta, horaDesde, horaHasta, motivo } */
+export async function crearBloqueoAction(datos) {
+  const tipo = datos?.tipo;
+  const desde = String(datos?.desde || "");
+  const hasta = tipo === "varios" ? String(datos?.hasta || "") : desde;
+  const motivo = MOTIVOS_OK.includes(datos?.motivo) ? datos.motivo : "Sin consulta";
+  if (!["dia", "varios", "horas"].includes(tipo)) return { error: "Elige qué quieres bloquear." };
+  if (!esFechaValida(desde) || !esFechaValida(hasta)) return { error: "Elige la fecha." };
+  if (hasta < desde) return { error: "La fecha final va después de la inicial." };
+  if (desde < hoyDurango()) return { error: "Esa fecha ya pasó." };
+  if (sumarDias(desde, 120) < hasta) return { error: "Máximo 4 meses seguidos." };
+
+  let desdeMin = null;
+  let hastaMin = null;
+  if (tipo === "horas") {
+    desdeMin = hhmm(datos?.horaDesde);
+    hastaMin = hhmm(datos?.horaHasta);
+    if (!Number.isFinite(desdeMin) || !Number.isFinite(hastaMin) || desdeMin >= hastaMin) return { error: "Elige de qué hora a qué hora." };
+  }
+
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.from("bloqueos").insert({ desde_fecha: desde, hasta_fecha: hasta, desde_min: desdeMin, hasta_min: hastaMin, motivo });
+  if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+  const citas = await citasEn(supabase, desde, hasta, desdeMin, hastaMin);
+  revalidatePath("/agenda");
+  return { ok: true, citas };
+}
+
+export async function quitarBloqueoAction(id) {
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.from("bloqueos").delete().eq("id", String(id));
+  if (error) return { error: "No se pudo quitar. Intenta de nuevo." };
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+/** Agrega los días festivos oficiales de los próximos 12 meses que todavía no estén bloqueados. */
+export async function agregarFestivosAction() {
+  const hoy = hoyDurango();
+  const limite = sumarDias(hoy, 366);
+  const anio = Number(hoy.slice(0, 4));
+  const festivos = [...festivosOficiales(anio), ...festivosOficiales(anio + 1)].filter((f) => f.fecha >= hoy && f.fecha <= limite);
+  const supabase = createClient(await cookies());
+  const { data: ya } = await supabase.from("bloqueos").select("desde_fecha, hasta_fecha").is("desde_min", null).lte("desde_fecha", limite).gte("hasta_fecha", hoy);
+  const cubierto = (f) => (ya || []).some((b) => b.desde_fecha <= f && b.hasta_fecha >= f);
+  const nuevos = festivos.filter((f) => !cubierto(f.fecha)).map((f) => ({ desde_fecha: f.fecha, hasta_fecha: f.fecha, motivo: "Día festivo" }));
+  if (nuevos.length) {
+    const { error } = await supabase.from("bloqueos").insert(nuevos);
+    if (error) return { error: "No se pudieron agregar. Intenta de nuevo." };
+  }
+  revalidatePath("/agenda");
+  return { ok: true, agregados: nuevos.length };
 }

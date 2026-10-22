@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDotsIcon, CaretLeftIcon, CaretRightIcon, NotebookIcon } from "@phosphor-icons/react";
+import { CalendarDotsIcon, CaretLeftIcon, CaretRightIcon, NotebookIcon, ProhibitIcon } from "@phosphor-icons/react";
 import Hoja from "../../crm/mensajes/hoja";
 import Pendientes from "./pendientes";
+import Bloquear from "./bloquear";
 
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const DIAS = ["L", "M", "M", "J", "V", "S", "D"];
@@ -17,9 +18,11 @@ const redondo =
  * con cuántos faltan) y el calendario del mes para saltar a cualquier día.
  * `conteo` = { "2026-10-21": 5, … } citas por día del mes que se ve.
  * `irA` = inicio de la liga de cada día (p. ej. "/agenda?fecha=").
+ * `bloqueados` = Set de fechas sin consulta todo el día (se ven tachadas).
+ * `proximos` = bloqueos que vienen, para la hoja "Bloquear días u horas".
  */
-export default function BotonesDia({ fecha, hoy, pendientes = [], conteo = {}, irA = "/agenda?fecha=", extra = "" }) {
-  const [hoja, setHoja] = useState(null); // "pendientes" | "mes"
+export default function BotonesDia({ fecha, hoy, pendientes = [], conteo = {}, irA = "/agenda?fecha=", extra = "", bloqueados = [], proximos = [], demo = false }) {
+  const [hoja, setHoja] = useState(null); // "pendientes" | "mes" | "bloquear"
   const faltan = pendientes.filter((p) => !p.hecho).length;
 
   return (
@@ -43,13 +46,26 @@ export default function BotonesDia({ fecha, hoy, pendientes = [], conteo = {}, i
       </Hoja>
 
       <Hoja abierta={hoja === "mes"} onCerrar={() => setHoja(null)} titulo="Calendario">
-        <Mes fecha={fecha} hoy={hoy} conteo={conteo} irA={irA} extra={extra} onElegir={() => setHoja(null)} />
+        <Mes fecha={fecha} hoy={hoy} conteo={conteo} irA={irA} extra={extra} bloqueados={new Set(bloqueados)} onElegir={() => setHoja(null)} />
+        <div className="px-5 pb-2">
+          <button
+            type="button"
+            onClick={() => setHoja("bloquear")}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full border-2 border-[#1c1a17]/10 bg-white text-[17px] font-semibold text-[#1c1a17]"
+          >
+            <ProhibitIcon size={22} /> Bloquear días u horas
+          </button>
+        </div>
+      </Hoja>
+
+      <Hoja abierta={hoja === "bloquear"} onCerrar={() => setHoja(null)} titulo="Bloquear días u horas">
+        <Bloquear fecha={fecha} hoy={hoy} proximos={proximos} demo={demo} />
       </Hoja>
     </>
   );
 }
 
-function Mes({ fecha, hoy, conteo, irA, extra, onElegir }) {
+function Mes({ fecha, hoy, conteo, irA, extra, bloqueados = new Set(), onElegir }) {
   const [anio0, mes0] = fecha.split("-").map(Number);
   const [vista, setVista] = useState({ anio: anio0, mes: mes0 }); // mes 1-12
   const { anio, mes } = vista;
@@ -90,18 +106,21 @@ function Mes({ fecha, hoy, conteo, irA, extra, onElegir }) {
           const n = conteo[dia] || 0;
           const elegido = dia === fecha;
           const esHoy = dia === hoy;
+          const cerrado = bloqueados.has(dia);
           return (
             <Link
               key={dia}
               href={`${irA}${dia}${extra}`}
               onClick={onElegir}
-              aria-label={`${d} de ${MESES[mes - 1]}${n ? `, ${n} citas` : ""}`}
+              aria-label={`${d} de ${MESES[mes - 1]}${n ? `, ${n} citas` : ""}${cerrado ? ", sin consulta" : ""}`}
               className={`flex aspect-square flex-col items-center justify-center rounded-full text-[18px] ${
                 elegido
                   ? "bg-[#1c1a17] font-bold text-white"
                   : esHoy
                     ? "border-2 border-[#b89968] font-bold text-[#1c1a17]"
-                    : "text-[#1c1a17] active:bg-[#f2efe9]"
+                    : cerrado
+                      ? "bg-[#f2efe9] text-[#9a9388] line-through"
+                      : "text-[#1c1a17] active:bg-[#f2efe9]"
               }`}
             >
               {d}
@@ -112,6 +131,7 @@ function Mes({ fecha, hoy, conteo, irA, extra, onElegir }) {
       </div>
       <p className="mt-3 flex items-center justify-center gap-2 text-[14px] text-[#7a7368]">
         <span className="h-2 w-2 rounded-full bg-[#b89968]" /> Día con citas
+        <span className="ml-3 inline-block rounded-full bg-[#f2efe9] px-2 text-[#9a9388] line-through">12</span> Sin consulta
       </p>
     </div>
   );
