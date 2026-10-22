@@ -163,12 +163,13 @@ export async function POST(request) {
 async function pacienteDe(supabase, m) {
   const { data: existente } = await supabase
     .from("pacientes")
-    .select("id, origen, whatsapp_ctwa_clid, primer_mensaje_en")
+    .select("id, origen, whatsapp_ctwa_clid, primer_mensaje_en, anuncio_id")
     .eq("whatsapp", m.telefono)
     .limit(1)
     .maybeSingle();
 
   const fuente = m.direccion === "entrada" ? await fuenteDe(supabase, m) : null;
+  const anuncio = m.direccion === "entrada" ? anuncioDe(m) : null;
 
   if (existente) {
     const cambios = {};
@@ -177,6 +178,7 @@ async function pacienteDe(supabase, m) {
       cambios.fuente_id = fuente.fuente_id;
     }
     if (!existente.whatsapp_ctwa_clid && m.ctwa_clid) cambios.whatsapp_ctwa_clid = m.ctwa_clid;
+    if (!existente.anuncio_id && anuncio) Object.assign(cambios, anuncio);
     if (m.direccion === "entrada" && (!existente.primer_mensaje_en || m.enviado_en < existente.primer_mensaje_en)) {
       cambios.primer_mensaje_en = m.enviado_en;
     }
@@ -196,11 +198,19 @@ async function pacienteDe(supabase, m) {
       fuente_id: fuente?.fuente_id || null,
       whatsapp_ctwa_clid: m.ctwa_clid,
       primer_mensaje_en: m.enviado_en,
+      ...(anuncio || {}),
     })
     .select("id")
     .single();
   if (error) throw error;
   return nuevo.id;
+}
+
+/** Anuncio de Meta que tocó (referral de click-to-WhatsApp): { anuncio_id, anuncio_titulo } o null. */
+function anuncioDe(m) {
+  const r = m.referencia;
+  if (!r || r.source_type !== "ad" || !r.source_id) return null;
+  return { anuncio_id: String(r.source_id).slice(0, 40), anuncio_titulo: String(r.headline || r.body || "").slice(0, 120) || null };
 }
 
 async function fuenteDe(supabase, m) {

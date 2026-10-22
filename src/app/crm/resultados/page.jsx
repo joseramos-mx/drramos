@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { PERIODOS, calcularResultados, rangoPeriodo } from "./stats";
 import ResultadosVista from "./resultados-vista";
-import { kpisAnuncios, leerAnunciosMeta } from "./meta-ads";
+import { kpisAnuncios, leerAnunciosMeta, leerPorAnuncioMeta, tablaPorAnuncio } from "./meta-ads";
 import { gastoPorCanal, mesDe, tablaFuentes } from "./fuentes";
 import { embudoWhatsapp, sinContestar, tiemposRespuesta } from "./stats-whatsapp";
 
@@ -28,7 +28,7 @@ export default async function ResultadosPage({ searchParams }) {
   const { data: citas, error } = await supabase
     .from("citas")
     .select(
-      "id, inicio, fin, estado, cotizado, cotizado_monto, realizado, pagado_monto, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen)"
+      "id, inicio, fin, estado, cotizado, cotizado_monto, realizado, pagado_monto, cierre_completo, paciente:pacientes(id, nombre, whatsapp, origen, anuncio_id, anuncio_titulo)"
     )
     .order("inicio", { ascending: false });
 
@@ -37,9 +37,19 @@ export default async function ResultadosPage({ searchParams }) {
 
   // Anuncios de Meta cruzados con los pacientes que llegaron por anuncio
   const meta = await leerAnunciosMeta(rango);
+  // Por anuncio: los pacientes guardan el id del anuncio que tocaron
+  const deAnuncio = (citas || [])
+    .filter((c) => c.paciente?.anuncio_id)
+    .map((c) => ({ ...c, paciente: { ...c.paciente, origen: c.paciente.anuncio_id } }));
+  const titulos = Object.fromEntries(deAnuncio.map((c) => [c.paciente.anuncio_id, c.paciente.anuncio_titulo]).filter(([, t]) => t));
+  const porAnuncio = tablaPorAnuncio(
+    meta.conectado && !meta.error ? await leerPorAnuncioMeta(rango) : [],
+    calcularResultados(deAnuncio, rango).porOrigen,
+    titulos
+  );
   const anuncios =
     meta.conectado && !meta.error
-      ? { ...meta, kpis: kpisAnuncios(meta, r.porOrigen.find((o) => o.origen === "anuncio")) }
+      ? { ...meta, porAnuncio, kpis: kpisAnuncios(meta, r.porOrigen.find((o) => o.origen === "anuncio")) }
       : meta;
 
   // Todas las fuentes: gasto (Meta automático + manual del resto) contra pacientes

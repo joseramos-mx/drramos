@@ -101,3 +101,58 @@ export function kpisAnuncios(meta, deAnuncio) {
     conversacionAPaciente: div(a.pacientes, meta.conversaciones),
   };
 }
+
+/**
+ * Gasto y conversaciones POR ANUNCIO (level=ad), para cruzarlo con los pacientes
+ * que guardaron el id del anuncio que tocaron. Devuelve [] si no hay token o falla.
+ */
+export async function leerPorAnuncioMeta({ desde, hasta }) {
+  const token = process.env.META_ADS_ACCESS_TOKEN;
+  const cuenta = process.env.META_AD_ACCOUNT_ID;
+  if (!token || !cuenta) return [];
+  const version = process.env.META_GRAPH_VERSION || "v23.0";
+  const params = new URLSearchParams({
+    level: "ad",
+    fields: "ad_id,ad_name,campaign_name,spend,actions",
+    limit: "200",
+    access_token: token,
+  });
+  if (desde) {
+    const hastaDia = hasta ? fechaDurango(new Date(new Date(hasta).getTime() - 1000).toISOString()) : fechaDurango(new Date().toISOString());
+    params.set("time_range", JSON.stringify({ since: fechaDurango(desde), until: hastaDia }));
+  } else {
+    params.set("date_preset", "maximum");
+  }
+  try {
+    const res = await fetch(`https://graph.facebook.com/${version}/act_${cuenta}/insights?${params}`, { next: { revalidate: 900 } });
+    const json = await res.json();
+    if (!res.ok || json.error) return [];
+    return (json.data || []).map((r) => ({
+      id: String(r.ad_id),
+      nombre: r.ad_name,
+      campana: r.campaign_name,
+      gasto: Number(r.spend || 0),
+      conversaciones: Number((r.actions || []).find((a) => a.action_type === CONVERSACION)?.value || 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Una fila por anuncio: lo de Meta (gasto, conversaciones) + lo de la agenda
+ * (pacientes, vinieron, pagaron, cobrado). `deAnuncios` = porOrigen calculado
+ * agrupando por anuncio_id; `titulos` = { anuncio_id: título guardado }.
+ */
+export function tablaPorAnuncio(meta, deAnuncios, titulos = {}) {
+  const filas = new Map();
+  for (const a of meta) filas.set(a.id, { ...a, pacientes: 0, vinieron: 0, pagaron: 0, cobrado: 0 });
+  for (const o of deAnuncios) {
+    const f = filas.get(o.origen) || { id: o.origen, nombre: titulos[o.origen] || `Anuncio ${o.origen}`, campana: "", gasto: 0, conversaciones: 0 };
+    filas.set(o.origen, { ...f, pacientes: o.pacientes, vinieron: o.vinieron, pagaron: o.pagaron, cobrado: o.cobrado });
+  }
+  return [...filas.values()]
+    .filter((f) => f.gasto > 0 || f.pacientes > 0)
+    .map((f) => ({ ...f, costoPago: f.pagaron && f.gasto ? f.gasto / f.pagaron : null, retorno: f.gasto ? f.cobrado / f.gasto : null }))
+    .sort((a, b) => b.cobrado - a.cobrado || b.gasto - a.gasto);
+}

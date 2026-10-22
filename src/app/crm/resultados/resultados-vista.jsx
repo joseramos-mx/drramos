@@ -291,9 +291,26 @@ function SeccionAnuncios({ anuncios }) {
           ])}
         />
       </div>
+      <div className="mt-6">
+        <p className="mb-2 font-[family-name:var(--font-albert)] text-[14px] font-semibold text-white">Por anuncio: quién trajo pacientes que pagaron</p>
+        <Tabla
+          vacio="Todavía no hay pacientes que hayan llegado tocando un anuncio."
+          columnas={["Anuncio", "Gasto", "Conversaciones", "Pacientes", "Pagaron", "Cobrado", "Costo por paciente que pagó", "Retorno"]}
+          filas={(anuncios.porAnuncio || []).map((a) => [
+            a.nombre,
+            pesos(a.gasto),
+            a.conversaciones,
+            a.pacientes,
+            a.pagaron,
+            pesos(a.cobrado),
+            pesos(a.costoPago),
+            a.retorno == null ? "—" : `${a.retorno.toFixed(1)}×`,
+          ])}
+        />
+      </div>
       <p className="mt-3 font-[family-name:var(--font-albert)] text-[13px] text-white/65">
-        Cuando cada anuncio lleve su código en el mensaje de WhatsApp, aquí también se verá cuántos pacientes y cuánto
-        dinero trajo cada campaña.
+        Cada paciente que toca un anuncio de &quot;Enviar mensaje por WhatsApp&quot; queda ligado a ese anuncio automáticamente
+        (no hay que capturar nada). Así se ve cuál conviene subirle presupuesto y cuál apagar.
       </p>
     </Seccion>
   );

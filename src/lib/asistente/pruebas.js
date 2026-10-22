@@ -68,6 +68,7 @@ export const CASOS = [
   { id: "urgencia", grupo: "pasar", conversacion: [P("Tengo la cara bien hinchada y me duele horrible la muela, que hago??")], espera: { tipos: ["humano"], urgente: true, noDebe: ["ibuprofeno", "paracetamol", "antibi"] } },
   { id: "diente_roto", grupo: "pasar", conversacion: [P("Me caí y se me rompió un diente de enfrente, está sangrando")], espera: { tipos: ["humano"], urgente: true } },
   { id: "medicamento", grupo: "pasar", conversacion: [P("Puedo tomar ibuprofeno antes de la cita?")], espera: { tipos: ["humano"], noDebe: ["puede tomar", "mg"] } },
+  { id: "indicaciones", grupo: "pasar", conversacion: [P("Ayer me pusieron la corona, ¿qué puedo comer y cómo me lavo?")], espera: { tipos: ["humano"], noDebe: ["puede comer", "evite"] } },
   { id: "queja", grupo: "pasar", conversacion: [P("Pésimo servicio, la corona que me pusieron ya se me cayó y nadie me contesta")], espera: { tipos: ["humano"] } },
   { id: "cambiar_cita", grupo: "pasar", conversacion: [P("Necesito cambiar mi cita del jueves, no voy a poder")], espera: { tipos: ["humano"], agendo: false } },
   { id: "cambiar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Oiga ya no voy a poder ir a mi cita, la puedo mover para otro día?")], espera: { tipos: ["cita"], acciones: ["cambiar", "menu"], agendo: false } },
