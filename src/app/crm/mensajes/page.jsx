@@ -1,12 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { signOutAction } from "../actions";
-import Encabezado, { Resumen } from "./encabezado";
+import { BarraInferior, BarraSuperior } from "./encabezado";
 import AutoRefresh from "../../agenda/components/auto-refresh";
-import { ETIQUETAS, conversaciones } from "./lib";
+import { conversaciones } from "./lib";
 import Avisos from "./avisos";
-import Lista from "./lista";
+import Lista, { filtrar, filtrosDe } from "./lista";
 
 export const dynamic = "force-dynamic";
 
@@ -32,35 +31,22 @@ export default async function MensajesPage({ searchParams }) {
     .limit(10000);
 
   const todas = conversaciones(mensajes || []);
-  const pendientes = todas.filter((c) => c.esperando).length;
-  const lista = !f ? todas : f === "esperan" ? todas.filter((c) => c.esperando) : todas.filter((c) => c.etiquetas.includes(f));
-  const filtros = [
-    { id: null, label: "Todos" },
-    { id: "esperan", label: `Sin contestar${pendientes ? ` (${pendientes})` : ""}` },
-    ...ETIQUETAS.map((e) => ({ id: e.id, label: e.label })),
-  ];
+  const lista = filtrar(todas, f);
 
   return (
-    <main className="mx-auto w-full max-w-[720px] px-4 pb-12 pt-6">
+    <main className="mx-auto w-full max-w-[720px] pb-28">
       <AutoRefresh segundos={15} />
-      <Encabezado />
+      <BarraSuperior titulo="Mensajes" />
+      <Avisos compacto />
 
       {error && (
-        <p role="alert" className="mt-4 rounded-2xl bg-[#fde2e2] p-4 text-[17px] text-[#9b2424]">
+        <p role="alert" className="mx-5 mb-3 rounded-2xl bg-[#fde2e2] p-4 text-[17px] text-[#9b2424]">
           No pudimos cargar los mensajes. Cierra y vuelve a abrir la app; si sigue, avísale a Jesús.
         </p>
       )}
 
-      <Resumen pendientes={pendientes} />
-      <Avisos />
-      <Lista lista={lista} filtros={filtros} f={f} base="/crm/mensajes" />
-
-      <form action={signOutAction} className="mt-10 flex justify-center">
-        <button type="submit" className="h-12 rounded-full px-6 text-[15px] font-medium text-[#8b8478] underline underline-offset-4">
-          Cerrar sesión
-        </button>
-      </form>
+      <Lista lista={lista} filtros={filtrosDe(todas)} f={f} base="/crm/mensajes" />
+      <BarraInferior activo="mensajes" />
     </main>
   );
 }
-

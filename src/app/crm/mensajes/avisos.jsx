@@ -22,7 +22,7 @@ function nombreAparato() {
  * Activa los avisos de mensajes nuevos en ESTE aparato (celular, iPad).
  * En iPhone/iPad sólo funciona con la app agregada a la pantalla de inicio.
  */
-export default function Avisos() {
+export default function Avisos({ compacto = false }) {
   // cargando | sin-soporte | instalar-ios | sin-llave | bloqueado | apagado | activo
   const [estado, setEstado] = useState("cargando");
   const [error, setError] = useState(null);
@@ -85,6 +85,31 @@ export default function Avisos() {
   }
 
   if (estado === "cargando" || estado === "sin-llave") return null;
+
+  // En la bandeja: una sola línea, y sólo si falta activarlos
+  if (compacto) {
+    if (estado !== "apagado" && estado !== "instalar-ios") return null;
+    return (
+      <div className="mx-5 mb-3 flex items-center gap-3 rounded-2xl bg-[#fbf6ec] px-4 py-3 text-[16px] text-[#3d372f]">
+        <BellSlashIcon size={24} className="shrink-0 text-[#8a6d3f]" />
+        {estado === "apagado" ? (
+          <>
+            <span className="flex-1">Activa los avisos para que te suene el celular.</span>
+            <button
+              type="button"
+              onClick={activar}
+              disabled={ocupado}
+              className="h-11 shrink-0 rounded-full bg-[#1c1a17] px-4 text-[15px] font-semibold text-white disabled:opacity-50"
+            >
+              Activar
+            </button>
+          </>
+        ) : (
+          <span className="flex-1">Para recibir avisos: Compartir → Agregar a inicio.</span>
+        )}
+      </div>
+    );
+  }
 
   const caja = "mt-3 flex flex-wrap items-center gap-3 rounded-[22px] bg-white px-5 py-4 text-[17px] leading-snug text-[#3d372f] shadow-[0_1px_3px_rgba(28,26,23,0.08)]";
   const boton = "inline-flex h-12 items-center justify-center gap-2 rounded-full px-5 text-[16px] font-semibold disabled:opacity-50";

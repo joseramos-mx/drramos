@@ -13,7 +13,7 @@ export default function Globo({ m, archivoUrl }) {
   return (
     <li className={`flex ${mio ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[88%] rounded-[22px] p-1.5 shadow-[0_1px_2px_rgba(28,26,23,0.1)] sm:max-w-[75%] ${
+        className={`max-w-[88%] rounded-[20px] p-1 shadow-[0_1px_1px_rgba(28,26,23,0.08)] sm:max-w-[75%] ${
           mio ? "rounded-br-md bg-[#efe3cc]" : "rounded-bl-md bg-white"
         }`}
       >
@@ -31,7 +31,7 @@ export default function Globo({ m, archivoUrl }) {
           </a>
         )}
         {m.texto ? (
-          <p className="whitespace-pre-wrap break-words px-3 pt-1.5 text-[18px] leading-[1.4] text-[#1c1a17]">{m.texto}</p>
+          <p className="whitespace-pre-wrap break-words px-3 pt-1.5 text-[17px] leading-[1.4] text-[#1c1a17]">{m.texto}</p>
         ) : (
           !tieneArchivo && (
             <p className="px-3 pt-1.5 text-[16px] italic text-[#5b544a]">

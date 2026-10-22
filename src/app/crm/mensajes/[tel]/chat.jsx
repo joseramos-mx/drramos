@@ -14,7 +14,7 @@ export default function Chat({ mensajes, archivoUrlDe }) {
         return [
           nuevoDia && (
             <li key={`dia-${m.id}`} className="flex justify-center py-2">
-              <span className="rounded-full bg-[#e9e1d2] px-4 py-1.5 text-[15px] font-semibold capitalize text-[#5b544a]">
+              <span className="rounded-full bg-white/80 px-4 py-1 text-[14px] font-semibold capitalize text-[#7a7368] shadow-[0_1px_2px_rgba(28,26,23,0.08)]">
                 {dia}
               </span>
             </li>

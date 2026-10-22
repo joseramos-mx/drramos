@@ -1,33 +1,26 @@
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarBlankIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import { labelCanal } from "../../resultados/fuentes";
+import { etiquetaLabel } from "../lib";
+import MenuChat from "./menu-chat";
 
-/** Barra de arriba del chat: regresar, nombre grande y botón Agendar. */
-export default function Cabecera({ nombre, telefono, origen, volver, agendarHref }) {
+/** Barra de arriba del chat: regresar, nombre y menú ⋮ (agendar, llamar, etiquetas). */
+export default function Cabecera({ nombre, telefono, origen, etiquetas = [], pacienteId, volver, agendarHref }) {
+  const urgente = etiquetas.includes("urgencia");
+  const detalle = etiquetas.length ? etiquetas.map(etiquetaLabel).join(" · ") : origen ? `Llegó por ${labelCanal(origen)}` : "";
   return (
-    <header className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-[#f5f1ea]/95 px-4 py-3 backdrop-blur">
-      <Link
-        href={volver}
-        aria-label="Regresar a Mensajes"
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-[#1c1a17] shadow-[0_1px_3px_rgba(28,26,23,0.12)]"
-      >
+    <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-[#1c1a17]/[0.08] bg-white/95 px-2 py-2 backdrop-blur">
+      <Link href={volver} aria-label="Regresar a Mensajes" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full active:bg-[#f2efe9]">
         <ArrowLeftIcon size={26} weight="bold" />
       </Link>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[22px] font-bold leading-tight text-[#1c1a17]">{nombre}</h1>
-        <p className="truncate text-[15px] text-[#5b544a]">
-          {telefono.slice(-10).replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
-          {origen && ` · llegó por ${labelCanal(origen)}`}
-        </p>
+      <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#efe3cc] text-[19px] font-bold text-[#8a6d3f]">
+        {nombre.replace(/^WhatsApp /, "#").charAt(0).toUpperCase()}
+      </span>
+      <div className="min-w-0 flex-1 pl-1">
+        <h1 className="truncate text-[19px] font-bold leading-tight text-[#1c1a17]">{nombre}</h1>
+        {detalle && <p className={`truncate text-[14px] ${urgente ? "font-semibold text-[#c0392b]" : "text-[#7a7368]"}`}>{detalle}</p>}
       </div>
-      {agendarHref && (
-        <Link
-          href={agendarHref}
-          className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-[#1c1a17] px-5 text-[17px] font-semibold text-[#f5f1ea]"
-        >
-          <CalendarBlankIcon size={22} weight="bold" /> Agendar
-        </Link>
-      )}
+      <MenuChat pacienteId={pacienteId} etiquetas={etiquetas} telefono={telefono} agendarHref={agendarHref} />
     </header>
   );
 }
