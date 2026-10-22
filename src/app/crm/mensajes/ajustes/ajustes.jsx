@@ -14,6 +14,9 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
 
       <h2 className={titulo}>🤖 Asistente virtual</h2>
       <ModoAsistente modo={modo} libres={libres} demo={base !== "/crm/mensajes"} />
+      <Link href={`${base}/respuestas`} className="mx-5 mt-3 flex h-16 items-center justify-between rounded-[20px] border-2 border-[#1c1a17]/10 bg-white px-5 text-[18px] font-semibold text-[#1c1a17]">
+        ✏️ Mis respuestas del asistente <span className="text-[#9a9388]">›</span>
+      </Link>
 
       <h2 className={titulo}>Avisos</h2>
       <div className="px-5">

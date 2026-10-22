@@ -9,6 +9,8 @@ import { BUCKET, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor"
 import { ETIQUETAS } from "./lib";
 import { PLANTILLAS, rellenar } from "./plantillas";
 import { ARCHIVOS } from "./archivos";
+import { ETIQUETAS_DATO, ORIGINALES, VARIABLES, deCorchetes } from "@/lib/asistente/respuestas";
+import { filtroDuro } from "@/lib/asistente";
 import { redirect } from "next/navigation";
 
 const FOTO_MAX = 4 * 1024 * 1024;
@@ -330,5 +332,46 @@ export async function cambiarLibresAction(libres) {
   const { error } = await supabase.from("asistente_config").update({ libres, updated_at: new Date().toISOString() }).eq("id", 1);
   if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
   revalidatePath("/crm/mensajes/ajustes");
+  return { ok: true };
+}
+
+/**
+ * "Mis respuestas": la Dra. Gaby cambia el texto de una respuesta
+ * aprobada. Se frena sólo si da precios (regla de oro); otros riesgos
+ * se guardan con aviso. Los datos que llena el sistema llegan como [DÍA].
+ */
+export async function guardarRespuestaAction(id, textoConCorchetes) {
+  if (!(id in ORIGINALES)) return { error: "Esa respuesta no existe." };
+  const texto = deCorchetes(String(textoConCorchetes || "")).trim();
+  if (!texto) return { error: "Escribe la respuesta." };
+  if (texto.length > 1000) return { error: "Es demasiado larga (máximo 1000 letras)." };
+  const faltan = (VARIABLES[id] || []).filter((v) => !texto.includes(`{${v}}`));
+  if (faltan.length) {
+    return { error: `Falta ${faltan.map((v) => `[${ETIQUETAS_DATO[v]}]`).join(" y ")}: ahí el sistema pone el dato real. Escríbelo tal cual.` };
+  }
+  const riesgo = filtroDuro(texto);
+  if (riesgo === "menciona dinero" || riesgo === "da un rango o cantidad") {
+    return { error: "El asistente no da precios (sólo los $600 de la valoración). Quita la cantidad, por favor." };
+  }
+
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const original = ORIGINALES[id];
+  const { error } =
+    texto === original
+      ? await supabase.from("asistente_respuestas").delete().eq("id", id)
+      : await supabase.from("asistente_respuestas").upsert({ id, texto, updated_at: new Date().toISOString(), updated_by: user.id });
+  if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/respuestas");
+  return { ok: true, aviso: riesgo ? `Se guardó, pero ojo: ${riesgo}. Revísalo con Jesús.` : null };
+}
+
+/** Regresa una respuesta a su texto original. */
+export async function restaurarRespuestaAction(id) {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { error } = await supabase.from("asistente_respuestas").delete().eq("id", id);
+  if (error) return { error: "No se pudo regresar al original. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/respuestas");
   return { ok: true };
 }

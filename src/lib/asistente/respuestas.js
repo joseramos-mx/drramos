@@ -81,32 +81,113 @@ export const RESPUESTAS = {
     "Le comunico de inmediato con la Dra. Gaby para atenderle 🙏 Si es muy urgente, puede llamar al 618 568 0916.",
 };
 
-/** Respuestas que llevan datos y cuáles. */
-const VARIABLES = { ofrecer_horarios: ["dia", "horarios"], sin_horarios: ["dia"], confirmar_cita: ["dia", "hora"] };
+/** Primer renglón del primer mensaje a un paciente nuevo (lo agrega el código, el modelo no lo elige). */
+export const PRESENTACION = "Hola, soy el asistente virtual del consultorio del Dr. Felipe Ramos 😊";
+
+/** Respuestas que llevan datos y cuáles (el sistema los llena con la agenda). */
+export const VARIABLES = { ofrecer_horarios: ["dia", "horarios"], sin_horarios: ["dia"], confirmar_cita: ["dia", "hora"] };
+
+/** Cómo se ven los datos al editar: la Dra. Gaby ve [DÍA] en vez de {dia}. */
+export const ETIQUETAS_DATO = { dia: "DÍA", hora: "HORA", horarios: "HORARIOS", nombre: "NOMBRE" };
+
+/** Orden y títulos para la pantalla "Mis respuestas" (todas las editables, incluida la presentación). */
+export const SECCIONES = [
+  ["Saludo y datos del consultorio", [
+    ["presentacion", "Primer mensaje a un paciente nuevo (siempre va arriba)"],
+    ["saludo", "Saludo"], ["ubicacion", "¿Dónde están?"], ["horario", "¿Qué horario tienen?"],
+    ["estacionamiento", "¿Hay estacionamiento?"], ["pagos", "¿Cómo se puede pagar? / meses sin intereses"],
+    ["factura", "¿Facturan?"], ["telefono", "¿A qué número llamo?"],
+    ["sobre_doctor", "¿Quién es el doctor?"], ["tecnologia", "Escáner 3D y laboratorio propio"],
+  ]],
+  ["Precios y valoración", [
+    ["precio_tratamiento", "¿Cuánto cuesta un tratamiento? (nunca se da precio)"],
+    ["precio_valoracion", "¿Cuánto cuesta la valoración?"], ["valoracion_que_es", "¿Qué hacen en la valoración?"],
+    ["que_llevar", "¿Qué llevo a la valoración?"], ["duele", "¿Duele?"], ["cuanto_tarda", "¿Cuánto tarda el tratamiento?"],
+  ]],
+  ["Tratamientos", [
+    ["info_carillas", "Carillas"], ["info_blanqueamiento", "Blanqueamiento"], ["info_diseno_sonrisa", "Diseño de sonrisa"],
+    ["info_implantes", "Implantes"], ["info_coronas", "Coronas"], ["info_puentes", "Puentes"],
+    ["info_protesis", "Prótesis"], ["info_rehabilitacion", "Rehabilitación oral"], ["info_resinas", "Resinas"],
+    ["info_limpieza", "Limpieza y revisión"], ["urgencias_si", "¿Atienden urgencias?"],
+  ]],
+  ["Lo que no hacemos", [
+    ["no_ortodoncia", "Brackets / alineadores"], ["no_endodoncia", "Tratamiento de conductos"], ["no_ninos", "Niños"],
+  ]],
+  ["Para agendar la valoración", [
+    ["invitar_valoracion", "Invitar a agendar"], ["ofrecer_horarios", "Ofrecer horarios libres"],
+    ["sin_horarios", "Ese día ya no hay lugar"], ["pedir_datos", "Pedir nombre y qué quiere mejorar"],
+    ["preguntar_origen", "¿Cómo nos conoció?"], ["confirmar_cita", "Confirmar la cita"],
+  ]],
+  ["Despedidas y casos especiales", [
+    ["gracias", "Cuando dicen gracias"], ["no_escribir_mas", "Cuando piden que ya no les escriban"],
+    ["escribir_audio", "Cuando mandan nota de voz"], ["solo_consultorio", "Cuando preguntan cosas que no son del consultorio"],
+    ["pasar_dra_gaby", "Cuando le pasa el chat a la Dra. Gaby"], ["pasar_urgencia", "Cuando es urgencia"],
+  ]],
+];
+
+/** Textos originales (los de este archivo), incluida la presentación. */
+export const ORIGINALES = { presentacion: PRESENTACION, ...RESPUESTAS };
+
+/**
+ * Textos que usa el asistente: los que la Dra. Gaby editó en "Mis
+ * respuestas" (tabla asistente_respuestas) encima de los originales.
+ */
+export function textosEfectivos(editadas = []) {
+  const t = { ...ORIGINALES };
+  for (const e of editadas) if (e?.id in t && String(e.texto || "").trim()) t[e.id] = e.texto;
+  return t;
+}
 
 /** Texto final de varias respuestas aprobadas, con sus datos. Devuelve { texto } o { error }. */
-export function armar(ids, variables = {}) {
+export function armar(ids, variables = {}, textos = ORIGINALES) {
   const partes = [];
   for (const id of ids || []) {
-    const base = RESPUESTAS[id];
+    const base = id === "presentacion" ? null : textos[id];
     if (!base) return { error: `No existe la respuesta aprobada "${id}".` };
     const faltan = (VARIABLES[id] || []).filter((v) => !String(variables[v] || "").trim());
     if (faltan.length) return { error: `A "${id}" le falta: ${faltan.join(", ")}.` };
     partes.push(
       base
-        .replace("{nombre}", variables.nombre?.trim() ? `, ${variables.nombre.trim().split(" ")[0]}` : "")
-        .replace("{dia}", variables.dia || "")
-        .replace("{hora}", variables.hora || "")
-        .replace("{horarios}", variables.horarios || "")
+        .replaceAll("{nombre}", variables.nombre?.trim() ? `, ${variables.nombre.trim().split(" ")[0]}` : "")
+        .replaceAll("{dia}", variables.dia || "")
+        .replaceAll("{hora}", variables.hora || "")
+        .replaceAll("{horarios}", variables.horarios || "")
     );
   }
   if (!partes.length) return { error: "No se eligió ninguna respuesta." };
   return { texto: partes.join("\n\n") };
 }
 
-/** Lista para las instrucciones del modelo (id: texto). */
-export function catalogo() {
-  return Object.entries(RESPUESTAS)
-    .map(([id, t]) => `- ${id}: ${t}`)
+/** Lista para las instrucciones del modelo (id: texto), sin la presentación. */
+export function catalogo(textos = ORIGINALES) {
+  return Object.keys(RESPUESTAS)
+    .map((id) => `- ${id}: ${textos[id]}`)
     .join("\n");
+}
+
+/** [DÍA] → {dia} (y al revés) para la pantalla de edición. */
+export function aCorchetes(texto) {
+  return String(texto).replace(/\{(dia|hora|horarios|nombre)\}/g, (_, k) => `[${ETIQUETAS_DATO[k]}]`);
+}
+export function deCorchetes(texto) {
+  return String(texto)
+    .replace(/\[\s*d[ií]a\s*\]/gi, "{dia}")
+    .replace(/\[\s*horarios\s*\]/gi, "{horarios}")
+    .replace(/\[\s*hora\s*\]/gi, "{hora}")
+    .replace(/\[\s*nombre\s*\]/gi, "{nombre}");
+}
+
+/** Lista de respuestas con el texto que usa hoy el asistente (editado o original). */
+export function seccionesParaEditar(editadas) {
+  const mapa = Object.fromEntries((editadas || []).map((e) => [e.id, e.texto]));
+  return SECCIONES.map(([seccion, items]) => ({
+    seccion,
+    items: items.map(([id, titulo]) => ({
+      id,
+      titulo,
+      original: ORIGINALES[id],
+      texto: mapa[id] || ORIGINALES[id],
+      editada: Boolean(mapa[id]),
+    })),
+  }));
 }

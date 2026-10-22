@@ -12,6 +12,7 @@
 --    no se mete hasta que ella lo devuelva (o pasen 8 h sin que escriba).
 --  * asistente_borradores: respuestas que esperan su aprobación (modo
 --    borrador, respuestas propias, o propias que el verificador rechazó).
+--  * asistente_respuestas: textos que la Dra. Gaby editó en "Mis respuestas".
 --  * asistente_registro: bitácora de lo que hizo (para revisar y medir).
 --
 --  Correr DESPUÉS de 20261021000000_mensajes_app.sql.
@@ -48,6 +49,15 @@ create table if not exists public.asistente_borradores (
 );
 create index if not exists asistente_borradores_tel_idx on public.asistente_borradores (telefono, estado);
 
+-- Respuestas aprobadas que la Dra. Gaby editó en "Mis respuestas". Las que no
+-- están aquí usan el texto original del código (src/lib/asistente/respuestas.js).
+create table if not exists public.asistente_respuestas (
+  id text primary key,
+  texto text not null check (length(texto) between 1 and 1000),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users (id) on delete set null
+);
+
 create table if not exists public.asistente_registro (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
@@ -60,10 +70,13 @@ create index if not exists asistente_registro_tel_idx on public.asistente_regist
 alter table public.asistente_config enable row level security;
 alter table public.asistente_borradores enable row level security;
 alter table public.asistente_registro enable row level security;
+alter table public.asistente_respuestas enable row level security;
 
 create policy "staff lee y cambia el modo del asistente"
   on public.asistente_config for all to authenticated using (true) with check (true);
 create policy "staff gestiona borradores"
   on public.asistente_borradores for all to authenticated using (true) with check (true);
+create policy "staff edita las respuestas del asistente"
+  on public.asistente_respuestas for all to authenticated using (true) with check (true);
 create policy "staff lee la bitácora del asistente"
   on public.asistente_registro for select to authenticated using (true);

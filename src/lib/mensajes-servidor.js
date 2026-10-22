@@ -58,13 +58,13 @@ export async function avisarMensajeNuevo(admin, { nombre, telefono }) {
 }
 
 /** Aviso genérico (mensaje nuevo, caso que pasa el asistente, borrador listo). Al tocarlo abre ese chat. */
-export async function avisar(admin, { titulo, cuerpo, telefono }) {
+export async function avisar(admin, { titulo, cuerpo, telefono, url }) {
   if (!vapidListo()) return;
   const { data: subs } = await admin.from("push_suscripciones").select("id, endpoint, p256dh, auth");
   const payload = JSON.stringify({
     title: titulo,
     body: cuerpo,
-    url: telefono ? `/crm/mensajes/${telefono}` : "/crm/mensajes",
+    url: url || (telefono ? `/crm/mensajes/${telefono}` : "/crm/mensajes"),
     tag: telefono ? `wa-${telefono}` : "mensajes",
   });
   for (const s of subs || []) {
