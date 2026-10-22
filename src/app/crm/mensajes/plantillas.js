@@ -42,7 +42,7 @@ export const PLANTILLAS_SISTEMA = [
     texto:
       "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto no podremos atenderle el {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la asistente del Dr. Felipe.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Elegir otro horario", "Hablar con alguien"],
+    botones: ["Elegir otro horario", "Hablar con la asistente del doctor"],
   },
   {
     nombre: "cita_cancelada",
@@ -50,7 +50,7 @@ export const PLANTILLAS_SISTEMA = [
     texto:
       "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Por un imprevisto tuvimos que cancelar su cita del {{2}} a las {{3}}; le ofrecemos una disculpa. Toque un botón para elegir otro horario o hablar con la asistente del Dr. Felipe.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Elegir otro horario", "Hablar con alguien"],
+    botones: ["Elegir otro horario", "Hablar con la asistente del doctor"],
   },
   {
     nombre: "cita_agendada",
@@ -66,7 +66,7 @@ export const PLANTILLAS_SISTEMA = [
     texto:
       "Hola {{1}}, le escribimos del consultorio del Dr. Felipe de Jesús Ramos Sotelo. Notamos que no pudo venir a su cita del {{2}} a las {{3}}. Si gusta, toque un botón para elegir otro horario o hablar con la asistente del Dr. Felipe.",
     campos: ["Nombre del paciente", "Día", "Hora"],
-    botones: ["Elegir otro horario", "Hablar con alguien"],
+    botones: ["Elegir otro horario", "Hablar con la asistente del doctor"],
   },
   {
     nombre: "resena_google",

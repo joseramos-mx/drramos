@@ -50,7 +50,8 @@ const TITULOS = {
   confirmar: ["Confirmo mi cita"],
   cambiar: ["Cambiar mi cita", "Elegir otro horario"],
   cancelar: ["Cancelar mi cita"],
-  hablar: ["Hablar con alguien", "Hablar con Dra. Gaby"], // el segundo: plantillas viejas
+  // "Hablar con alguien": botones de la app (máx. 20 letras) · "…asistente del doctor": botones de las plantillas
+  hablar: ["Hablar con alguien", "Hablar con la asistente del doctor", "Hablar con Dra. Gaby"],
   presupuesto_si: ["Quiero agendar"],
   presupuesto_duda: ["Tengo una duda"],
   presupuesto_no: ["Ya no, gracias"],
