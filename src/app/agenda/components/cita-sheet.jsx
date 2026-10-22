@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
+import Link from "next/link";
+import { CalendarBlankIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
 import {
   buscarPacientesAction,
   guardarCitaAction,
@@ -275,14 +276,13 @@ function DetalleCita({ fecha, cita, onDone }) {
           {DENTISTAS.length > 1 && ` · ${labelDe(DENTISTAS, cita.dentista)}`}
         </p>
         {wa && (
-          <a
-            href={`https://wa.me/${wa}`}
-            target="_blank"
-            rel="noopener"
+          // Abre su chat en "Mensajes" (número del consultorio), nunca la app de WhatsApp personal
+          <Link
+            href={`/crm/mensajes/${wa}`}
             className="mt-3 inline-flex items-center gap-2 text-[14px] font-normal text-[#1c1a17] underline decoration-[#b89968]/50 underline-offset-4 hover:text-[#8a6d3f]"
           >
-            <WhatsappLogoIcon size={16} weight="light" /> {cita.paciente.whatsapp}
-          </a>
+            <WhatsappLogoIcon size={16} weight="light" /> Escribirle · {cita.paciente.whatsapp}
+          </Link>
         )}
         {cita.notas && (
           <p className="mt-3 text-[13px] font-normal text-[#5b544a]">{cita.notas}</p>
@@ -293,14 +293,14 @@ function DetalleCita({ fecha, cita, onDone }) {
         <EditarCita fecha={fecha} cita={cita} onDone={onDone} onCancel={() => setEditando(false)} />
       ) : (
         <>
-          <CierreWizard cita={cita} onDone={onDone} />
           <button
             type="button"
             onClick={() => setEditando(true)}
-            className="text-[11px] font-normal uppercase tracking-[0.18em] text-[#5b544a] underline-offset-4 hover:text-[#1c1a17] hover:underline"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full border-2 border-[#1c1a17]/10 bg-white text-[17px] font-semibold text-[#1c1a17] active:bg-[#f5f1ea]"
           >
-            Mover o cambiar la cita
+            <CalendarBlankIcon size={22} /> Mover a otro día u hora
           </button>
+          <CierreWizard cita={cita} onDone={onDone} />
         </>
       )}
     </div>
@@ -322,7 +322,10 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
   return (
     <form action={formAction} className="space-y-6 border-t border-[#1c1a17]/[0.06] pt-6">
       <input type="hidden" name="id" value={cita.id} />
-      <input type="hidden" name="fecha" value={fecha} />
+      <div>
+        <FieldLabel htmlFor="fecha-editar">Día</FieldLabel>
+        <input id="fecha-editar" type="date" name="fecha" defaultValue={fecha} required className={`${inputClass} max-w-[220px]`} />
+      </div>
       <HoraField minutosIniciales={ini} />
       <div>
         <FieldLabel>Duración</FieldLabel>

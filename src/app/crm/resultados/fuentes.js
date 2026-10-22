@@ -4,7 +4,8 @@
  * Funciones puras, sin Supabase.
  */
 
-export const WHATSAPP_CONSULTORIO = "526182066760";
+import { WHATSAPP_CONSULTORIO } from "@/lib/consultorio";
+export { WHATSAPP_CONSULTORIO };
 
 // Mismos valores que pacientes.origen / fuentes.canal
 export const CANALES = [

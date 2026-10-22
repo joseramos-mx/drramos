@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { WHATSAPP_CONSULTORIO as WHATSAPP_PHONE } from "@/lib/consultorio";
 import {
   XIcon,
   ArrowRightIcon,
@@ -24,7 +25,6 @@ import { useAplicacion } from "./aplicacion-context";
 
 const EASE = [0.22, 0.61, 0.36, 1];
 
-const WHATSAPP_PHONE = "526182066760";
 
 const QUESTIONS = [
   {

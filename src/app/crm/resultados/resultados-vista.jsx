@@ -430,7 +430,6 @@ function ListaPacientes({ items, vacio }) {
             {wa && (
               <a
                 href={wa}
-                target="_blank"
                 rel="noopener"
                 aria-label={`WhatsApp a ${it.paciente.nombre}`}
                 className="inline-flex min-h-[40px] items-center gap-2 border border-white/[0.22] px-3 font-[family-name:var(--font-albert)] text-[13px] text-white/85 hover:border-[#b89968] hover:text-[#f5f1ea]"
