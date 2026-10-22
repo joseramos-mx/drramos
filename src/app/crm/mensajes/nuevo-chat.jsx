@@ -8,7 +8,7 @@ import { buscarPacientesAction, crearContactoAction } from "./actions";
 import { sinAcentos } from "./lib";
 
 const campo =
-  "h-14 w-full rounded-full bg-[#f2efe9] px-5 text-[18px] text-[#1c1a17] placeholder:text-[#9a9388] focus:outline-2 focus:outline-[#b89968]";
+  "h-14 w-full rounded-full bg-[#f2efe9] px-5 text-[18px] text-[#1c1a17] placeholder:text-[#9a9388] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#b89968]";
 
 /**
  * Botón flotante "Nuevo chat" (como WhatsApp). Busca a un paciente que
@@ -46,14 +46,17 @@ export default function NuevoChat({ base = "/crm/mensajes", demo = null }) {
       </button>
 
       <Hoja abierta={abierta} onCerrar={() => setAbierta(false)} titulo="Nuevo chat">
-        <div className="px-5">
+        <div className="px-5 pt-1">
           <label className="sr-only" htmlFor="buscar-paciente">Buscar paciente</label>
           <input
             id="buscar-paciente"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar paciente por nombre o teléfono"
-            className={campo}
+            type="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            className={`${campo} [&::-webkit-search-cancel-button]:hidden`}
           />
         </div>
         {q.trim().length >= 2 && (
@@ -85,8 +88,8 @@ export default function NuevoChat({ base = "/crm/mensajes", demo = null }) {
 
         <h3 className={titulo}>Alguien nuevo</h3>
         <form action={demo ? undefined : crear} className="space-y-3 px-5 pb-2">
-          <input name="nombre" placeholder="Nombre" autoComplete="off" className={campo} />
-          <input name="telefono" placeholder="WhatsApp (10 dígitos)" inputMode="tel" autoComplete="off" className={campo} />
+          <input name="nombre" placeholder="Nombre" autoComplete="off" autoCapitalize="words" enterKeyHint="next" className={campo} />
+          <input name="telefono" type="tel" inputMode="tel" placeholder="WhatsApp (10 dígitos)" autoComplete="off" maxLength={14} enterKeyHint="go" className={campo} />
           {state?.error && (
             <p role="alert" className="px-2 text-[16px] font-medium text-[#c0392b]">
               {state.error}

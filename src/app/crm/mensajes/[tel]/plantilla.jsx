@@ -32,7 +32,7 @@ export default function Plantilla({ telefono, nombre, nuevo }) {
   }
 
   const campo =
-    "h-14 w-full rounded-full bg-[#f2efe9] px-5 text-[18px] text-[#1c1a17] placeholder:text-[#9a9388] focus:outline-2 focus:outline-[#b89968]";
+    "h-14 w-full rounded-full bg-[#f2efe9] px-5 text-[18px] text-[#1c1a17] placeholder:text-[#9a9388] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#b89968]";
 
   return (
     <div className="space-y-2 px-1 py-1">
@@ -66,7 +66,7 @@ export default function Plantilla({ telefono, nombre, nuevo }) {
             ))}
           </ul>
         ) : (
-          <form action={formAction} className="space-y-3 px-5 pb-2">
+          <form action={formAction} className="space-y-3 px-5 pb-2 pt-1">
             <input type="hidden" name="telefono" value={telefono} />
             <input type="hidden" name="plantilla" value={elegida.nombre} />
             {elegida.campos.map((etiqueta, i) => (
@@ -74,6 +74,9 @@ export default function Plantilla({ telefono, nombre, nuevo }) {
                 <span className="mb-1 block px-2 text-[15px] font-semibold text-[#5b544a]">{etiqueta}</span>
                 <input
                   name={`v${i}`}
+                  autoComplete="off"
+                  autoCapitalize={i === 0 ? "words" : "sentences"}
+                  enterKeyHint={i === elegida.campos.length - 1 ? "done" : "next"}
                   value={valores[i] || ""}
                   onChange={(e) => setValores((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
                   className={campo}

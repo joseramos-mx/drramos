@@ -25,7 +25,7 @@ async function reducirFoto(archivo) {
 }
 
 const campo =
-  "w-full rounded-[26px] border-0 bg-[#f2efe9] px-5 text-[18px] leading-snug text-[#1c1a17] placeholder:text-[#9a9388] focus:outline-2 focus:outline-[#b89968]";
+  "w-full rounded-[26px] border-0 bg-[#f2efe9] px-5 text-[18px] leading-snug text-[#1c1a17] placeholder:text-[#9a9388] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#b89968]";
 const redondo = "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full";
 
 /**

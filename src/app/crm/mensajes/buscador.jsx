@@ -29,6 +29,8 @@ export default function Buscador({ inicial = "" }) {
         <span className="sr-only">Buscar</span>
         <input
           type="search"
+          enterKeyHint="search"
+          autoComplete="off"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar nombre o palabra"
