@@ -5,7 +5,8 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function CrmLoginPage() {
+export default async function CrmLoginPage({ searchParams }) {
+  const from = (await searchParams)?.from;
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="w-full max-w-[400px]">
@@ -23,7 +24,7 @@ export default function CrmLoginPage() {
         </p>
 
         <div className="mt-10">
-          <LoginForm />
+          <LoginForm from={typeof from === "string" ? from : ""} />
         </div>
       </div>
     </main>

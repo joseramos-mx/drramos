@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import LeadCard from "./components/lead-card";
 import Filters from "./components/filters";
 import SignOutButton from "./components/sign-out-button";
+import NavCrm from "./components/nav-crm";
 import { ESTADOS, TRACKS, computeStats } from "./lib";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,7 @@ export default async function CrmPage({ searchParams }) {
           <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-[clamp(28px,4vw,40px)] font-light leading-[1.1] text-[#f5f1ea]">
             Leads del consultorio.
           </h1>
+          <NavCrm activo="leads" />
         </div>
         <SignOutButton email={user.email} />
       </header>

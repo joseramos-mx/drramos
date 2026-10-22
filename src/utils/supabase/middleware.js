@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 /**
  * Refresca la sesión de Supabase en cada request y aplica las reglas
  * de acceso de /crm:
- *   - /crm y /crm/* requieren sesión, sin ella redirigen a /crm/login.
+ *   - /crm, /crm/*, /agenda y /agenda/* requieren sesión, sin ella
+ *     redirigen a /crm/login.
  *   - /crm/login con sesión activa redirige a /crm.
  *
  * Usa anon key con RLS. Nunca service role en el browser ni en
@@ -42,7 +43,11 @@ export async function updateSession(request) {
 
   const pathname = request.nextUrl.pathname;
   const isLogin = pathname === "/crm/login";
-  const isProtected = pathname === "/crm" || pathname.startsWith("/crm/");
+  const isProtected =
+    pathname === "/crm" ||
+    pathname.startsWith("/crm/") ||
+    pathname === "/agenda" ||
+    pathname.startsWith("/agenda/");
 
   if (isProtected && !isLogin && !user) {
     const url = request.nextUrl.clone();

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { waConsultorio } from "@/lib/consultorio";
 import { Button } from "@/components/ui/button";
 import { Phone } from "lucide-react";
 import { motion } from "framer-motion";
@@ -31,7 +32,7 @@ export default function HeroDoctor() {
           <Link href="#contacto" className="hover:text-white uppercase">Contacto</Link>
         </div>
         <Button asChild size="lg" className="bg-lime-500 rounded-none hover:bg-lime-400 text-white font-bold">
-          <Link href="https://wa.me/526182066760" aria-label="Contactar por WhatsApp">
+          <Link href={waConsultorio()} aria-label="Contactar por WhatsApp">
             Contactar <Phone className="ml-1 h-3 w-4" />
           </Link>
         </Button>
@@ -77,7 +78,7 @@ export default function HeroDoctor() {
 
           <div className="mt-7 flex flex-wrap items-center gap-4">
             <Button asChild size="lg" className="bg-blue-500 hover:bg-blue-400 rounded-none" >
-              <Link href="https://wa.me/526182066760?text=Hola%2C%20quiero%20agendar%20mi%20valoraci%C3%B3n%20con%20el%20Dr.%20Felipe%20Ramos">Agenda tu valoración</Link>
+              <Link href={waConsultorio("Hola, quiero agendar mi valoración con el Dr. Felipe Ramos")}>Agenda tu valoración</Link>
             </Button>
             <Link
               href="#servicios"
@@ -123,7 +124,7 @@ export default function HeroDoctor() {
               Atención ética y personalizada
             </div>
             <a
-              href="https://wa.me/526182066760?text=Hola%2C%20quiero%20agendar%20mi%20valoraci%C3%B3n"
+              href={waConsultorio("Hola, quiero agendar mi valoración")}
               className=" bg-lime-500/90 px-4 py-2 text-sm font-medium text-white hover:bg-lime-400"
             >
               Agenda por WhatsApp

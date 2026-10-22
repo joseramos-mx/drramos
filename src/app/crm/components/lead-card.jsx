@@ -37,7 +37,6 @@ export default function LeadCard({ lead }) {
             {wa ? (
               <a
                 href={wa}
-                target="_blank"
                 rel="noopener"
                 className="group inline-flex items-center gap-2 text-[#f5f1ea] underline decoration-[#b89968]/50 underline-offset-4 transition-colors hover:text-[#b89968]"
               >
