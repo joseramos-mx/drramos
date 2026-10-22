@@ -47,6 +47,8 @@ async function guardarSalida(admin, fila) {
   // Si ella contesta, el chat es suyo: el asistente no se mete (8 h desde su último mensaje)
   if (paciente) {
     await admin.from("pacientes").update({ atiende: "humano", atiende_desde: new Date().toISOString() }).eq("id", paciente.id);
+    // Si tenía un aviso por bloqueo sin resolver, ella ya lo está atendiendo
+    await admin.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", paciente.id).not("aviso_bloqueo_en", "is", null);
   }
   await admin.from("whatsapp_mensajes").upsert(
     { ...fila, direccion: "salida", via: "api", enviado_en: new Date().toISOString(), paciente_id: paciente?.id || null },

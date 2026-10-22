@@ -144,8 +144,13 @@ async function citaDel(admin, pacienteId, citaId) {
 
 const anotar = (notas, texto) => [notas, texto].filter(Boolean).join(" · ").slice(0, 1000);
 
-/** El paciente respondió a un aviso por bloqueo: ya no hay que llamarle. */
-const yaRespondio = (admin, pacienteId) => admin.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", pacienteId);
+/**
+ * El aviso por bloqueo quedó resuelto (tocó un botón, se movió/canceló la cita, el chat
+ * pasó a la Dra. Gaby o ella ya le escribió): ya no hay que llamarle. Un mensaje
+ * cualquiera ("ok", un sticker) NO lo resuelve.
+ */
+export const yaRespondio = (admin, pacienteId) =>
+  admin.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", pacienteId).not("aviso_bloqueo_en", "is", null);
 
 /** Botones para una cita (los manda también el asistente cuando el paciente pregunta por su cita). */
 export async function enviarMenuCita(admin, telefono, paciente, cita) {
@@ -282,6 +287,7 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
 }
 
 async function pasar(admin, telefono, paciente, motivo, texto) {
+  await yaRespondio(admin, paciente.id);
   await pasarAHumano(admin, paciente, telefono, { motivo, urgente: false });
   const { data: editadas } = await admin.from("asistente_respuestas").select("id, texto");
   await decir(admin, telefono, paciente.id, texto || textoAlPasar(textosEfectivos(editadas || []), {}, new Date(), await diasCerrados(admin)));

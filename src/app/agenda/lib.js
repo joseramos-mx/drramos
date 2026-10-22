@@ -302,7 +302,7 @@ export function idsEncimados(citas) {
  * Pendiente para la libreta cuando un paciente avisado por un bloqueo no respondió
  * (o no tiene WhatsApp): "Llamar a Ana Ruiz (618 123 4567): no eligió otro horario…".
  */
-export function textoLlamar({ nombre, whatsapp, inicio, cancelada = false, sinWhatsapp = false }) {
+export function textoLlamar({ nombre, whatsapp, inicio, cancelada = false, sinWhatsapp = false, escribio = false }) {
   const tel = String(whatsapp || "").replace(/\D/g, "").slice(-10);
   const telTexto = tel.length === 10 ? ` (${tel.slice(0, 3)} ${tel.slice(3, 6)} ${tel.slice(6)})` : "";
   const cuando = `${formatFechaLarga(hoyDurango(new Date(inicio)))}, ${formatHora(minutosDelDia(inicio))}`;
@@ -310,8 +310,12 @@ export function textoLlamar({ nombre, whatsapp, inicio, cancelada = false, sinWh
     ? cancelada
       ? `se canceló su cita del ${cuando} y no tiene WhatsApp; ofrécele otro horario`
       : `su cita del ${cuando} quedó en horario bloqueado y no tiene WhatsApp; cámbiala`
-    : cancelada
-      ? `se le canceló su cita del ${cuando} y no ha respondido; ofrécele otro horario`
-      : `no eligió otro horario para su cita del ${cuando}; confírmale el cambio o la cancelación`;
+    : escribio
+      ? cancelada
+        ? `se le canceló su cita del ${cuando}; escribió pero no eligió otro horario, revisa su chat y confírmale`
+        : `su cita del ${cuando} quedó en horario bloqueado; escribió pero no eligió otro horario, revisa su chat y confírmale`
+      : cancelada
+        ? `se le canceló su cita del ${cuando} y no ha respondido; ofrécele otro horario`
+        : `no eligió otro horario para su cita del ${cuando}; confírmale el cambio o la cancelación`;
   return `Llamar a ${nombre || "paciente"}${telTexto}: ${que}`.slice(0, 300);
 }

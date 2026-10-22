@@ -22,7 +22,7 @@ import { INSTRUCCIONES } from "./conocimiento";
 import { armar, catalogo, ELEGIBLES, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
-import { atenderBotonCita, botonDeAccion } from "@/lib/mi-cita";
+import { atenderBotonCita, botonDeAccion, yaRespondio } from "@/lib/mi-cita";
 import {
   SLOT_MIN,
   esFechaValida,
@@ -648,6 +648,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "urgencia"])] }).eq("id", paciente.id);
     texto = textoAlPasar(textos, { urgente: true }, ahora, cerrados);
   } else if (d.tipo === "humano") {
+    await yaRespondio(admin, paciente.id); // el chat queda con la Dra. Gaby: ella lo resuelve
     await pasarAHumano(admin, paciente, telefono, d);
     texto = textoAlPasar(textos, d, ahora, cerrados);
   } else {

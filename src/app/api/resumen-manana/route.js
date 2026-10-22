@@ -63,9 +63,16 @@ export async function GET(req) {
         continue;
       }
     }
+    // ¿Escribió algo después del aviso (un "ok", una pregunta) sin que se resolviera? Se le dice a la Dra. Gaby que revise el chat
+    const { count: escribio } = await admin
+      .from("whatsapp_mensajes")
+      .select("id", { count: "exact", head: true })
+      .eq("paciente_id", c.paciente_id)
+      .eq("direccion", "entrada")
+      .gt("enviado_en", c.aviso_bloqueo_en);
     await admin.from("pendientes").insert({
       fecha: fechaLibreta,
-      texto: textoLlamar({ nombre: c.paciente?.nombre, whatsapp: c.paciente?.whatsapp, inicio: c.inicio, cancelada: c.estado === "cancelada" }),
+      texto: textoLlamar({ nombre: c.paciente?.nombre, whatsapp: c.paciente?.whatsapp, inicio: c.inicio, cancelada: c.estado === "cancelada", escribio: Boolean(escribio) }),
     });
     await admin.from("citas").update({ aviso_recordado_en: new Date().toISOString() }).eq("id", c.id);
     porLlamar++;
