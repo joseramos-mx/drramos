@@ -78,11 +78,11 @@ export const RESPUESTAS = {
   no_escribir_mas: "Entendido, una disculpa 🙏",
   escribir_audio: "Disculpe, no puedo escuchar notas de voz. ¿Me lo podría escribir? 🙏",
   solo_consultorio: "Sólo puedo ayudarle con temas del consultorio dental 😊 ¿Le gustaría agendar una valoración?",
-  pasar_dra_gaby: "Con gusto, le comunico con la Dra. Gaby para que le atienda personalmente. En un momento le escribe 😊",
+  pasar_dra_gaby: "Con gusto, le comunico con la asistente del Dr. Felipe para que le atienda personalmente. En un momento le escribe 😊",
   pasar_urgencia:
-    "Le comunico de inmediato con la Dra. Gaby para atenderle 🙏 Si es muy urgente, puede llamar al 618 568 0916.",
+    "Le comunico de inmediato con la asistente del Dr. Felipe para atenderle 🙏 Si es muy urgente, puede llamar al 618 568 0916.",
   pasar_dra_gaby_cerrado:
-    "Ya le dejé su mensaje a la Dra. Gaby 🙏 En este momento el consultorio está cerrado; ella le escribe {dia} a partir de las 9:00.",
+    "Ya le dejé su mensaje a la asistente del Dr. Felipe 🙏 En este momento el consultorio está cerrado; ella le escribe {dia} a partir de las 9:00.",
   urgencia_cerrado:
     "Lamentamos mucho su molestia 🙏 En este momento el consultorio está cerrado. Abrimos {dia} a las 9:00 y con gusto le apartamos un lugar a primera hora; ¿quiere que se lo aparte? Si tiene sangrado que no para, hinchazón que le dificulta respirar o tragar, o fiebre alta, acuda a urgencias de un hospital.",
 };

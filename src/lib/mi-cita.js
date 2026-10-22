@@ -50,7 +50,7 @@ const TITULOS = {
   confirmar: ["Confirmo mi cita"],
   cambiar: ["Cambiar mi cita", "Elegir otro horario"],
   cancelar: ["Cancelar mi cita"],
-  hablar: ["Hablar con Dra. Gaby"],
+  hablar: ["Hablar con alguien", "Hablar con Dra. Gaby"], // el segundo: plantillas viejas
   presupuesto_si: ["Quiero agendar"],
   presupuesto_duda: ["Tengo una duda"],
   presupuesto_no: ["Ya no, gracias"],
@@ -158,9 +158,9 @@ export async function enviarMenuCita(admin, telefono, paciente, cita) {
   const envio = await enviarBotones(telefono, texto, [
     { id: idBoton("cambiar", cita.id), titulo: "Cambiar mi cita" },
     { id: idBoton("cancelar", cita.id), titulo: "Cancelar mi cita" },
-    { id: idBoton("hablar", cita.id), titulo: "Hablar con Dra. Gaby" },
+    { id: idBoton("hablar", cita.id), titulo: "Hablar con alguien" },
   ]);
-  await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Botones: Cambiar mi cita · Cancelar mi cita · Hablar con Dra. Gaby]`);
+  await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Botones: Cambiar mi cita · Cancelar mi cita · Hablar con alguien]`);
   return envio;
 }
 
@@ -174,7 +174,7 @@ async function enviarDias(admin, telefono, paciente, cita, accionDia, texto, des
     if (n) filas.push({ id: idBoton(accionDia, cita.id, fecha), titulo: diaCorto(fecha), descripcion: `${n} horario${n === 1 ? "" : "s"} libre${n === 1 ? "" : "s"}` });
   }
   if (!filas.length) return false;
-  filas.push({ id: idBoton("hablar", cita.id), titulo: "Hablar con Dra. Gaby", descripcion: "Si ningún día le acomoda" });
+  filas.push({ id: idBoton("hablar", cita.id), titulo: "Hablar con alguien", descripcion: "Si ningún día le acomoda" });
   const envio = await enviarLista(telefono, texto, "Ver días", filas, "Días con lugar");
   await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Lista de días]`);
   return true;
@@ -219,7 +219,7 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
   if (b.accion.startsWith("presupuesto_")) {
     await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", previa.id);
     if (b.accion === "presupuesto_si") {
-      await pasar(admin, telefono, paciente, "Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La Dra. Gaby le escribe para agendar su tratamiento 😊");
+      await pasar(admin, telefono, paciente, "Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La asistente del Dr. Felipe le escribe para agendar su tratamiento 😊");
     } else if (b.accion === "presupuesto_duda") {
       await pasar(admin, telefono, paciente, "Tiene una duda sobre su plan de tratamiento (seguimiento de presupuesto)");
     } else {
@@ -352,7 +352,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
     case "dia": {
       if (!esFechaValida(b.dato)) return atenderBotonCita(admin, telefono, idBoton("cambiar", cita.id));
       if (b.dato < desdeCuando(cita)) {
-        await pasar(admin, telefono, paciente, `Quiere adelantar su cita de tratamiento al ${formatFechaLarga(b.dato)}`, "Para adelantar una cita de tratamiento, la Dra. Gaby revisa que su trabajo esté listo y le escribe en un momento 🙏");
+        await pasar(admin, telefono, paciente, `Quiere adelantar su cita de tratamiento al ${formatFechaLarga(b.dato)}`, "Para adelantar una cita de tratamiento, la asistente del Dr. Felipe revisa que su trabajo esté listo y le escribe en un momento 🙏");
         return true;
       }
       if (!(await enviarHoras(admin, telefono, paciente, cita, b.dato, "hora"))) {
