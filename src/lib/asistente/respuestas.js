@@ -12,7 +12,7 @@ export const RESPUESTAS = {
   // ── Saludo y datos del consultorio ──
   saludo: "¿En qué le puedo ayudar? Con gusto le resuelvo sus dudas o le agendo una valoración con el Dr. Felipe 😊",
   ubicacion:
-    "Estamos en Prol. Gómez Palacio 501 Pte., Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Hay estacionamiento gratuito.\nUbicación en el mapa: https://maps.google.com/?q=Prol.+G%C3%B3mez+Palacio+501+Pte,+Zona+Centro,+34000+Durango,+Dgo.",
+    "Estamos en Prol. Gómez Palacio 501 Pte., Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Hay estacionamiento gratuito.\nUbicación en el mapa: https://g.page/r/Cetfn6-lbzR1EBM",
   horario: "Atendemos de lunes a viernes de 9:00 a 19:00 y sábados de 9:00 a 14:00. Los domingos está cerrado.",
   estacionamiento: "Sí, hay estacionamiento gratuito en Central Médica Santa Ana.",
   pagos:
