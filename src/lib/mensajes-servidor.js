@@ -83,3 +83,17 @@ export async function avisar(admin, { titulo, cuerpo, telefono, url }) {
     }
   }
 }
+
+/**
+ * Quién ve "Otras secciones" y "Probar asistente": los correos de
+ * CRM_ADMIN_EMAILS (separados por coma; p. ej. el de Jesús y el del
+ * doctor). La Dra. Gaby sólo ve Avisos y Cuenta. Si la variable está
+ * vacía, todos las ven (para no dejar a nadie fuera).
+ */
+export function esAdmin(email) {
+  const lista = (process.env.CRM_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return lista.length === 0 || lista.includes(String(email || "").toLowerCase());
+}

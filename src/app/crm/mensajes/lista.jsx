@@ -91,7 +91,7 @@ export function FilaChat({ c, base }) {
               <p className={`truncate text-[16px] ${c.esperando ? "text-[#1c1a17]" : "text-[#7a7368]"}`}>
                 {urgente && <span className="font-bold text-[#c0392b]">Urgente · </span>}
                       {!urgente && c.paraElla && c.esperando && <span className="font-bold text-[#8a6d3f]">Para ti · </span>}
-                {c.ultimo.direccion === "salida" && (c.ultimo.via === "asistente" ? "🤖 " : "Tú: ")}
+                {c.ultimo.direccion === "salida" && (c.ultimo.via === "asistente" ? "🤖 " : c.ultimo.via === "recordatorio" ? "Recordatorio: " : "Tú: ")}
                 {resumenDe(c.ultimo)}
               </p>
               {c.esperando && <span aria-label="Sin contestar" className="h-3.5 w-3.5 shrink-0 rounded-full bg-[#b89968]" />}

@@ -335,6 +335,19 @@ export async function cambiarLibresAction(libres) {
   return { ok: true };
 }
 
+/** Ajustes: prender o apagar el recordatorio automático un día antes de la cita. */
+export async function cambiarRecordatoriosAction(prendido) {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { error } = await supabase
+    .from("asistente_config")
+    .update({ recordatorios: Boolean(prendido), updated_at: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/ajustes");
+  return { ok: true };
+}
+
 /**
  * "Mis respuestas": la Dra. Gaby cambia el texto de una respuesta
  * aprobada. Se frena sólo si da precios (regla de oro); otros riesgos

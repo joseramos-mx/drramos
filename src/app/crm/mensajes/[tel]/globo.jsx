@@ -43,6 +43,7 @@ export default function Globo({ m, archivoUrl }) {
           {horaDe(m.enviado_en)}
           {m.via === "app" && " · desde el celular"}
           {m.via === "asistente" && " · 🤖 asistente"}
+          {m.via === "recordatorio" && " · recordatorio automático"}
         </p>
       </div>
     </li>

@@ -4,9 +4,10 @@ import { signOutAction } from "../../actions";
 import { BarraInferior, BarraSuperior } from "../encabezado";
 import Avisos from "../avisos";
 import ModoAsistente from "./modo-asistente";
+import Recordatorios from "./recordatorios";
 
 /** Pantalla de Ajustes (la usa la app y la demo). */
-export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar" }) {
+export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar", recordatorios = true }) {
   const titulo = "px-5 pb-2 pt-6 text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]";
   const fila = "flex h-16 items-center justify-between px-5 text-[17px] text-[#1c1a17] active:bg-[#f5f1ea]";
   return (
@@ -21,6 +22,9 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
         </span>
         <span className="text-[#9a9388]">›</span>
       </Link>
+
+      <h2 className={titulo}>Recordatorios</h2>
+      <Recordatorios prendido={recordatorios} demo={base !== "/crm/mensajes"} />
 
       <h2 className={titulo}>Avisos</h2>
       <div className="px-5">
@@ -39,6 +43,11 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
             <li className="border-b border-[#1c1a17]/[0.06]">
               <Link href="/agenda/pantalla" className={fila}>
                 Agenda en el monitor <span className="text-[#9a9388]">›</span>
+              </Link>
+            </li>
+            <li className="border-b border-[#1c1a17]/[0.06]">
+              <Link href={`${base}/pruebas`} className={fila}>
+                Probar asistente <span className="text-[#9a9388]">›</span>
               </Link>
             </li>
             <li>

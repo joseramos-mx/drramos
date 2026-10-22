@@ -32,6 +32,7 @@ import {
   isoDesde,
   minutosDelDia,
   rangoDelDia,
+  sumarDias,
 } from "@/app/agenda/lib";
 
 const MODELO = process.env.ASISTENTE_MODELO || "claude-sonnet-5-5";
@@ -199,7 +200,8 @@ export function historial(filas) {
   for (const m of filas) {
     const role = m.direccion === "entrada" ? "user" : "assistant";
     let texto = textoParaAsistente(m);
-    if (role === "assistant" && m.via !== "asistente") texto = `(Escribió la Dra. Gaby) ${texto}`;
+    if (role === "assistant" && m.via === "recordatorio") texto = `(Recordatorio automático de la cita) ${texto}`;
+    else if (role === "assistant" && m.via !== "asistente") texto = `(Escribió la Dra. Gaby) ${texto}`;
     const ultimo = msgs[msgs.length - 1];
     if (ultimo?.role === role) ultimo.content += `\n${texto}`;
     else msgs.push({ role, content: texto });
@@ -597,4 +599,110 @@ export async function atenderConAsistente(admin, telefono, waId) {
   );
   const accion = d.tipo === "humano" ? "paso_a_humano" : d.acciones?.some((a) => a.herramienta === "agendar_valoracion" && a.resultado?.ok) ? "agendo" : `respondio_${d.tipo}`;
   return registrar(admin, telefono, accion, { decision: d });
+}
+
+// ── Pruebas (Ajustes → Probar asistente) ──
+
+/**
+ * Agenda falsa para las pruebas: nada se guarda en la base. Si `llena`,
+ * todos los días aparecen ocupados. Las citas que "agende" quedan en `agendadas`.
+ */
+function agendaDePrueba({ llena = false } = {}) {
+  const agendadas = [];
+  const consulta = (tabla) => {
+    let campos = "";
+    const q = {
+      select: (c) => ((campos = c || ""), q),
+      eq: () => q,
+      neq: () => q,
+      gte: () => q,
+      lt: () => q,
+      like: () => q,
+      limit: () => q,
+      update: () => q,
+      insert: (fila) => {
+        if (tabla === "citas") agendadas.push(fila);
+        return q;
+      },
+      then: (ok) => {
+        if (tabla === "citas" && campos.startsWith("inicio")) {
+          // Mientras busca libres: ocupado todo el día si `llena`, más lo que ya agendó en la prueba
+          const ocupadas = agendadas.map((c) => ({ inicio: c.inicio, fin: c.fin }));
+          if (llena) for (let d = 0; d < 60; d++) {
+            const f = sumarDias(hoyDurango(), d);
+            ocupadas.push({ inicio: isoDesde(f, 0), fin: isoDesde(f, 23 * 60 + 59) });
+          }
+          return Promise.resolve({ data: ocupadas, error: null }).then(ok);
+        }
+        if (tabla === "citas" && campos === "id") return Promise.resolve({ data: agendadas.length ? [{ id: 1 }] : [], count: 0, error: null }).then(ok);
+        return Promise.resolve({ data: null, count: 0, error: null }).then(ok);
+      },
+    };
+    return q;
+  };
+  return { admin: { from: consulta }, agendadas };
+}
+
+/**
+ * Corre UNA conversación de prueba con el modelo real, sin mandar nada por
+ * WhatsApp ni tocar la base. `conversacion`: [{ de: "paciente"|"asistente", texto, tipo? }].
+ * Devuelve la decisión final (después de filtro y verificador), lo que
+ * agendó y los tokens que gastó.
+ */
+export async function probarConversacion({ conversacion, agendaLlena = false, nombre = null, modo = "automatico", textos = textosEfectivos() }) {
+  const uso = { entrada: 0, salida: 0, cache: 0, llamadas: 0 };
+  const real = new Anthropic();
+  const client = {
+    beta: {
+      messages: {
+        create: async (p) => {
+          const r = await real.beta.messages.create(p);
+          uso.llamadas++;
+          uso.entrada += (r.usage?.input_tokens || 0) + (r.usage?.cache_creation_input_tokens || 0);
+          uso.cache += r.usage?.cache_read_input_tokens || 0;
+          uso.salida += r.usage?.output_tokens || 0;
+          return r;
+        },
+      },
+    },
+  };
+  const filas = conversacion.map((m) => ({
+    direccion: m.de === "paciente" ? "entrada" : "salida",
+    via: m.de === "paciente" ? "paciente" : m.de === "asistente" ? "asistente" : "app",
+    tipo: m.tipo || "text",
+    texto: m.texto || null,
+  }));
+  const { admin, agendadas } = agendaDePrueba({ llena: agendaLlena });
+  const sistema = sistemaCon(textos);
+  const ahora = new Date();
+  const contexto = [
+    `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
+    `Nombre registrado del paciente: ${nombre || "todavía no lo sabemos"}.`,
+    "No tiene citas próximas.",
+    modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  let d;
+  try {
+    d = await decidir(client, admin, {
+      paciente: { id: "prueba", nombre, origen: null, etiquetas: [] },
+      messages: historial(filas),
+      contexto,
+      puedeAgendar: modo === "automatico",
+      textos,
+      sistema,
+    });
+  } catch (e) {
+    return { error: String(e?.message || e).slice(0, 300), uso };
+  }
+  if (d.tipo === "libre") {
+    const problema = filtroDuro(d.texto);
+    const ultimos = filas.slice(-6).map((m) => `${m.direccion === "entrada" ? "Paciente" : "Consultorio"}: ${textoParaAsistente(m)}`).join("\n");
+    d.veredicto = problema ? { aprobado: false, motivo: problema } : await verificar(client, d.texto, ultimos, sistema).catch(() => ({ aprobado: false, motivo: "falló el verificador" }));
+    if (!d.veredicto.aprobado) d = { ...d, tipo: "humano", motivo: `respuesta propia rechazada: ${d.veredicto.motivo}`, borrador: d.texto };
+  }
+  const texto = d.tipo === "humano" ? textos[d.urgente ? "pasar_urgencia" : "pasar_dra_gaby"] : d.texto || "";
+  return { tipo: d.tipo, ids: d.ids || [], urgente: Boolean(d.urgente), motivo: d.motivo || null, texto, borrador: d.borrador || null, agendadas, acciones: d.acciones || [], uso };
 }
