@@ -28,12 +28,12 @@ export default function Pendientes({ fecha, items = [], soloLectura = false }) {
 
   return (
     <section aria-label="Pendientes del día">
-      <p className="font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.16em] text-white/70">
+      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#5b544a]">
         Pendientes del día
       </p>
 
       {lista.length === 0 && soloLectura ? (
-        <p className="mt-2 font-[family-name:var(--font-albert)] text-[13px] text-white/50">Nada pendiente.</p>
+        <p className="mt-2 text-[13px] text-[#8b8478]">Nada pendiente.</p>
       ) : (
         <ul className="mt-2 space-y-1">
           {lista.map((p) => (
@@ -54,18 +54,18 @@ export default function Pendientes({ fecha, items = [], soloLectura = false }) {
             autoComplete="off"
             placeholder="Llamar a…, factura…"
             aria-label="Nuevo pendiente"
-            className="min-h-[40px] w-full min-w-0 border border-white/[0.22] bg-[#0d0d0d] px-2.5 font-[family-name:var(--font-albert)] text-[14px] text-[#f5f1ea] placeholder:text-white/40 focus:border-[#b89968] focus:outline-none"
+            className="min-h-[44px] w-full min-w-0 rounded-full border-0 bg-[#f2efe9] px-4 text-[14px] text-[#1c1a17] placeholder:text-[#8b8478] focus:border-[#b89968] focus:outline-none"
           />
           <button
             type="submit"
             disabled={!texto.trim()}
-            className="min-h-[40px] shrink-0 bg-[#f5f1ea] px-3 font-[family-name:var(--font-albert)] text-[13px] font-medium text-[#000000] disabled:opacity-40"
+            className="min-h-[44px] shrink-0 rounded-full bg-[#1c1a17] px-4 text-[13px] font-medium text-white disabled:opacity-40"
           >
             +
           </button>
         </form>
       )}
-      {state?.error && <p role="alert" className="mt-1 text-[12px] text-[#ff7a7a]">{state.error}</p>}
+      {state?.error && <p role="alert" className="mt-1 text-[12px] text-[#c0392b]">{state.error}</p>}
     </section>
   );
 }
@@ -95,14 +95,14 @@ function Pendiente({ p, soloLectura }) {
         disabled={soloLectura || pending}
         aria-label={hecho ? "Marcar como pendiente" : "Marcar como hecho"}
         className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border ${
-          hecho ? "border-[#34d399] bg-[#34d399] text-[#000000]" : "border-white/40"
+          hecho ? "border-[#1f8a5b] bg-[#1f8a5b] text-white" : "border-[#1c1a17]/40"
         }`}
       >
         {hecho && <CheckIcon size={13} weight="bold" />}
       </button>
       <span
-        className={`min-w-0 flex-1 break-words font-[family-name:var(--font-albert)] text-[14px] leading-snug ${
-          hecho ? "text-white/45 line-through" : "text-[#f5f1ea]"
+        className={`min-w-0 flex-1 break-words text-[14px] leading-snug ${
+          hecho ? "text-[#8b8478] line-through" : "text-[#1c1a17]"
         }`}
       >
         {p.texto}
@@ -113,7 +113,7 @@ function Pendiente({ p, soloLectura }) {
           onClick={borrar}
           disabled={pending}
           aria-label="Quitar pendiente"
-          className="mt-0.5 shrink-0 p-0.5 text-white/40 hover:text-[#ff7a7a]"
+          className="mt-0.5 shrink-0 p-0.5 text-[#8b8478] hover:text-[#c0392b]"
         >
           <XIcon size={14} />
         </button>

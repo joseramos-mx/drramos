@@ -52,7 +52,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
   return (
     <>
       {!horario && (
-        <p className="mt-6 font-[family-name:var(--font-albert)] text-[14px] font-normal text-white/75">
+        <p className="mt-6 text-[14px] font-normal text-[#5b544a]">
           Domingo: consultorio cerrado. Puedes agendar una urgencia si hace falta.
         </p>
       )}
@@ -61,7 +61,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
       {/* A un costado (arriba en celular): pendientes del día y colores */}
       <div className="flex shrink-0 flex-col gap-4 lg:sticky lg:top-6 lg:w-[230px]">
         {pendientes && (
-          <div className="border border-white/[0.08] p-3 lg:p-4">
+          <div className="rounded-2xl border border-[#1c1a17]/[0.08] bg-white p-3 lg:p-4">
             <Pendientes fecha={fecha} items={pendientes} soloLectura={soloLectura} />
           </div>
         )}
@@ -69,15 +69,15 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
       </div>
       <div
         ref={gridRef}
-        className="grid min-w-0 flex-1 border border-white/[0.08]"
+        className="grid min-w-0 flex-1 overflow-hidden rounded-2xl border border-[#1c1a17]/[0.08] bg-white"
         style={{ gridTemplateColumns: `52px repeat(${DENTISTAS.length}, minmax(0, 1fr))` }}
       >
         {/* Encabezados */}
-        <div className="border-b border-white/[0.08]" />
+        <div className="border-b border-[#1c1a17]/[0.08]" />
         {DENTISTAS.map((d) => (
           <div
             key={d.value}
-            className="border-b border-l border-white/[0.08] px-3 py-3 font-[family-name:var(--font-cormorant)] text-[18px] font-light text-[#f5f1ea] md:text-[22px]"
+            className="border-b border-l border-[#1c1a17]/[0.08] px-3 py-3 tracking-tight text-[18px] font-bold text-[#1c1a17] md:text-[22px]"
           >
             {d.label}
           </div>
@@ -89,7 +89,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
             <div
               key={m}
               style={{ height: rowPx.alto }}
-              className={`border-b ${m % 60 === 0 ? "border-white/[0.10]" : "border-white/[0.05]"} pr-2 pt-1 text-right font-[family-name:var(--font-albert)] text-[12px] font-normal tabular-nums text-white/70`}
+              className={`border-b ${m % 60 === 0 ? "border-[#1c1a17]/[0.10]" : "border-[#1c1a17]/[0.05]"} pr-2 pt-1 text-right text-[12px] font-normal tabular-nums text-[#5b544a]`}
             >
               {m % 60 === 0 ? formatHora(m) : ""}
             </div>
@@ -101,7 +101,7 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
           const suyas = citas.filter((c) => c.dentista === d.value);
           const carriles = carrilesColumna(suyas);
           return (
-            <div key={d.value} className="relative border-l border-white/[0.08]">
+            <div key={d.value} className="relative border-l border-[#1c1a17]/[0.08]">
               {slots.map((m) => (
                 <button
                   key={m}
@@ -111,8 +111,8 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
                   onClick={() => setSheet({ modo: "nueva", dentista: d.value, minutos: m })}
                   style={{ height: rowPx.alto }}
                   className={`block w-full border-b ${
-                    m % 60 === 0 ? "border-white/[0.10]" : "border-white/[0.05]"
-                  } transition-colors hover:bg-white/[0.03] focus-visible:bg-[#b89968]/[0.08] focus-visible:outline-none disabled:hover:bg-transparent`}
+                    m % 60 === 0 ? "border-[#1c1a17]/[0.10]" : "border-[#1c1a17]/[0.05]"
+                  } transition-colors hover:bg-[#1c1a17]/[0.03] focus-visible:bg-[#b89968]/[0.08] focus-visible:outline-none disabled:hover:bg-transparent`}
                 />
               ))}
 
@@ -159,7 +159,7 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
 
   const clave = tonoDeCita(cita);
   const apagada = clave === "apagada";
-  const tono = { ...TONOS[clave], texto: apagada ? "text-white/50" : "text-[#f5f1ea]" };
+  const tono = { ...TONOS[clave], texto: apagada ? "text-[#8b8478]" : "text-[#1c1a17]" };
 
   const Tag = onClick ? "button" : "div";
   return (
@@ -167,11 +167,11 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
       type={onClick ? "button" : undefined}
       onClick={onClick}
       style={{ top: top + 2, height, left, width, background: tono.bg, borderLeftColor: tono.barra }}
-      className={`absolute overflow-hidden border border-l-4 border-white/[0.08] ${compacta ? "py-0.5" : "py-1.5"} pl-2.5 pr-2 text-left transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono.texto}`}
+      className={`absolute overflow-hidden rounded-lg border border-l-4 border-[#1c1a17]/[0.08] ${compacta ? "py-0.5" : "py-1.5"} pl-2.5 pr-2 text-left transition-[filter] hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b89968] ${tono.texto}`}
     >
       {compacta ? (
         <p
-          className={`truncate font-[family-name:var(--font-albert)] text-[13px] font-medium leading-tight md:text-[14px] ${
+          className={`truncate text-[13px] font-medium leading-tight md:text-[14px] ${
             apagada ? "line-through" : ""
           }`}
         >
@@ -181,13 +181,13 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
       ) : (
         <>
       <p
-        className={`line-clamp-2 break-words font-[family-name:var(--font-albert)] text-[14px] font-medium leading-snug md:text-[15px] ${
+        className={`line-clamp-2 break-words text-[14px] font-medium leading-snug md:text-[15px] ${
           apagada ? "line-through" : ""
         }`}
       >
         {cita.paciente?.nombre || "Sin nombre"}
         </p>
-        <p className="truncate font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.06em] opacity-80 md:text-[12px]">
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] opacity-80 md:text-[12px]">
         {formatHora(ini)} · {labelDe(TIPOS, cita.tipo)}
         {cita.estado === "asistio" && (cita.cierre_completo ? " · ✓ Vino" : " · ✓ Vino · por cerrar")}
         {cita.estado === "no_asistio" && " · No vino"}
@@ -199,7 +199,7 @@ function CitaBloque({ cita, abre, rowPx, carril, encimada, onClick }) {
         // Mismo dentista a la misma hora: aviso de doble cita
         <span
           title="Se encima con otra cita"
-          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#ff7a7a]"
+          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#c0392b]"
         />
       )}
     </Tag>
@@ -214,36 +214,36 @@ function Leyenda() {
   return (
     <aside
       aria-label="Colores de las citas"
-      className="flex flex-wrap gap-x-4 gap-y-2 border border-white/[0.08] p-3 lg:flex-col lg:gap-3 lg:p-4"
+      className="hidden flex-wrap gap-x-4 gap-y-2 rounded-2xl border border-[#1c1a17]/[0.08] bg-white p-3 md:flex lg:flex-col lg:gap-3 lg:p-4"
     >
-      <p className="hidden font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 lg:block">
+      <p className="hidden text-[11px] font-medium uppercase tracking-[0.16em] text-[#5b544a] lg:block">
         Colores
       </p>
       {Object.entries(TONOS).map(([k, t]) => (
         <div key={k} className="flex items-center gap-2.5">
           <span
             aria-hidden
-            className="h-5 w-7 shrink-0 border border-l-4 border-white/[0.08]"
+            className="h-5 w-7 shrink-0 rounded border border-l-4 border-[#1c1a17]/[0.08]"
             style={{ background: t.bg, borderLeftColor: t.barra }}
           />
-          <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
+          <span className="text-[13px] font-normal text-[#3d372f]">
             {t.label}
           </span>
         </div>
       ))}
       <div className="flex items-center gap-2.5">
         <span aria-hidden className="flex h-5 w-7 shrink-0 items-center justify-center">
-          <span className="h-2 w-2 rounded-full bg-[#ff7a7a]" />
+          <span className="h-2 w-2 rounded-full bg-[#c0392b]" />
         </span>
-        <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
+        <span className="text-[13px] font-normal text-[#3d372f]">
           Se encima con otra cita
         </span>
       </div>
       <div className="flex items-center gap-2.5">
-        <span aria-hidden className="flex h-5 w-7 shrink-0 items-center justify-center font-[family-name:var(--font-albert)] text-[13px] font-medium text-[#34d399]">
+        <span aria-hidden className="flex h-5 w-7 shrink-0 items-center justify-center text-[13px] font-medium text-[#1f8a5b]">
           ✓…
         </span>
-        <span className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/85">
+        <span className="text-[13px] font-normal text-[#3d372f]">
           Vino, falta cerrar la cita
         </span>
       </div>

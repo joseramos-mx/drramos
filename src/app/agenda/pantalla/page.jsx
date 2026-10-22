@@ -39,8 +39,8 @@ export default async function PantallaPage() {
   return (
     <main className="mx-auto w-full max-w-[1600px] px-6 py-6">
       <AutoRefresh segundos={60} />
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-5">
-        <h1 className="font-[family-name:var(--font-cormorant)] text-[clamp(32px,3.5vw,52px)] font-light leading-[1.05] first-letter:uppercase text-[#f5f1ea]">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#1c1a17]/[0.08] pb-5">
+        <h1 className="tracking-tight text-[clamp(32px,3.5vw,52px)] font-bold leading-[1.05] first-letter:uppercase text-[#1c1a17]">
           {formatFechaLarga(fecha)}
         </h1>
         <Reloj grande />

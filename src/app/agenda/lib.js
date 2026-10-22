@@ -71,10 +71,10 @@ export const ORIGENES = [
 // Colores de las citas: una sola fuente para las fichas y la leyenda.
 // Fondos sólidos + barra a la izquierda. Paleta de /diseno-sonrisa.
 export const TONOS = {
-  agendada: { label: "Agendada",          bg: "#1d1913", barra: "#b89968" },
-  asistio:  { label: "Vino",              bg: "#0f1d17", barra: "#34d399" },
-  urgencia: { label: "Urgencia",          bg: "#241212", barra: "#ff7a7a" },
-  apagada:  { label: "No vino / canceló", bg: "#111111", barra: "rgba(255,255,255,0.18)" },
+  agendada: { label: "Agendada",          bg: "#fbf3e3", barra: "#b89968" },
+  asistio:  { label: "Vino",              bg: "#e6f4ec", barra: "#1f8a5b" },
+  urgencia: { label: "Urgencia",          bg: "#fdeaea", barra: "#c0392b" },
+  apagada:  { label: "No vino / canceló", bg: "#f2efe9", barra: "#cfc8bc" },
 };
 
 export function tonoDeCita(cita) {

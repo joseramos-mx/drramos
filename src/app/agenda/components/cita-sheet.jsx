@@ -38,19 +38,19 @@ export default function CitaSheet({ fecha, estado, preseleccion, onClose }) {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[#1c1a17]/40 md:items-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="max-h-[92vh] w-full max-w-[640px] overflow-y-auto border border-white/[0.1] bg-[#0a0a0a] p-5 md:p-8">
+      <div className="max-h-[92vh] w-full max-w-[640px] overflow-y-auto rounded-t-[28px] bg-white p-5 shadow-2xl md:rounded-[28px] md:p-8">
         <div className="mb-5 flex items-start justify-between gap-4">
-          <p className="font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.28em] text-[#b89968]">
+          <p className="text-[11px] font-normal uppercase tracking-[0.28em] text-[#8a6d3f]">
             {estado.modo === "nueva" ? "Nueva cita" : "Cita"}
           </p>
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="-m-2 p-2 text-white/75 hover:text-[#f5f1ea]"
+            className="-m-2 p-2 text-[#5b544a] hover:text-[#1c1a17]"
           >
             <XIcon size={20} weight="light" />
           </button>
@@ -207,19 +207,19 @@ function BuscarPaciente({ onElegir }) {
         className={inputClass}
       />
       {(resultados.length > 0 || pending) && (
-        <ul className="mt-2 border border-white/[0.08]">
+        <ul className="mt-2 overflow-hidden rounded-2xl border border-[#1c1a17]/[0.08]">
           {pending && resultados.length === 0 && (
-            <li className="px-3 py-3 font-[family-name:var(--font-albert)] text-[12px] font-normal text-white/65">Buscando…</li>
+            <li className="px-3 py-3 text-[12px] font-normal text-[#5b544a]">Buscando…</li>
           )}
           {resultados.map((r) => (
             <li key={`${r.tipo}-${r.id}`}>
               <button
                 type="button"
                 onClick={() => onElegir(r)}
-                className="flex min-h-[48px] w-full items-center justify-between gap-3 border-b border-white/[0.04] px-3 py-2 text-left font-[family-name:var(--font-albert)] text-[14px] font-normal text-[#f5f1ea] last:border-0 hover:bg-white/[0.04]"
+                className="flex min-h-[48px] w-full items-center justify-between gap-3 border-b border-[#1c1a17]/[0.04] px-3 py-2 text-left text-[14px] font-normal text-[#1c1a17] last:border-0 hover:bg-[#1c1a17]/[0.04]"
               >
                 <span className="truncate">{r.nombre || "Sin nombre"}</span>
-                <span className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-white/65">
+                <span className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-[#5b544a]">
                   {r.tipo === "lead" ? "Formulario" : r.whatsapp || ""}
                 </span>
               </button>
@@ -227,7 +227,7 @@ function BuscarPaciente({ onElegir }) {
           ))}
         </ul>
       )}
-      <p className="mt-2 font-[family-name:var(--font-albert)] text-[11px] font-normal text-white/60">
+      <p className="mt-2 text-[11px] font-normal text-[#5b544a]">
         Si no aparece, escribe sus datos abajo y se registra solo.
       </p>
     </div>
@@ -236,15 +236,15 @@ function BuscarPaciente({ onElegir }) {
 
 function PacienteElegido({ paciente, onCambiar }) {
   return (
-    <div className="flex min-h-[48px] items-center justify-between gap-3 border border-[#b89968]/60 bg-[#b89968]/[0.08] px-3 py-2">
-      <span className="truncate font-[family-name:var(--font-albert)] text-[14px] font-normal text-[#f5f1ea]">
+    <div className="flex min-h-[48px] items-center justify-between gap-3 rounded-2xl border border-[#b89968]/60 bg-[#b89968]/[0.08] px-3 py-2">
+      <span className="truncate text-[14px] font-normal text-[#1c1a17]">
         {paciente.nombre}
-        {paciente.whatsapp && <span className="ml-2 text-white/75">{paciente.whatsapp}</span>}
+        {paciente.whatsapp && <span className="ml-2 text-[#5b544a]">{paciente.whatsapp}</span>}
       </span>
       <button
         type="button"
         onClick={onCambiar}
-        className="shrink-0 font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.18em] text-white/60 hover:text-[#f5f1ea]"
+        className="shrink-0 text-[11px] font-normal uppercase tracking-[0.18em] text-[#5b544a] hover:text-[#1c1a17]"
       >
         Cambiar
       </button>
@@ -264,10 +264,10 @@ function DetalleCita({ fecha, cita, onDone }) {
   return (
     <div className="space-y-6">
       <header>
-        <h2 className="font-[family-name:var(--font-cormorant)] text-[28px] font-light leading-tight text-[#f5f1ea]">
+        <h2 className="tracking-tight text-[28px] font-bold leading-tight text-[#1c1a17]">
           {cita.paciente?.nombre || "Sin nombre"}
         </h2>
-        <p className="mt-1 font-[family-name:var(--font-albert)] text-[12px] font-normal uppercase tracking-[0.16em] text-white/75">
+        <p className="mt-1 text-[12px] font-normal uppercase tracking-[0.16em] text-[#5b544a]">
           {formatHora(ini)}–{formatHora(fin)} · {labelDe(TIPOS, cita.tipo)}
           {DENTISTAS.length > 1 && ` · ${labelDe(DENTISTAS, cita.dentista)}`}
         </p>
@@ -276,13 +276,13 @@ function DetalleCita({ fecha, cita, onDone }) {
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noopener"
-            className="mt-3 inline-flex items-center gap-2 font-[family-name:var(--font-albert)] text-[14px] font-normal text-[#f5f1ea] underline decoration-[#b89968]/50 underline-offset-4 hover:text-[#b89968]"
+            className="mt-3 inline-flex items-center gap-2 text-[14px] font-normal text-[#1c1a17] underline decoration-[#b89968]/50 underline-offset-4 hover:text-[#8a6d3f]"
           >
             <WhatsappLogoIcon size={16} weight="light" /> {cita.paciente.whatsapp}
           </a>
         )}
         {cita.notas && (
-          <p className="mt-3 font-[family-name:var(--font-albert)] text-[13px] font-normal text-white/70">{cita.notas}</p>
+          <p className="mt-3 text-[13px] font-normal text-[#5b544a]">{cita.notas}</p>
         )}
       </header>
 
@@ -294,7 +294,7 @@ function DetalleCita({ fecha, cita, onDone }) {
           <button
             type="button"
             onClick={() => setEditando(true)}
-            className="font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.18em] text-white/75 underline-offset-4 hover:text-[#f5f1ea] hover:underline"
+            className="text-[11px] font-normal uppercase tracking-[0.18em] text-[#5b544a] underline-offset-4 hover:text-[#1c1a17] hover:underline"
           >
             Mover o cambiar la cita
           </button>
@@ -317,7 +317,7 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
   }, [state, onDone]);
 
   return (
-    <form action={formAction} className="space-y-6 border-t border-white/[0.06] pt-6">
+    <form action={formAction} className="space-y-6 border-t border-[#1c1a17]/[0.06] pt-6">
       <input type="hidden" name="id" value={cita.id} />
       <input type="hidden" name="fecha" value={fecha} />
       <HoraField minutosIniciales={ini} />
@@ -351,19 +351,19 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
 // ─────────────────────────────────────────────────────────────
 function Acciones({ state, label, disabled, onCancel }) {
   return (
-    <div className="flex flex-wrap items-center gap-4 border-t border-white/[0.06] pt-5">
+    <div className="flex flex-wrap items-center gap-4 border-t border-[#1c1a17]/[0.06] pt-5">
       <SubmitBtn label={label} disabled={disabled} />
       {onCancel && (
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-[44px] px-2 font-[family-name:var(--font-albert)] text-[11px] font-normal uppercase tracking-[0.18em] text-white/75 hover:text-[#f5f1ea]"
+          className="min-h-[44px] px-2 text-[11px] font-normal uppercase tracking-[0.18em] text-[#5b544a] hover:text-[#1c1a17]"
         >
           Cancelar
         </button>
       )}
       {state?.error && (
-        <span role="alert" className="font-[family-name:var(--font-albert)] text-[13px] font-normal text-[#ff7a7a]">
+        <span role="alert" className="text-[13px] font-normal text-[#c0392b]">
           {state.error}
         </span>
       )}

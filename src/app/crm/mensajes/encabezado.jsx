@@ -14,10 +14,10 @@ export function BarraSuperior({ titulo }) {
  * Menú fijo de abajo con 3 botones (como WhatsApp): Mensajes, Agenda y
  * Ajustes. Siempre en el mismo lugar para que la Dra. Gaby no se pierda.
  */
-export function BarraInferior({ activo, base = "/crm/mensajes" }) {
+export function BarraInferior({ activo, base = "/crm/mensajes", agendaHref = "/agenda" }) {
   const items = [
     { key: "mensajes", href: base, label: "Mensajes", Icono: ChatsCircleIcon },
-    { key: "agenda", href: "/agenda", label: "Agenda", Icono: CalendarBlankIcon },
+    { key: "agenda", href: agendaHref, label: "Agenda", Icono: CalendarBlankIcon },
     { key: "ajustes", href: `${base}/ajustes`, label: "Ajustes", Icono: GearSixIcon },
   ];
   return (
