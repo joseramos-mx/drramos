@@ -126,10 +126,26 @@ export default function PrivacidadPage() {
             con terceros con fines comerciales. Únicamente compartimos
             información con proveedores tecnológicos que nos ayudan a operar
             el sitio y la atención a pacientes (mensajería de WhatsApp a
-            través de Meta Platforms, medición publicitaria y análisis de
-            uso), bajo
+            través de Meta Platforms, el asistente virtual descrito en la
+            sección 5 bis, medición publicitaria y análisis de uso), bajo
             obligación de confidencialidad y limitada a lo descrito en la
             sección 6.
+          </p>
+        </Section>
+
+        <Section title="5 bis. Asistente virtual">
+          <p>
+            Para contestar más rápido, los mensajes de WhatsApp los lee
+            primero un asistente virtual con inteligencia artificial
+            (proveedor: Anthropic). El asistente siempre se identifica
+            como tal, sólo resuelve dudas generales y agenda valoraciones;
+            no da diagnósticos ni indicaciones médicas, y pasa a la Dra.
+            Gaby cualquier urgencia, queja o pregunta médica. Puede pedir
+            en cualquier momento que le atienda una persona.
+          </p>
+          <p>
+            El proveedor procesa los mensajes sólo para generar la
+            respuesta y no los usa para entrenar sus modelos.
           </p>
         </Section>
 
