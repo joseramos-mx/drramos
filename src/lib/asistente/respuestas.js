@@ -75,6 +75,7 @@ export const RESPUESTAS = {
   gracias: "¡Con gusto! Aquí estamos para lo que necesite 😊",
   no_escribir_mas: "Entendido, una disculpa 🙏",
   escribir_audio: "Disculpe, no puedo escuchar notas de voz. ¿Me lo podría escribir? 🙏",
+  solo_consultorio: "Sólo puedo ayudarle con temas del consultorio dental 😊 ¿Le gustaría agendar una valoración?",
   pasar_dra_gaby: "Con gusto, le comunico con la Dra. Gaby para que le atienda personalmente. En un momento le escribe 😊",
   pasar_urgencia:
     "Le comunico de inmediato con la Dra. Gaby para atenderle 🙏 Si es muy urgente, puede llamar al 618 568 0916.",
