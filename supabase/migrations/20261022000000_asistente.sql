@@ -10,8 +10,8 @@
 --  * pacientes.atiende: quién lleva cada chat. Si la Dra. Gaby contesta
 --    o el asistente le pasa el caso, queda en 'humano' y el asistente
 --    no se mete hasta que ella lo devuelva (o pasen 8 h sin que escriba).
---  * asistente_borradores: en modo borrador, la respuesta espera a que
---    ella la apruebe.
+--  * asistente_borradores: respuestas que esperan su aprobación (modo
+--    borrador, respuestas propias, o propias que el verificador rechazó).
 --  * asistente_registro: bitácora de lo que hizo (para revisar y medir).
 --
 --  Correr DESPUÉS de 20261021000000_mensajes_app.sql.
@@ -33,6 +33,8 @@ alter table public.pacientes
 create table if not exists public.asistente_config (
   id int primary key default 1 check (id = 1),
   modo text not null default 'automatico' check (modo in ('automatico', 'borrador', 'apagado')),
+  -- Respuestas propias (no aprobadas): 'aprobar' = ella las revisa; 'auto' = van solas si el verificador las aprueba
+  libres text not null default 'aprobar' check (libres in ('aprobar', 'auto')),
   updated_at timestamptz not null default now()
 );
 insert into public.asistente_config (id) values (1) on conflict (id) do nothing;

@@ -5,7 +5,7 @@ import Avisos from "../avisos";
 import ModoAsistente from "./modo-asistente";
 
 /** Pantalla de Ajustes (la usa la app y la demo). */
-export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado" }) {
+export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar" }) {
   const titulo = "px-5 pb-2 pt-6 text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]";
   const fila = "flex h-16 items-center justify-between px-5 text-[17px] text-[#1c1a17] active:bg-[#f5f1ea]";
   return (
@@ -13,7 +13,7 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
       <BarraSuperior titulo="Ajustes" />
 
       <h2 className={titulo}>🤖 Asistente virtual</h2>
-      <ModoAsistente modo={modo} demo={base !== "/crm/mensajes"} />
+      <ModoAsistente modo={modo} libres={libres} demo={base !== "/crm/mensajes"} />
 
       <h2 className={titulo}>Avisos</h2>
       <div className="px-5">

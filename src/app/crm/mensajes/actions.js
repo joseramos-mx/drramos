@@ -321,3 +321,14 @@ export async function cambiarModoAsistenteAction(modo) {
   revalidatePath("/crm/mensajes/ajustes");
   return { ok: true };
 }
+
+/** Respuestas propias del asistente: que ella las apruebe, o que vayan solas si el verificador las aprueba. */
+export async function cambiarLibresAction(libres) {
+  if (!["aprobar", "auto"].includes(libres)) return { error: "Opción no válida." };
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { error } = await supabase.from("asistente_config").update({ libres, updated_at: new Date().toISOString() }).eq("id", 1);
+  if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/ajustes");
+  return { ok: true };
+}
