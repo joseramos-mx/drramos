@@ -6,6 +6,7 @@ import { ImageIcon, LightningIcon, PaperPlaneRightIcon, PlusIcon, XIcon } from "
 import { enviarFotoAction, enviarMensajeAction } from "../actions";
 import { RESPUESTAS_RAPIDAS } from "../respuestas";
 import Hoja from "../hoja";
+import Plantilla from "./plantilla";
 
 /**
  * Reduce la foto en el navegador (lado mayor 1600 px, JPEG) para que
@@ -32,7 +33,7 @@ const redondo = "flex h-[52px] w-[52px] shrink-0 items-center justify-center rou
  * abre las fotos y las respuestas rápidas del manual (se pueden editar
  * antes de mandar). Aviso claro si ya pasaron 24 h.
  */
-export default function Responder({ telefono, abierta, conectado }) {
+export default function Responder({ telefono, abierta, conectado, nombre, sinMensajes = false }) {
   const [state, formAction] = useActionState(enviarMensajeAction, null);
   const [texto, setTexto] = useState("");
   const [menu, setMenu] = useState(false);
@@ -57,12 +58,7 @@ export default function Responder({ telefono, abierta, conectado }) {
   }
 
   if (!abierta) {
-    return (
-      <p className="px-2 py-2 text-[16px] leading-snug text-[#3d372f]">
-        ⏰ Pasaron más de 24 horas desde su último mensaje y WhatsApp ya no deja contestarle. Si vuelve a escribir, podrás
-        contestarle aquí. Si es urgente, márcale por teléfono (menú ⋮).
-      </p>
-    );
+    return <Plantilla telefono={telefono} nombre={nombre} nuevo={sinMensajes} />;
   }
 
   async function elegirFoto(e) {

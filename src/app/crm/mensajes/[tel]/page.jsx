@@ -50,7 +50,13 @@ export default async function ConversacionPage({ params }) {
         <Chat mensajes={mensajes || []} />
       </div>
       <div className="sticky bottom-0 border-t border-[#1c1a17]/[0.08] bg-white px-3 pb-[calc(10px+env(safe-area-inset-bottom))] pt-2.5">
-        <Responder telefono={telefono} abierta={abierta} conectado={whatsappConfigurado()} />
+        <Responder
+          telefono={telefono}
+          abierta={abierta}
+          conectado={whatsappConfigurado()}
+          nombre={nombre}
+          sinMensajes={!mensajes?.length}
+        />
       </div>
     </main>
   );

@@ -3,10 +3,12 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient as clienteSesion } from "@/utils/supabase/server";
-import { enviarImagen, enviarTexto, ventanaAbierta } from "@/lib/whatsapp";
+import { enviarImagen, enviarPlantilla, enviarTexto, ventanaAbierta } from "@/lib/whatsapp";
 import { normalizarTelefono } from "@/lib/telefono";
 import { guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 import { ETIQUETAS } from "./lib";
+import { PLANTILLAS, rellenar } from "./plantillas";
+import { redirect } from "next/navigation";
 
 const FOTO_MAX = 4 * 1024 * 1024;
 const FOTO_TIPOS = ["image/jpeg", "image/png"];
@@ -138,4 +140,57 @@ export async function borrarAvisoAction(endpoint) {
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
   await supabase.from("push_suscripciones").delete().eq("endpoint", String(endpoint || ""));
   return { ok: true };
+}
+
+/** Busca pacientes (de la agenda o que ya escribieron) por nombre o teléfono, para "Nuevo chat". */
+export async function buscarPacientesAction(q) {
+  const { supabase, user } = await sesion();
+  const texto = String(q || "").trim();
+  if (!user || texto.length < 2) return [];
+  const digitos = texto.replace(/\D/g, "");
+  const filtro = digitos.length >= 3 ? `whatsapp.ilike.%${digitos}%` : `nombre.ilike.%${texto.replace(/[%,()]/g, "")}%`;
+  const { data } = await supabase.from("pacientes").select("id, nombre, whatsapp").or(filtro).not("whatsapp", "is", null).limit(8);
+  return data || [];
+}
+
+/**
+ * "Nuevo chat" con alguien que no está en la lista: se guarda su nombre y
+ * WhatsApp (si ya existía ese número, se usa el que hay) y se abre su chat.
+ */
+export async function crearContactoAction(_prev, formData) {
+  const nombre = String(formData.get("nombre") || "").trim().slice(0, 120);
+  const telefono = normalizarTelefono(formData.get("telefono"));
+  if (!nombre) return { error: "Escribe el nombre." };
+  if (!telefono || telefono.length !== 12) return { error: "Revisa el número: deben ser 10 dígitos." };
+
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { data: existe } = await supabase.from("pacientes").select("id").eq("whatsapp", telefono).limit(1).maybeSingle();
+  if (!existe) {
+    const { error } = await supabase.from("pacientes").insert({ nombre, whatsapp: telefono });
+    if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+  }
+  redirect(`/crm/mensajes/${telefono}`);
+}
+
+/** Manda un mensaje aprobado (plantilla) y lo deja en el chat. */
+export async function enviarPlantillaAction(_prev, formData) {
+  const telefono = normalizarTelefono(formData.get("telefono"));
+  const plantilla = PLANTILLAS.find((p) => p.nombre === formData.get("plantilla"));
+  if (!telefono || !plantilla) return { error: "Elige un mensaje." };
+  const valores = plantilla.campos.map((_, i) => String(formData.get(`v${i}`) || "").trim());
+  if (valores.some((v) => !v)) return { error: "Llena todos los datos del mensaje." };
+
+  const { user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+
+  const res = await enviarPlantilla(telefono, plantilla.nombre, valores);
+  if (res.error) return res;
+  await guardarSalida(supabaseServicio(), {
+    wa_id: res.wa_id || `local-${Date.now()}`,
+    telefono,
+    tipo: "template",
+    texto: rellenar(plantilla.texto, valores),
+  });
+  return { ok: true, savedAt: Date.now() };
 }

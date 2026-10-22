@@ -67,3 +67,44 @@ export function resumenDe(m) {
   const t = { image: "📷 Foto", audio: "🎤 Audio", video: "🎥 Video", document: "📄 Documento", sticker: "Sticker", location: "📍 Ubicación" };
   return t[m.tipo] || "📎 Archivo";
 }
+
+/** Para buscar sin que importen acentos ni mayúsculas ("Lopez" encuentra "López"). */
+export function sinAcentos(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+/**
+ * Búsqueda como en WhatsApp: chats cuyo nombre o teléfono coincide, y
+ * mensajes que contienen la palabra (los más recientes primero).
+ */
+export function buscar(todas, mensajes, q) {
+  const t = sinAcentos(q).trim();
+  if (!t) return { chats: [], hits: [] };
+  const digitos = t.replace(/\D/g, "");
+  const chats = todas.filter(
+    (c) => sinAcentos(c.nombre).includes(t) || (digitos.length >= 3 && c.telefono.includes(digitos))
+  );
+  const nombres = Object.fromEntries(todas.map((c) => [c.telefono, c.nombre]));
+  const hits = mensajes
+    .filter((m) => m.texto && sinAcentos(m.texto).includes(t))
+    .sort((a, b) => (a.enviado_en < b.enviado_en ? 1 : -1))
+    .slice(0, 40)
+    .map((m) => ({ ...m, nombre: nombres[m.telefono] || `WhatsApp ${m.telefono.slice(-10)}` }));
+  return { chats, hits };
+}
+
+/** Pedacito del mensaje alrededor de la palabra buscada. */
+export function fragmento(texto, q, ancho = 70) {
+  const i = sinAcentos(texto).indexOf(sinAcentos(q).trim());
+  if (i < 0) return { antes: texto.slice(0, ancho), igual: "", despues: "" };
+  const largo = q.trim().length;
+  const ini = Math.max(0, i - 25);
+  return {
+    antes: (ini > 0 ? "…" : "") + texto.slice(ini, i),
+    igual: texto.slice(i, i + largo),
+    despues: texto.slice(i + largo, i + largo + ancho),
+  };
+}

@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { BarraInferior, BarraSuperior } from "./encabezado";
 import AutoRefresh from "../../agenda/components/auto-refresh";
-import { conversaciones } from "./lib";
+import { buscar, conversaciones } from "./lib";
+import Buscador from "./buscador";
+import NuevoChat from "./nuevo-chat";
+import Resultados from "./resultados";
 import Avisos from "./avisos";
 import Lista, { filtrar, filtrosDe } from "./lista";
 
@@ -15,7 +18,7 @@ export const dynamic = "force-dynamic";
  * "sin contestar" y por etiqueta (?f=).
  */
 export default async function MensajesPage({ searchParams }) {
-  const { f } = await searchParams;
+  const { f, q } = await searchParams;
   const supabase = createClient(await cookies());
   const {
     data: { user },
@@ -32,11 +35,13 @@ export default async function MensajesPage({ searchParams }) {
 
   const todas = conversaciones(mensajes || []);
   const lista = filtrar(todas, f);
+  const busqueda = q?.trim() ? buscar(todas, mensajes || [], q) : null;
 
   return (
     <main className="mx-auto w-full max-w-[720px] pb-28">
       <AutoRefresh segundos={15} />
       <BarraSuperior titulo="Mensajes" />
+      <Buscador inicial={q || ""} />
       <Avisos compacto />
 
       {error && (
@@ -45,7 +50,12 @@ export default async function MensajesPage({ searchParams }) {
         </p>
       )}
 
-      <Lista lista={lista} filtros={filtrosDe(todas)} f={f} base="/crm/mensajes" />
+      {busqueda ? (
+        <Resultados q={q} chats={busqueda.chats} hits={busqueda.hits} base="/crm/mensajes" />
+      ) : (
+        <Lista lista={lista} filtros={filtrosDe(todas)} f={f} base="/crm/mensajes" />
+      )}
+      <NuevoChat />
       <BarraInferior activo="mensajes" />
     </main>
   );

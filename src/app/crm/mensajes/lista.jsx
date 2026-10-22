@@ -60,38 +60,43 @@ export default function Lista({ lista, filtros, f, base }) {
             {f ? "Nada por aquí. 👍" : "Todavía no hay mensajes. Cuando un paciente escriba, aparecerá aquí."}
           </li>
         )}
-        {lista.map((c) => {
-          const urgente = c.etiquetas.includes("urgencia");
-          return (
-            <li key={c.telefono}>
-              <Link href={`${base}/${c.telefono}`} className="flex items-center gap-4 px-5 py-3 active:bg-[#f5f1ea]">
-                <span
-                  aria-hidden
-                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[22px] font-bold ${tono(c.telefono)}`}
-                >
-                  {c.nombre.replace(/^WhatsApp /, "#").charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1 border-b border-[#1c1a17]/[0.07] py-2">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="truncate text-[18px] font-bold text-[#1c1a17]">{c.nombre}</p>
-                    <span className={`shrink-0 text-[14px] tabular-nums ${c.esperando ? "font-semibold text-[#8a6d3f]" : "text-[#9a9388]"}`}>
-                      {horaCorta(c.ultimo.enviado_en)}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-3">
-                    <p className={`truncate text-[16px] ${c.esperando ? "text-[#1c1a17]" : "text-[#7a7368]"}`}>
-                      {urgente && <span className="font-bold text-[#c0392b]">Urgente · </span>}
-                      {c.ultimo.direccion === "salida" && "Tú: "}
-                      {resumenDe(c.ultimo)}
-                    </p>
-                    {c.esperando && <span aria-label="Sin contestar" className="h-3.5 w-3.5 shrink-0 rounded-full bg-[#b89968]" />}
-                  </div>
-                </div>
-              </Link>
-            </li>
-          );
-        })}
+        {lista.map((c) => (
+          <FilaChat key={c.telefono} c={c} base={base} />
+        ))}
       </ul>
     </>
   );
+}
+
+/** Un renglón de la lista: inicial, nombre, último mensaje, hora y si falta contestar. */
+export function FilaChat({ c, base }) {
+    const urgente = c.etiquetas.includes("urgencia");
+    return (
+      <li>
+        <Link href={`${base}/${c.telefono}`} className="flex items-center gap-4 px-5 py-3 active:bg-[#f5f1ea]">
+          <span
+            aria-hidden
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[22px] font-bold ${tono(c.telefono)}`}
+          >
+            {c.nombre.replace(/^WhatsApp /, "#").charAt(0).toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1 border-b border-[#1c1a17]/[0.07] py-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="truncate text-[18px] font-bold text-[#1c1a17]">{c.nombre}</p>
+              <span className={`shrink-0 text-[14px] tabular-nums ${c.esperando ? "font-semibold text-[#8a6d3f]" : "text-[#9a9388]"}`}>
+                {horaCorta(c.ultimo.enviado_en)}
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-center justify-between gap-3">
+              <p className={`truncate text-[16px] ${c.esperando ? "text-[#1c1a17]" : "text-[#7a7368]"}`}>
+                {urgente && <span className="font-bold text-[#c0392b]">Urgente · </span>}
+                {c.ultimo.direccion === "salida" && "Tú: "}
+                {resumenDe(c.ultimo)}
+              </p>
+              {c.esperando && <span aria-label="Sin contestar" className="h-3.5 w-3.5 shrink-0 rounded-full bg-[#b89968]" />}
+            </div>
+          </div>
+        </Link>
+      </li>
+    );
 }

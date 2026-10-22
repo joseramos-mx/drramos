@@ -139,3 +139,38 @@ export async function enviarImagen(telefono, buffer, mime, pie) {
     return { error: "No se pudo contactar a WhatsApp." };
   }
 }
+
+/**
+ * Manda una plantilla aprobada en WhatsApp Manager (la única forma de
+ * escribirle a alguien que no ha escrito, o pasadas 24 h). `params` son
+ * los {{1}}, {{2}}… del cuerpo, en orden. Devuelve { ok, wa_id } o { error }.
+ */
+export async function enviarPlantilla(telefono, nombre, params = [], idioma = "es_MX") {
+  if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
+  const to = normalizarTelefono(telefono);
+  if (!to) return { error: "Teléfono inválido." };
+  const template = { name: nombre, language: { code: idioma } };
+  if (params.length) {
+    template.components = [{ type: "body", parameters: params.map((t) => ({ type: "text", text: String(t).slice(0, 200) })) }];
+  }
+  try {
+    const res = await fetch(graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`), {
+      method: "POST",
+      headers: { ...auth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template }),
+      cache: "no-store",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) {
+      console.error("[whatsapp] plantilla", nombre, json.error?.code, json.error?.message);
+      // 132001: no existe / no aprobada · 131042: falta método de pago
+      if (json.error?.code === 132001) return { error: "Ese mensaje todavía no está aprobado por WhatsApp." };
+      if (json.error?.code === 131042) return { error: "Falta agregar el método de pago en WhatsApp Manager." };
+      return { error: "WhatsApp no aceptó el mensaje. Intenta de nuevo." };
+    }
+    return { ok: true, wa_id: json.messages?.[0]?.id || null, to };
+  } catch (e) {
+    console.error("[whatsapp] plantilla", e);
+    return { error: "No se pudo contactar a WhatsApp." };
+  }
+}
