@@ -174,3 +174,36 @@ export async function enviarPlantilla(telefono, nombre, params = [], idioma = "e
     return { error: "No se pudo contactar a WhatsApp." };
   }
 }
+
+/**
+ * Manda un video o documento que ya está en el almacén: WhatsApp lo baja
+ * del `link` (link firmado temporal). Así el archivo no pasa por la
+ * función de Vercel (límite ~4 MB). Devuelve { ok, wa_id } o { error }.
+ */
+export async function enviarArchivo(telefono, tipo, link, { pie, nombre } = {}) {
+  if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
+  if (tipo !== "video" && tipo !== "document") return { error: "Tipo de archivo no permitido." };
+  const to = normalizarTelefono(telefono);
+  if (!to) return { error: "Teléfono inválido." };
+  const media = { link };
+  if (pie?.trim()) media.caption = pie.trim().slice(0, 1024);
+  if (tipo === "document" && nombre) media.filename = String(nombre).slice(0, 120);
+  try {
+    const res = await fetch(graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`), {
+      method: "POST",
+      headers: { ...auth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: tipo, [tipo]: media }),
+      cache: "no-store",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) {
+      console.error("[whatsapp] envío archivo", json.error?.code, json.error?.message);
+      if (json.error?.code === 131047) return { error: "Pasaron más de 24 h: sólo se puede mandar una plantilla aprobada." };
+      return { error: "WhatsApp no aceptó el archivo. Revisa que no pese demasiado e intenta de nuevo." };
+    }
+    return { ok: true, wa_id: json.messages?.[0]?.id || null, to };
+  } catch (e) {
+    console.error("[whatsapp] envío archivo", e);
+    return { error: "No se pudo contactar a WhatsApp." };
+  }
+}

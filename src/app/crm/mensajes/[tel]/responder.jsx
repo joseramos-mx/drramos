@@ -2,8 +2,10 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { ImageIcon, LightningIcon, PaperPlaneRightIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
-import { enviarFotoAction, enviarMensajeAction } from "../actions";
+import { FileTextIcon, ImageIcon, LightningIcon, PaperPlaneRightIcon, PlusIcon, VideoCameraIcon, XIcon } from "@phosphor-icons/react";
+import { createClient } from "@/utils/supabase/client";
+import { enviarArchivoAction, enviarFotoAction, enviarMensajeAction, prepararArchivoAction } from "../actions";
+import { ARCHIVOS, BUCKET_MEDIA, pesoLegible } from "../archivos";
 import { RESPUESTAS_RAPIDAS } from "../respuestas";
 import Hoja from "../hoja";
 import Plantilla from "./plantilla";
@@ -30,8 +32,8 @@ const redondo = "flex h-[52px] w-[52px] shrink-0 items-center justify-center rou
 
 /**
  * Barra para contestar, como WhatsApp: [+] [mensaje] [enviar]. El "+"
- * abre las fotos y las respuestas rápidas del manual (se pueden editar
- * antes de mandar). Aviso claro si ya pasaron 24 h.
+ * abre fotos, documentos (PDF: facturas, recetas), videos y las
+ * respuestas rápidas del manual. Aviso claro si ya pasaron 24 h.
  */
 export default function Responder({ telefono, abierta, conectado, nombre, sinMensajes = false }) {
   const [state, formAction] = useActionState(enviarMensajeAction, null);
@@ -40,14 +42,20 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
   const [foto, setFoto] = useState(null); // { archivo, url }
   const [errorFoto, setErrorFoto] = useState(null);
   const [mandandoFoto, startFoto] = useTransition();
+  const [adjunto, setAdjunto] = useState(null); // { tipo: "video" | "document", archivo, url }
+  const [errorAdjunto, setErrorAdjunto] = useState(null);
+  const [subiendo, startSubida] = useTransition();
   const ref = useRef(null);
   const selector = useRef(null);
+  const selectorVideo = useRef(null);
+  const selectorDoc = useRef(null);
 
   useEffect(() => {
     if (state?.ok) setTexto("");
   }, [state]);
 
   useEffect(() => () => foto && URL.revokeObjectURL(foto.url), [foto]);
+  useEffect(() => () => adjunto?.url && URL.revokeObjectURL(adjunto.url), [adjunto]);
 
   if (!conectado) {
     return (
@@ -81,6 +89,75 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
       setFoto(null);
       setTexto("");
     });
+  }
+
+  function elegirAdjunto(tipo) {
+    return (e) => {
+      const archivo = e.target.files?.[0];
+      e.target.value = "";
+      if (!archivo) return;
+      setErrorAdjunto(null);
+      setAdjunto({ tipo, archivo, url: tipo === "video" ? URL.createObjectURL(archivo) : null });
+    };
+  }
+
+  // Video/documento: 1) permiso de subida, 2) sube directo al almacén, 3) WhatsApp lo manda
+  function mandarAdjunto() {
+    const { tipo, archivo } = adjunto;
+    startSubida(async () => {
+      const prep = await prepararArchivoAction(telefono, tipo, archivo.type, archivo.size, archivo.name);
+      if (prep?.error) return setErrorAdjunto(prep.error);
+      const { error } = await createClient()
+        .storage.from(BUCKET_MEDIA)
+        .uploadToSignedUrl(prep.ruta, prep.token, archivo, { contentType: archivo.type });
+      if (error) return setErrorAdjunto("No se pudo subir el archivo. Revisa tu internet e intenta de nuevo.");
+      const res = await enviarArchivoAction(telefono, tipo, prep.ruta, archivo.type, archivo.name, texto);
+      if (res?.error) return setErrorAdjunto(res.error);
+      setAdjunto(null);
+      setTexto("");
+    });
+  }
+
+  if (adjunto) {
+    return (
+      <div className="space-y-2.5">
+        <div className="relative">
+          {adjunto.tipo === "video" ? (
+            <video src={adjunto.url} controls className="mx-auto max-h-[38vh] max-w-full rounded-[20px] bg-black" />
+          ) : (
+            <div className="flex items-center gap-3 rounded-[20px] bg-[#f2efe9] p-4 pr-14">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#8a6d3f]">
+                <FileTextIcon size={28} weight="fill" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[17px] font-semibold text-[#1c1a17]">{adjunto.archivo.name}</span>
+                <span className="block text-[15px] text-[#7a7368]">{pesoLegible(adjunto.archivo.size)}</span>
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setAdjunto(null)}
+            aria-label="Quitar archivo"
+            className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-[#1c1a17]/75 text-white"
+          >
+            <XIcon size={22} weight="bold" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="pie-archivo" className="sr-only">Texto del archivo</label>
+          <input id="pie-archivo" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Texto (opcional)" className={`h-[52px] ${campo}`} />
+          <button type="button" onClick={mandarAdjunto} disabled={subiendo} aria-label="Mandar archivo" className={`${redondo} bg-[#b89968] text-white disabled:opacity-40`}>
+            <PaperPlaneRightIcon size={24} weight="fill" />
+          </button>
+        </div>
+        {(errorAdjunto || subiendo) && (
+          <p role={errorAdjunto ? "alert" : "status"} className={`px-2 text-[16px] font-medium ${errorAdjunto ? "text-[#c0392b]" : "text-[#7a7368]"}`}>
+            {errorAdjunto || (adjunto.tipo === "video" ? "Subiendo video… puede tardar un poco." : "Mandando documento…")}
+          </p>
+        )}
+      </div>
+    );
   }
 
   if (foto) {
@@ -119,8 +196,10 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
     <form action={formAction}>
       <input type="hidden" name="telefono" value={telefono} />
       <input ref={selector} type="file" accept="image/*" onChange={elegirFoto} className="hidden" />
+      <input ref={selectorVideo} type="file" accept={ARCHIVOS.video.tipos.join(",")} onChange={elegirAdjunto("video")} className="hidden" />
+      <input ref={selectorDoc} type="file" accept={ARCHIVOS.document.tipos.join(",")} onChange={elegirAdjunto("document")} className="hidden" />
       <div className="flex items-end gap-2">
-        <button type="button" onClick={() => setMenu(true)} aria-label="Fotos y respuestas rápidas" className={`${redondo} bg-[#f2efe9] text-[#1c1a17]`}>
+        <button type="button" onClick={() => setMenu(true)} aria-label="Fotos, documentos, videos y respuestas rápidas" className={`${redondo} bg-[#f2efe9] text-[#1c1a17]`}>
           <PlusIcon size={26} weight="bold" />
         </button>
         <label htmlFor="respuesta" className="sr-only">Mensaje</label>
@@ -155,6 +234,32 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
             <ImageIcon size={24} weight="fill" />
           </span>
           Mandar una foto
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMenu(false);
+            selectorDoc.current?.click();
+          }}
+          className={`${fila} text-[18px] font-semibold text-[#1c1a17]`}
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e4e9f2] text-[#3d5a8a]">
+            <FileTextIcon size={24} weight="fill" />
+          </span>
+          Mandar documento <span className="text-[15px] font-normal text-[#7a7368]">(factura, receta)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMenu(false);
+            selectorVideo.current?.click();
+          }}
+          className={`${fila} text-[18px] font-semibold text-[#1c1a17]`}
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e3ece4] text-[#3f6b48]">
+            <VideoCameraIcon size={24} weight="fill" />
+          </span>
+          Mandar video <span className="text-[15px] font-normal text-[#7a7368]">(hasta 1 min)</span>
         </button>
         <p className="flex items-center gap-2 px-5 pb-1 pt-4 text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]">
           <LightningIcon size={16} weight="fill" /> Respuestas rápidas

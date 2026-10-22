@@ -3,11 +3,12 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient as clienteSesion } from "@/utils/supabase/server";
-import { enviarImagen, enviarPlantilla, enviarTexto, ventanaAbierta } from "@/lib/whatsapp";
+import { enviarArchivo, enviarImagen, enviarPlantilla, enviarTexto, ventanaAbierta } from "@/lib/whatsapp";
 import { normalizarTelefono } from "@/lib/telefono";
-import { guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
+import { BUCKET, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 import { ETIQUETAS } from "./lib";
 import { PLANTILLAS, rellenar } from "./plantillas";
+import { ARCHIVOS } from "./archivos";
 import { redirect } from "next/navigation";
 
 const FOTO_MAX = 4 * 1024 * 1024;
@@ -191,6 +192,59 @@ export async function enviarPlantillaAction(_prev, formData) {
     telefono,
     tipo: "template",
     texto: rellenar(plantilla.texto, valores),
+  });
+  return { ok: true, savedAt: Date.now() };
+}
+
+
+/**
+ * Paso 1 de video/documento: revisa todo y da un permiso de subida
+ * directo del celular al almacén privado (sin pasar por Vercel).
+ */
+export async function prepararArchivoAction(telefonoRaw, tipo, mime, tamano, nombre) {
+  const telefono = normalizarTelefono(telefonoRaw);
+  const regla = ARCHIVOS[tipo];
+  if (!telefono || !regla) return { error: "Archivo no permitido." };
+  if (!regla.tipos.includes(mime)) {
+    return { error: tipo === "video" ? "El video debe ser MP4 (el normal del celular)." : "El documento debe ser PDF, Word o Excel." };
+  }
+  if (tamano > regla.max) {
+    return { error: tipo === "video" ? "El video pesa más de 16 MB. Manda uno más corto (≈1 minuto)." : "El documento pesa más de 25 MB." };
+  }
+
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  if (!(await ventanaDe(supabase, telefono))) return FUERA_DE_VENTANA;
+
+  const ext = String(nombre || "").split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || (tipo === "video" ? "mp4" : "pdf");
+  const ruta = `${telefono}/salida-${Date.now()}.${ext}`;
+  const { data, error } = await supabaseServicio().storage.from(BUCKET).createSignedUploadUrl(ruta);
+  if (error || !data?.token) return { error: "No se pudo preparar el envío. Intenta de nuevo." };
+  return { ok: true, ruta, token: data.token };
+}
+
+/** Paso 2: ya subido; WhatsApp lo baja con un link temporal y se guarda en el chat. */
+export async function enviarArchivoAction(telefonoRaw, tipo, ruta, mime, nombre, pie) {
+  const telefono = normalizarTelefono(telefonoRaw);
+  if (!telefono || !ARCHIVOS[tipo] || !String(ruta).startsWith(`${telefono}/salida-`)) return { error: "Archivo no válido." };
+
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  if (!(await ventanaDe(supabase, telefono))) return FUERA_DE_VENTANA;
+
+  const admin = supabaseServicio();
+  const { data: firmado } = await admin.storage.from(BUCKET).createSignedUrl(ruta, 60 * 60);
+  if (!firmado?.signedUrl) return { error: "No encontramos el archivo subido. Intenta de nuevo." };
+
+  const res = await enviarArchivo(telefono, tipo, firmado.signedUrl, { pie, nombre });
+  if (res.error) return res;
+  await guardarSalida(admin, {
+    wa_id: res.wa_id || `local-${Date.now()}`,
+    telefono,
+    tipo,
+    texto: pie?.trim() || (tipo === "document" ? nombre : null),
+    media_mime: mime,
+    media_ruta: ruta,
   });
   return { ok: true, savedAt: Date.now() };
 }
