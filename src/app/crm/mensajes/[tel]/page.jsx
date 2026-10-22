@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { normalizarTelefono } from "@/lib/telefono";
 import { ventanaAbierta, whatsappConfigurado } from "@/lib/whatsapp";
 import AutoRefresh from "../../../agenda/components/auto-refresh";
-import { labelCanal } from "../../resultados/fuentes";
 import Etiquetas from "../etiquetas";
+import Cabecera from "./cabecera";
 import Chat from "./chat";
 import Responder from "./responder";
 
@@ -37,36 +36,20 @@ export default async function ConversacionPage({ params }) {
   const nombre = paciente?.nombre || `WhatsApp ${telefono.slice(-10)}`;
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[900px] flex-col px-4 py-4 sm:px-8">
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] flex-col px-4">
       <AutoRefresh segundos={10} />
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-        <div className="min-w-0">
-          <Link href="/crm/mensajes" className="font-[family-name:var(--font-albert)] text-[12px] font-medium uppercase tracking-[0.18em] text-white/65 hover:text-[#f5f1ea]">
-            ← Mensajes
-          </Link>
-          <h1 className="mt-2 truncate font-[family-name:var(--font-cormorant)] text-[clamp(24px,3.5vw,34px)] font-normal leading-tight text-[#f5f1ea]">
-            {nombre}
-          </h1>
-          <p className="font-[family-name:var(--font-albert)] text-[13px] text-white/65">
-            {telefono.slice(-10).replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
-            {paciente?.origen && ` · llegó por ${labelCanal(paciente.origen)}`}
-          </p>
-        </div>
-        {paciente && (
-          <Link
-            href={`/agenda?paciente=${paciente.id}`}
-            className="inline-flex min-h-[48px] items-center bg-[#f5f1ea] px-5 font-[family-name:var(--font-albert)] text-[14px] font-medium text-[#000000] hover:bg-white"
-          >
-            Agendar
-          </Link>
-        )}
-      </header>
-
+      <Cabecera
+        nombre={nombre}
+        telefono={telefono}
+        origen={paciente?.origen}
+        volver="/crm/mensajes"
+        agendarHref={paciente ? `/agenda?paciente=${paciente.id}` : null}
+      />
       {paciente && <Etiquetas pacienteId={paciente.id} actuales={paciente.etiquetas} />}
 
       <Chat mensajes={mensajes || []} />
 
-      <div className="sticky bottom-0 border-t border-white/[0.08] bg-[#000000] pb-3 pt-3">
+      <div className="sticky bottom-0 -mx-4 bg-[#f5f1ea] px-4 pb-4 pt-2">
         <Responder telefono={telefono} abierta={abierta} conectado={whatsappConfigurado()} />
       </div>
     </main>

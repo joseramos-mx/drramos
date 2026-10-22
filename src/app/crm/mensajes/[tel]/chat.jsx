@@ -6,7 +6,7 @@ import Globo from "./globo";
 export default function Chat({ mensajes, archivoUrlDe }) {
   let diaAnterior = null;
   return (
-    <ol className="flex-1 space-y-2 py-4">
+    <ol className="flex-1 space-y-2.5 py-3">
       {mensajes.map((m) => {
         const dia = diaDe(m.enviado_en);
         const nuevoDia = dia !== diaAnterior;
@@ -14,7 +14,7 @@ export default function Chat({ mensajes, archivoUrlDe }) {
         return [
           nuevoDia && (
             <li key={`dia-${m.id}`} className="flex justify-center py-2">
-              <span className="border border-white/[0.1] bg-white/[0.04] px-3 py-1 font-[family-name:var(--font-albert)] text-[12px] font-medium uppercase tracking-[0.12em] text-white/65">
+              <span className="rounded-full bg-[#e9e1d2] px-4 py-1.5 text-[15px] font-semibold capitalize text-[#5b544a]">
                 {dia}
               </span>
             </li>

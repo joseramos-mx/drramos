@@ -86,14 +86,14 @@ export default function Avisos() {
 
   if (estado === "cargando" || estado === "sin-llave") return null;
 
-  const caja = "mt-6 flex flex-wrap items-center gap-3 border border-white/[0.12] p-4 font-[family-name:var(--font-albert)] text-[14px] text-white/80";
-  const boton = "inline-flex min-h-[44px] items-center gap-2 px-4 text-[14px] font-medium disabled:opacity-50";
+  const caja = "mt-3 flex flex-wrap items-center gap-3 rounded-[22px] bg-white px-5 py-4 text-[17px] leading-snug text-[#3d372f] shadow-[0_1px_3px_rgba(28,26,23,0.08)]";
+  const boton = "inline-flex h-12 items-center justify-center gap-2 rounded-full px-5 text-[16px] font-semibold disabled:opacity-50";
 
   if (estado === "instalar-ios") {
     return (
       <p className={caja}>
-        Para recibir avisos en el iPhone o iPad: toca <strong className="text-[#f5f1ea]">Compartir</strong> →{" "}
-        <strong className="text-[#f5f1ea]">Agregar a inicio</strong>, abre “Mensajes” desde ese ícono y vuelve aquí.
+        Para recibir avisos en el iPhone o iPad: toca <strong>Compartir</strong> →{" "}
+        <strong>Agregar a inicio</strong>, abre “Mensajes” desde ese ícono y vuelve aquí.
       </p>
     );
   }
@@ -113,26 +113,26 @@ export default function Avisos() {
     <div className={caja}>
       {estado === "activo" ? (
         <>
-          <BellRingingIcon size={22} className="text-[#b89968]" />
-          <span className="flex-1">Avisos activados en este aparato: te sonará cuando escriba un paciente.</span>
-          <button type="button" onClick={probar} className={`${boton} border border-white/[0.22] text-white/85 hover:border-[#b89968]`}>
+          <BellRingingIcon size={28} weight="fill" className="text-[#b89968]" />
+          <span className="flex-1">Avisos activados: te sonará cuando escriba un paciente.</span>
+          <button type="button" onClick={probar} className={`${boton} border-2 border-[#1c1a17]/15 bg-white text-[#1c1a17]`}>
             Probar aviso
           </button>
-          <button type="button" onClick={apagar} disabled={ocupado} className={`${boton} text-white/60 hover:text-[#f5f1ea]`}>
+          <button type="button" onClick={apagar} disabled={ocupado} className={`${boton} text-[#8b8478] underline underline-offset-4`}>
             Apagar
           </button>
         </>
       ) : (
         <>
-          <BellSlashIcon size={22} className="text-white/60" />
+          <BellSlashIcon size={28} className="text-[#8b8478]" />
           <span className="flex-1">Activa los avisos para que te suene el celular cuando escriba un paciente.</span>
-          <button type="button" onClick={activar} disabled={ocupado} className={`${boton} bg-[#f5f1ea] text-[#000000] hover:bg-white`}>
+          <button type="button" onClick={activar} disabled={ocupado} className={`${boton} w-full bg-[#1c1a17] text-[#f5f1ea] sm:w-auto`}>
             Activar avisos
           </button>
         </>
       )}
       {error && (
-        <p role="alert" className="w-full text-[13px] text-[#ff7a7a]">
+        <p role="alert" className="w-full text-[15px] font-medium text-[#9b2424]">
           {error}
         </p>
       )}

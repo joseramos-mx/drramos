@@ -12,7 +12,7 @@ export default function Etiquetas({ pacienteId, actuales }) {
   );
 
   return (
-    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 py-3" role="group" aria-label="Etiquetas">
+    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 pt-1" role="group" aria-label="Etiquetas">
       {ETIQUETAS.map((e) => {
         const activa = lista.includes(e.id);
         return (
@@ -26,12 +26,12 @@ export default function Etiquetas({ pacienteId, actuales }) {
                 await alternarEtiquetaAction(pacienteId, e.id);
               })
             }
-            className={`shrink-0 border px-3 py-1.5 font-[family-name:var(--font-albert)] text-[13px] ${
+            className={`inline-flex h-11 shrink-0 items-center rounded-full px-4 text-[16px] font-semibold ${
               activa
                 ? e.id === "urgencia"
-                  ? "border-[#ff7a7a] bg-[#ff7a7a]/[0.15] text-[#ffd0d0]"
-                  : "border-[#b89968] bg-[#b89968]/[0.18] text-[#f5f1ea]"
-                : "border-white/[0.18] text-white/60 hover:border-white/40"
+                  ? "bg-[#9b2424] text-white"
+                  : "bg-[#b89968] text-[#1c1a17]"
+                : "border-2 border-[#1c1a17]/10 bg-white text-[#5b544a]"
             }`}
           >
             {activa ? "✓ " : ""}

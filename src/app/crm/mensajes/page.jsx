@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import SignOutButton from "../components/sign-out-button";
-import NavCrm from "../components/nav-crm";
+import { signOutAction } from "../actions";
+import Encabezado, { Resumen } from "./encabezado";
 import AutoRefresh from "../../agenda/components/auto-refresh";
 import { ETIQUETAS, conversaciones } from "./lib";
 import Avisos from "./avisos";
@@ -41,41 +41,26 @@ export default async function MensajesPage({ searchParams }) {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-[900px] px-4 py-6 sm:px-8 md:py-10">
+    <main className="mx-auto w-full max-w-[720px] px-4 pb-12 pt-6">
       <AutoRefresh segundos={15} />
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.08] pb-5">
-        <div>
-          <p className="font-[family-name:var(--font-albert)] text-[11px] font-medium uppercase tracking-[0.24em] text-[#b89968]">
-            WhatsApp del consultorio
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-[clamp(28px,4vw,40px)] font-light leading-[1.1] text-[#f5f1ea]">
-            Mensajes.
-          </h1>
-          <NavCrm activo="mensajes" />
-        </div>
-        <SignOutButton email={user.email} />
-      </header>
+      <Encabezado />
 
       {error && (
-        <p role="alert" className="mt-6 border border-[#ff7a7a]/30 bg-[#ff7a7a]/[0.06] p-4 font-[family-name:var(--font-albert)] text-[14px] text-[#ffb1b1]">
-          No pudimos cargar los mensajes. Recarga la página; si sigue, avisa a quien administra el sistema.
+        <p role="alert" className="mt-4 rounded-2xl bg-[#fde2e2] p-4 text-[17px] text-[#9b2424]">
+          No pudimos cargar los mensajes. Cierra y vuelve a abrir la app; si sigue, avísale a Jesús.
         </p>
       )}
 
-      <p className="mt-6 font-[family-name:var(--font-albert)] text-[14px] text-white/75">
-        {pendientes > 0 ? (
-          <span className="text-[#f5f1ea]">
-            <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#b89968] align-middle" />
-            {pendientes} {pendientes === 1 ? "paciente espera" : "pacientes esperan"} respuesta
-          </span>
-        ) : (
-          "Todo contestado."
-        )}
-      </p>
-
+      <Resumen pendientes={pendientes} />
       <Avisos />
-
       <Lista lista={lista} filtros={filtros} f={f} base="/crm/mensajes" />
+
+      <form action={signOutAction} className="mt-10 flex justify-center">
+        <button type="submit" className="h-12 rounded-full px-6 text-[15px] font-medium text-[#8b8478] underline underline-offset-4">
+          Cerrar sesión
+        </button>
+      </form>
     </main>
   );
 }
+
