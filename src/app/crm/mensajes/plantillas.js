@@ -69,6 +69,14 @@ export const PLANTILLAS_SISTEMA = [
     botones: ["Elegir otro horario", "Hablar con Dra. Gaby"],
   },
   {
+    nombre: "resena_google",
+    titulo: "Pedir opinión en Google (al terminar su tratamiento)",
+    texto:
+      "Hola {{1}}, gracias por su confianza en el consultorio del Dr. Felipe de Jesús Ramos Sotelo. Si quedó contento con su atención, nos ayudaría mucho que compartiera su opinión en Google: {{2}}",
+    campos: ["Nombre del paciente", "Link para dejar la opinión"],
+    botones: [],
+  },
+  {
     nombre: "seguimiento_presupuesto",
     titulo: "Seguimiento del plan de tratamiento (3 días y 1 mes después)",
     texto:

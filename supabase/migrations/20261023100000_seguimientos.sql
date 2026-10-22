@@ -2,6 +2,7 @@
 --  * confirmación al agendar desde la agenda (plantilla cita_agendada)
 --  * mensaje a quien no vino (cita_falto), una vez por cita
 --  * seguimiento de presupuestos no aceptados a los 3 días y al mes (seguimiento_presupuesto)
+--  * pedir opinión en Google al terminar el tratamiento (resena_google), una vez por paciente
 
 alter table public.citas add column if not exists falto_avisado_en timestamptz;
 alter table public.citas add column if not exists seguimiento_enviados int not null default 0;
@@ -12,3 +13,5 @@ alter table public.citas add column if not exists seguimiento_cerrado boolean no
 -- Interruptores en Ajustes (prendidos por omisión)
 alter table public.asistente_config add column if not exists aviso_falto boolean not null default true;
 alter table public.asistente_config add column if not exists seguimientos boolean not null default true;
+alter table public.asistente_config add column if not exists resenas boolean not null default true;
+alter table public.pacientes add column if not exists resena_pedida_en timestamptz;

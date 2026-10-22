@@ -19,6 +19,11 @@ const MENSAJES = [
     titulo: "Seguimiento de presupuestos",
     texto: "A los 3 días y al mes de la valoración, si no agendó: “¿Pudo revisar el plan de tratamiento?”. Si quiere agendar o tiene dudas, te llega a ti.",
   },
+  {
+    campo: "resenas",
+    titulo: "Pedir opinión en Google",
+    texto: "Cuando termina su tratamiento (pagó y ya no tiene citas), 2 días después: “¿Nos ayudaría con su opinión en Google?”. Una sola vez por paciente.",
+  },
 ];
 
 function Interruptor({ campo, titulo, texto, prendido, demo }) {

@@ -97,6 +97,7 @@ export async function guardarCitaAction(_prev, formData) {
   const tipo = String(formData.get("tipo") || "");
   const notas = String(formData.get("notas") ?? "").trim();
   const avisar = formData.get("avisar") === "1";
+  const forzar = formData.get("forzar") === "1";
 
   if (!esFechaValida(fecha) || !Number.isInteger(minutos) || minutos < 0 || minutos >= 24 * 60) {
     return { error: "Fecha u hora inválida." };
@@ -109,6 +110,12 @@ export async function guardarCitaAction(_prev, formData) {
 
   const inicio = isoDesde(fecha, minutos);
   const fin = isoDesde(fecha, minutos + Number(duracion));
+  // ¿Choca con otra cita o con un horario bloqueado? Se pregunta antes de guardar
+  if (!forzar) {
+    const choque = await queChoca(supabase, { id, dentista, fecha, inicio, fin, minutos, duracion: Number(duracion) });
+    if (choque) return { encima: choque };
+  }
+
   // Si la mueve ella, ya no hay que llamarle por un bloqueo
   const base = { dentista, tipo, inicio, fin, notas: notas || null, aviso_bloqueo_en: null, updated_at: new Date().toISOString() };
 
@@ -134,6 +141,32 @@ export async function guardarCitaAction(_prev, formData) {
 
   revalidatePath("/agenda");
   return { ok: true };
+}
+
+/** Texto si la cita nueva se encima con otra (mismo dentista) o con un bloqueo/evento; null si está libre. */
+async function queChoca(supabase, { id, dentista, fecha, inicio, fin, minutos, duracion }) {
+  let q = supabase
+    .from("citas")
+    .select("id, inicio, fin, paciente:pacientes(nombre)")
+    .eq("dentista", dentista)
+    .neq("estado", "cancelada")
+    .lt("inicio", fin)
+    .gt("fin", inicio)
+    .limit(1);
+  if (id) q = q.neq("id", id);
+  const { data: citas } = await q;
+  if (citas?.length) {
+    const c = citas[0];
+    return `A esa hora ya está ${c.paciente?.nombre || "otra cita"} (${formatHora(minutosDelDia(c.inicio))} a ${formatHora(minutosDelDia(c.fin))}).`;
+  }
+  const { data: bloqueos } = await supabase
+    .from("bloqueos")
+    .select("desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento")
+    .lte("desde_fecha", fecha)
+    .gte("hasta_fecha", fecha);
+  const b = (bloqueos || []).find((x) => x.desde_min == null || (x.desde_min < minutos + duracion && x.hasta_min > minutos));
+  if (b) return `Ese horario está apartado: ${b.motivo}${b.desde_min == null ? " (todo el día)" : ` (${formatHora(b.desde_min)} a ${formatHora(b.hasta_min)})`}.`;
+  return null;
 }
 
 /**

@@ -150,6 +150,7 @@ function NuevaCita({ fecha, dentista: dentistaInicial, minutos: minutosIniciales
 
       <AvisarWhatsApp id="avisar-nueva" texto="Mandarle su cita por WhatsApp" detalle="Con botones para confirmar, cambiar o cancelar (si tiene WhatsApp)." />
 
+      <Encimada state={state} label="Agendar de todos modos" />
       <Acciones state={state} label="Agendar" />
     </form>
   );
@@ -344,6 +345,7 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
         <input id="notas-edit" name="notas" defaultValue={cita.notas || ""} autoComplete="off" className={inputClass} />
       </div>
       <AvisarWhatsApp id="avisar-editar" texto="Si cambió la hora, avisarle por WhatsApp" detalle="Le llega su nueva hora con botones para confirmar o cambiar." />
+      <Encimada state={state} label="Guardar de todos modos" />
       <Acciones state={state} label="Guardar cambios" onCancel={onCancel} />
     </form>
   );
@@ -352,6 +354,20 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
 // ─────────────────────────────────────────────────────────────
 //  Piezas
 // ─────────────────────────────────────────────────────────────
+/** Si choca con otra cita o un bloqueo: lo dice y deja guardar de todos modos (o cambiar la hora). */
+function Encimada({ state, label }) {
+  if (!state?.encima) return null;
+  return (
+    <div role="alert" className="rounded-2xl bg-[#fdf3e6] p-4">
+      <p className="text-[17px] font-semibold text-[#1c1a17]">Ojo: {state.encima}</p>
+      <p className="mt-1 text-[15px] text-[#7a7368]">Cambia la hora arriba, o guárdala encimada si así lo quieres.</p>
+      <button type="submit" name="forzar" value="1" className="mt-3 h-12 rounded-full border-2 border-[#1c1a17]/15 bg-white px-5 text-[16px] font-semibold text-[#1c1a17]">
+        {label}
+      </button>
+    </div>
+  );
+}
+
 /** Palomita (prendida por omisión) para mandarle la cita al paciente por WhatsApp. */
 function AvisarWhatsApp({ id, texto, detalle }) {
   return (

@@ -683,6 +683,11 @@ export async function atenderConAsistente(admin, telefono, waId) {
     },
     { onConflict: "wa_id", ignoreDuplicates: true }
   );
+  // "Voy tarde" / "Ya llegué": se le avisa a la Dra. Gaby (sin pasarle el chat)
+  const quien = nombreValido(paciente.nombre) ? paciente.nombre : "Tu paciente";
+  if (d.ids?.includes("voy_tarde")) await avisar(admin, { titulo: `⏰ ${quien} va tarde`, cuerpo: "Avisó por WhatsApp", telefono });
+  if (d.ids?.includes("ya_llegue")) await avisar(admin, { titulo: `🚪 ${quien} ya llegó`, cuerpo: "Avisó por WhatsApp", telefono });
+
   // "Ya no me escriban": se marca para que no le lleguen mensajes automáticos
   if (d.ids?.includes("no_escribir_mas")) {
     await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "no_contactar"])] }).eq("id", paciente.id);

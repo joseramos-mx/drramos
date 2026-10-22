@@ -1,7 +1,7 @@
 import { whatsappConfigurado } from "@/lib/whatsapp";
 import { supabaseServicio } from "@/lib/mensajes-servidor";
 import { normalizarTelefono } from "@/lib/telefono";
-import { mandarPlantillaCita } from "@/lib/avisos-cita";
+import { mandarPlantillaCita, primerNombre } from "@/lib/avisos-cita";
 import { hoyDurango, rangoDelDia, sumarDias } from "@/app/agenda/lib";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,8 @@ const SEGUIMIENTO_MAX_DIAS = 45;
  *     Una por paciente (su primera cita del día); nunca dos veces la misma cita.
  *  2. Seguimiento de presupuestos no aceptados: a los 3 días y al mes de la valoración
  *     (plantilla seguimiento_presupuesto: Quiero agendar · Tengo una duda · Ya no, gracias).
+ *  3. Pedir opinión en Google (resena_google) cuando terminó su tratamiento: pagó algo, pasaron
+ *     2 días y no tiene otra cita. Una vez por paciente. Necesita RESENA_GOOGLE_URL.
  * Cada una se apaga en Ajustes. No se le escribe a quien pidió que ya no ("no_contactar").
  */
 export async function GET(req) {
@@ -28,10 +30,11 @@ export async function GET(req) {
   if (!whatsappConfigurado()) return Response.json({ omitido: "WhatsApp todavía no está conectado" });
 
   const admin = supabaseServicio();
-  const { data: config } = await admin.from("asistente_config").select("recordatorios, seguimientos").eq("id", 1).maybeSingle();
+  const { data: config } = await admin.from("asistente_config").select("recordatorios, seguimientos, resenas").eq("id", 1).maybeSingle();
   return Response.json({
     recordatorios: config?.recordatorios === false ? "apagados en Ajustes" : await recordatorios(admin),
     seguimientos: config?.seguimientos === false ? "apagados en Ajustes" : await seguimientos(admin),
+    resenas: config?.resenas === false ? "apagadas en Ajustes" : await resenas(admin),
   });
 }
 
@@ -128,6 +131,46 @@ async function seguimientos(admin) {
       await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", c.id);
     } else {
       resumen.errores++;
+    }
+  }
+  return resumen;
+}
+
+/**
+ * Pacientes que terminaron (pagaron algo en una cita de hace 2 a 7 días y no tienen
+ * cita después): se les pide su opinión en Google, una sola vez en la vida.
+ */
+async function resenas(admin) {
+  const link = process.env.RESENA_GOOGLE_URL;
+  if (!link) return "falta RESENA_GOOGLE_URL";
+  const hoy = hoyDurango();
+  const { data: candidatas, error } = await admin
+    .from("citas")
+    .select("id, inicio, pagado_monto, paciente_id, paciente:pacientes(id, nombre, whatsapp, etiquetas, resena_pedida_en)")
+    .eq("estado", "asistio")
+    .gt("pagado_monto", 0)
+    .gte("inicio", rangoDelDia(sumarDias(hoy, -7)).desde)
+    .lt("inicio", rangoDelDia(sumarDias(hoy, -2)).hasta)
+    .order("inicio", { ascending: false });
+  if (error) return { error: "No se pudo leer la agenda" };
+
+  const vistos = new Set();
+  const resumen = { enviadas: 0 };
+  for (const c of candidatas || []) {
+    if (vistos.has(c.paciente_id) || c.paciente?.resena_pedida_en) continue;
+    vistos.add(c.paciente_id);
+    // ¿Sigue en tratamiento? (tiene otra cita después)
+    const { count } = await admin
+      .from("citas")
+      .select("id", { count: "exact", head: true })
+      .eq("paciente_id", c.paciente_id)
+      .neq("estado", "cancelada")
+      .gt("inicio", c.inicio);
+    if (count) continue;
+    const r = await mandarPlantillaCita(admin, c, "resena_google", { valores: [primerNombre(c.paciente?.nombre), link] });
+    if (r.ok || r.sinWhatsapp || r.noContactar) {
+      await admin.from("pacientes").update({ resena_pedida_en: new Date().toISOString() }).eq("id", c.paciente_id);
+      if (r.ok) resumen.enviadas++;
     }
   }
   return resumen;

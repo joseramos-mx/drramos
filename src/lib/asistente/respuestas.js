@@ -12,7 +12,7 @@ export const RESPUESTAS = {
   // ── Saludo y datos del consultorio ──
   saludo: "¿En qué le puedo ayudar? Con gusto le resuelvo sus dudas o le agendo una valoración con el Dr. Felipe 😊",
   ubicacion:
-    "Estamos en Prol. Gómez Palacio 501 Pte., Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Hay estacionamiento gratuito.",
+    "Estamos en Prol. Gómez Palacio 501 Pte., Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Hay estacionamiento gratuito.\nUbicación en el mapa: https://maps.google.com/?q=Prol.+G%C3%B3mez+Palacio+501+Pte,+Zona+Centro,+34000+Durango,+Dgo.",
   horario: "Atendemos de lunes a viernes de 9:00 a 19:00 y sábados de 9:00 a 14:00. Los domingos está cerrado.",
   estacionamiento: "Sí, hay estacionamiento gratuito en Central Médica Santa Ana.",
   pagos:
@@ -73,6 +73,8 @@ export const RESPUESTAS = {
 
   // ── Cierre y casos especiales ──
   gracias: "¡Con gusto! Aquí estamos para lo que necesite 😊",
+  voy_tarde: "¡Gracias por avisarnos! 🙏 Aquí le esperamos.",
+  ya_llegue: "¡Gracias! En un momento le atendemos 😊",
   no_escribir_mas: "Entendido, una disculpa 🙏",
   escribir_audio: "Disculpe, no puedo escuchar notas de voz. ¿Me lo podría escribir? 🙏",
   solo_consultorio: "Sólo puedo ayudarle con temas del consultorio dental 😊 ¿Le gustaría agendar una valoración?",
@@ -86,7 +88,8 @@ export const RESPUESTAS = {
 };
 
 /** Primer renglón del primer mensaje a un paciente nuevo (lo agrega el código, el modelo no lo elige). */
-export const PRESENTACION = "Hola, soy el asistente virtual del consultorio del Dr. Felipe Ramos 😊";
+export const PRESENTACION =
+  "Hola, soy el asistente virtual del consultorio del Dr. Felipe Ramos 😊 Al escribirnos acepta nuestro aviso de privacidad: drfelipedejesusramos.com/privacidad";
 
 /** Respuestas que llevan datos y cuáles (el sistema los llena con la agenda). */
 export const VARIABLES = {
@@ -129,7 +132,7 @@ export const SECCIONES = [
     ["preguntar_origen", "¿Cómo nos conoció?"], ["confirmar_cita", "Confirmar la cita"],
   ]],
   ["Despedidas y casos especiales", [
-    ["gracias", "Cuando dicen gracias"], ["no_escribir_mas", "Cuando piden que ya no les escriban"],
+    ["gracias", "Cuando dicen gracias"], ["voy_tarde", "Cuando avisa que va tarde a su cita"], ["ya_llegue", "Cuando avisa que ya llegó"], ["no_escribir_mas", "Cuando piden que ya no les escriban"],
     ["escribir_audio", "Cuando mandan nota de voz"], ["solo_consultorio", "Cuando preguntan cosas que no son del consultorio"],
     ["pasar_dra_gaby", "Cuando le pasa el chat a la Dra. Gaby"], ["pasar_urgencia", "Cuando es urgencia"],
     ["pasar_dra_gaby_cerrado", "Le pasa el chat con el consultorio cerrado ([DÍA] = mañana, el lunes…)"],
