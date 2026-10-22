@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import AgendaDia from "./components/agenda-dia";
 import Reloj from "./components/reloj";
+import BotonesDia from "./components/botones-dia";
 import { BarraInferior } from "../crm/mensajes/encabezado";
 import {
   CITA_SELECT,
@@ -48,17 +49,38 @@ export default async function AgendaPage({ searchParams }) {
 
   const extra = preseleccion ? `&paciente=${preseleccion.id}` : "";
 
+  // Puntos del calendario del mes: cuántas citas hay cada día
+  const primero = `${fecha.slice(0, 7)}-01`;
+  const sigMes = new Date(`${primero}T00:00:00Z`);
+  sigMes.setUTCMonth(sigMes.getUTCMonth() + 1);
+  const { data: delMes } = await supabase
+    .from("citas")
+    .select("inicio")
+    .gte("inicio", rangoDelDia(primero).desde)
+    .lt("inicio", rangoDelDia(sigMes.toISOString().slice(0, 10)).desde)
+    .neq("estado", "cancelada");
+  const conteo = {};
+  for (const c of delMes || []) {
+    const dia = hoyDurango(new Date(c.inicio));
+    conteo[dia] = (conteo[dia] || 0) + 1;
+  }
+
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6">
-      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 pb-2">
-        <div>
+      <header className="pb-2">
+        <div className="flex items-center justify-between gap-3">
           <h1 className="text-[30px] font-bold tracking-tight text-[#1c1a17]">Agenda</h1>
-          <p className="text-[18px] font-semibold text-[#5b544a] first-letter:uppercase">
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block">
+              <Reloj />
+            </div>
+            <BotonesDia fecha={fecha} hoy={hoy} pendientes={pendientes || []} conteo={conteo} extra={extra} />
+          </div>
+        </div>
+        <p className="text-[18px] font-semibold text-[#5b544a] first-letter:uppercase">
             {formatFechaLarga(fecha)}
             {fecha === hoy && <span className="text-[#8a6d3f]"> · hoy</span>}
           </p>
-        </div>
-        <Reloj />
       </header>
 
       <nav className="mt-2 flex gap-2" aria-label="Cambiar de día">
@@ -89,7 +111,7 @@ export default async function AgendaPage({ searchParams }) {
       <AgendaDia
         fecha={fecha}
         citas={citas || []}
-        pendientes={pendientes || []}
+        pendientes={null}
         preseleccion={preseleccion}
         ajustarAlto="auto"
       />
