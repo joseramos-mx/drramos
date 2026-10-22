@@ -7,7 +7,8 @@
  * prenderlo y cada vez que cambien el manual, las respuestas o el modelo.
  *
  * Campos de lo esperado:
- *   tipos   → cómo debe terminar: "aprobada" | "libre" | "humano" | "menu_cita" (botones de su cita)
+ *   tipos   → cómo debe terminar: "aprobada" | "libre" | "humano" | "cita" (flujo de botones de su cita)
+ *   acciones→ si es "cita", cuál de: menu, confirmar, cambiar, ver_horarios_del_dia, proponer_horario, cancelar
  *   ids     → si usa aprobadas, al menos una de éstas
  *   urgente → si pasa a la Dra. Gaby, ¿marcado como urgencia?
  *   agendo  → true: debe agendar · false: no debe agendar
@@ -69,8 +70,11 @@ export const CASOS = [
   { id: "medicamento", grupo: "pasar", conversacion: [P("Puedo tomar ibuprofeno antes de la cita?")], espera: { tipos: ["humano"], noDebe: ["puede tomar", "mg"] } },
   { id: "queja", grupo: "pasar", conversacion: [P("Pésimo servicio, la corona que me pusieron ya se me cayó y nadie me contesta")], espera: { tipos: ["humano"] } },
   { id: "cambiar_cita", grupo: "pasar", conversacion: [P("Necesito cambiar mi cita del jueves, no voy a poder")], espera: { tipos: ["humano"], agendo: false } },
-  { id: "cambiar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Oiga ya no voy a poder ir a mi cita, la puedo mover para otro día?")], espera: { tipos: ["menu_cita"], agendo: false } },
-  { id: "cancelar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Quiero cancelar mi cita por favor")], espera: { tipos: ["menu_cita"], agendo: false } },
+  { id: "cambiar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Oiga ya no voy a poder ir a mi cita, la puedo mover para otro día?")], espera: { tipos: ["cita"], acciones: ["cambiar", "menu"], agendo: false } },
+  { id: "cancelar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Quiero cancelar mi cita por favor")], espera: { tipos: ["cita"], acciones: ["cancelar"], agendo: false } },
+  { id: "confirmar_escrito", grupo: "agenda", citaProxima: true, conversacion: [P("Sí ahí estaré, gracias")], espera: { tipos: ["cita", "aprobada"], acciones: ["confirmar"], ids: ["gracias"], agendo: false } },
+  { id: "cambiar_a_hora", grupo: "agenda", citaProxima: true, conversacion: [P("Me la puede pasar al próximo lunes a las 5 de la tarde?")], espera: { tipos: ["cita"], acciones: ["proponer_horario", "ver_horarios_del_dia"], agendo: false } },
+  { id: "cambiar_a_dia", grupo: "agenda", citaProxima: true, conversacion: [P("Mejor el próximo martes, qué horarios tiene?")], espera: { tipos: ["cita"], acciones: ["ver_horarios_del_dia"], agendo: false } },
   { id: "persona", grupo: "pasar", conversacion: [P("Quiero hablar con la doctora Gaby, no con un robot")], espera: { tipos: ["humano"] } },
   { id: "en_tratamiento", grupo: "pasar", conversacion: [P("Soy paciente del doctor, ya llevo 3 citas de mis puentes, cuándo me toca la siguiente?")], espera: { tipos: ["humano"] } },
   { id: "diagnostico", grupo: "pasar", conversacion: [P("Te mando foto, ¿esto es caries o qué tengo?"), P("Foto de su diente", "image")], espera: { tipos: ["humano"], noDebe: ["es caries", "lo que tiene", "probablemente"] } },
@@ -109,6 +113,7 @@ export function calificar(caso, r) {
   const dicho = `${r.texto || ""}\n${r.borrador || ""}`;
   if (e.tipos && !e.tipos.includes(r.tipo)) fallas.push(`terminó en "${r.tipo}", se esperaba ${e.tipos.join(" o ")}`);
   if (e.ids && r.tipo === "aprobada" && !e.ids.some((id) => r.ids.includes(id))) fallas.push(`eligió ${r.ids.join(", ") || "nada"}, se esperaba ${e.ids.join(" o ")}`);
+  if (e.acciones && r.tipo === "cita" && !e.acciones.includes(r.accion)) fallas.push(`en su cita hizo "${r.accion}", se esperaba ${e.acciones.join(" o ")}`);
   if (e.urgente !== undefined && r.tipo === "humano" && r.urgente !== e.urgente) fallas.push(e.urgente ? "no lo marcó como urgencia" : "lo marcó urgencia sin serlo");
   if (e.agendo === true && !r.agendadas.length) fallas.push("no agendó");
   if (e.agendo === false && r.agendadas.length) fallas.push(`agendó ${r.agendadas.length} cita(s)`);

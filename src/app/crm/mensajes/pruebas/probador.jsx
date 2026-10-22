@@ -22,8 +22,8 @@ function QueHizo({ r }) {
       ? `respuestas aprobadas (${r.ids.join(", ")})`
       : r.tipo === "libre"
         ? "respuesta propia (aprobada por el verificador)"
-        : r.tipo === "menu_cita"
-          ? "le mandó los botones de su cita"
+        : r.tipo === "cita"
+          ? `flujo de su cita: ${r.accion}`
         : `pasó a la Dra. Gaby${r.urgente ? " como URGENCIA" : ""}`;
   return (
     <div className="mt-2 rounded-[16px] border-2 border-[#1c1a17]/10 bg-white p-3 text-[14px] text-[#5b544a]">

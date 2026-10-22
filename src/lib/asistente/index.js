@@ -22,7 +22,7 @@ import { INSTRUCCIONES } from "./conocimiento";
 import { armar, catalogo, RESPUESTAS, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
-import { enviarMenuCita } from "@/lib/mi-cita";
+import { atenderBotonCita, botonDeAccion } from "@/lib/mi-cita";
 import {
   SLOT_MIN,
   esFechaValida,
@@ -46,7 +46,7 @@ const MAX_RESPUESTAS_HORA = 15;
 const MAX_CARACTERES_MENSAJE = 1500;
 
 const ORIGENES = ["facebook", "instagram", "google", "recomendacion", "ya_paciente", "otro"];
-const TERMINALES = new Set(["enviar_respuestas_aprobadas", "responder_libre", "pasar_a_dra_gaby", "mostrar_opciones_de_cita"]);
+const TERMINALES = new Set(["enviar_respuestas_aprobadas", "responder_libre", "pasar_a_dra_gaby", "cita_del_paciente"]);
 
 // Instrucciones + catálogo (con los textos que editó la Dra. Gaby). Van en caché:
 // sólo cambian cuando ella edita una respuesta.
@@ -121,16 +121,28 @@ const HERRAMIENTAS = [
     strict: true,
   },
   {
-    name: "mostrar_opciones_de_cita",
+    name: "cita_del_paciente",
     description:
-      "Si el paciente quiere cambiar, cancelar o confirmar su cita próxima, o pregunta por ella: le llegan botones para hacerlo él mismo (Cambiar / Cancelar / Hablar con la Dra. Gaby). El sistema manda el mensaje.",
-    input_schema: { type: "object", properties: {}, required: [], additionalProperties: false },
+      "Cuando el paciente con cita próxima quiere confirmarla, cambiarla o cancelarla, o pregunta por ella (con botones o escribiendo). El sistema le manda los mismos botones y listas, revisa la agenda y hace el cambio; tú no escribes nada. " +
+      "accion: menu (no queda claro qué quiere) · confirmar (confirma que va) · cambiar (quiere otro día, sin decir cuál) · " +
+      "ver_horarios_del_dia (dijo un día; fecha AAAA-MM-DD) · proponer_horario (dijo día y hora; fecha y hora HH:MM, se le pide confirmar con un botón) · " +
+      'cancelar (se le pide confirmar con un botón). Llena fecha y hora sólo si aplican; si no, "".',
+    input_schema: {
+      type: "object",
+      properties: {
+        accion: { type: "string", enum: ["menu", "confirmar", "cambiar", "ver_horarios_del_dia", "proponer_horario", "cancelar"] },
+        fecha: { type: "string", description: 'AAAA-MM-DD o ""' },
+        hora: { type: "string", description: 'HH:MM en 24 h o ""' },
+      },
+      required: ["accion", "fecha", "hora"],
+      additionalProperties: false,
+    },
     strict: true,
   },
   {
     name: "pasar_a_dra_gaby",
     description:
-      "Pasa la conversación a la Dra. Gaby (le suena el celular): urgencias, quejas, preguntas médicas, pacientes en tratamiento, cambios o cancelaciones de cita (si no tienes mostrar_opciones_de_cita), quiere hablar con una persona, o no puedes contestar con certeza. El sistema manda solo la despedida aprobada.",
+      "Pasa la conversación a la Dra. Gaby (le suena el celular): urgencias, quejas, preguntas médicas, pacientes en tratamiento, cambios o cancelaciones de cita (si no tienes cita_del_paciente), quiere hablar con una persona, o no puedes contestar con certeza. El sistema manda solo la despedida aprobada.",
     input_schema: {
       type: "object",
       properties: {
@@ -279,7 +291,12 @@ ${sistema}`,
 
 // ── Herramientas de agenda ──
 
-export async function disponibilidad(admin, fecha) {
+/**
+ * Horarios libres de un día. `duracion` (min): cabe completa sin chocar y
+ * antes de cerrar (una cirugía de 3 h sólo ve los huecos de 3 h). `ignorar`:
+ * id de la cita que se está moviendo, para que no se estorbe a sí misma.
+ */
+export async function disponibilidad(admin, fecha, { duracion = SLOT_MIN, ignorar = null } = {}) {
   if (!esFechaValida(fecha)) return { error: "Fecha inválida, usa AAAA-MM-DD." };
   const hoy = hoyDurango();
   if (fecha < hoy) return { error: "Esa fecha ya pasó." };
@@ -289,18 +306,18 @@ export async function disponibilidad(admin, fecha) {
   const { desde, hasta } = rangoDelDia(fecha);
   const { data: citas } = await admin
     .from("citas")
-    .select("inicio, fin")
+    .select("id, inicio, fin")
     .gte("inicio", desde)
     .lt("inicio", hasta)
     .neq("estado", "cancelada");
-  const ocupado = (citas || []).map((c) => [minutosDelDia(c.inicio), minutosDelDia(c.fin)]);
+  const ocupado = (citas || []).filter((c) => !ignorar || c.id !== ignorar).map((c) => [minutosDelDia(c.inicio), minutosDelDia(c.fin)]);
   // Hoy: sólo horarios con al menos 1 h de anticipación
   const ahora = fecha === hoy ? minutosDelDia(new Date().toISOString()) + 60 : 0;
 
   const libres = [];
-  for (let m = horario.abre; m + SLOT_MIN <= horario.cierra; m += SLOT_MIN) {
+  for (let m = horario.abre; m + duracion <= horario.cierra; m += SLOT_MIN) {
     if (m < ahora) continue;
-    if (ocupado.some(([a, b]) => m < b && m + SLOT_MIN > a)) continue;
+    if (ocupado.some(([a, b]) => m < b && m + duracion > a)) continue;
     libres.push(formatHora(m));
   }
   return { fecha, dia: formatFechaLarga(fecha), horarios_libres: libres.length ? libres : "Sin horarios libres ese día" };
@@ -380,7 +397,7 @@ export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente 
  */
 async function decidir(client, admin, { paciente, messages, contexto, puedeAgendar, tieneCita = false, textos, sistema }) {
   const tools = HERRAMIENTAS.filter(
-    (t) => (t.name !== "agendar_valoracion" || puedeAgendar) && (t.name !== "mostrar_opciones_de_cita" || (puedeAgendar && tieneCita))
+    (t) => (t.name !== "agendar_valoracion" || puedeAgendar) && (t.name !== "cita_del_paciente" || (puedeAgendar && tieneCita))
   );
   const acciones = [];
   const consultados = new Map(); // "lunes 26 de octubre" → horas libres que el modelo sí vio
@@ -409,7 +426,8 @@ async function decidir(client, admin, { paciente, messages, contexto, puedeAgend
     // Si pidió pasar a la Dra. Gaby, eso manda
     const humano = usos.find((u) => u.name === "pasar_a_dra_gaby");
     if (humano) return { tipo: "humano", motivo: humano.input.motivo, urgente: Boolean(humano.input.urgente), acciones };
-    if (usos.some((u) => u.name === "mostrar_opciones_de_cita")) return { tipo: "menu_cita", acciones };
+    const cita = usos.find((u) => u.name === "cita_del_paciente");
+    if (cita) return { tipo: "cita", accion: cita.input.accion, fecha: cita.input.fecha || "", hora: cita.input.hora || "", acciones };
 
     const hayAgenda = usos.some((u) => !TERMINALES.has(u.name));
     const resultados = [];
@@ -535,7 +553,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
     proximas?.length
-      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa mostrar_opciones_de_cita." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
+      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
@@ -570,11 +588,12 @@ export async function atenderConAsistente(admin, telefono, waId) {
 
   if (d.tipo === "nada") return registrar(admin, telefono, "omitido", { acciones: d.acciones });
   if ((await ultimoDelPaciente()) !== waId) return registrar(admin, telefono, "omitido", { motivo: "llegó otro mensaje", decision: d });
-  if (d.tipo === "menu_cita" && proximas?.length) {
-    const envio = await enviarMenuCita(admin, telefono, paciente, proximas[0]);
-    return registrar(admin, telefono, envio.error ? "error" : "menu_cita", { envio: envio.error || null });
+  if (d.tipo === "cita" && proximas?.length) {
+    // Lo que escribió se resuelve con el mismo flujo de los botones (todo se revalida ahí)
+    await atenderBotonCita(admin, telefono, botonDeAccion(d, proximas[0].id));
+    return registrar(admin, telefono, "cita", { accion: d.accion, fecha: d.fecha, hora: d.hora });
   }
-  if (d.tipo === "menu_cita") d = { ...d, tipo: "humano", motivo: "pregunta por una cita" };
+  if (d.tipo === "cita") d = { ...d, tipo: "humano", motivo: "pregunta por una cita" };
 
   let texto;
   if (d.tipo === "humano") {
@@ -641,7 +660,7 @@ function agendaDePrueba({ llena = false } = {}) {
         return q;
       },
       then: (ok) => {
-        if (tabla === "citas" && campos.startsWith("inicio")) {
+        if (tabla === "citas" && campos.includes("inicio")) {
           // Mientras busca libres: ocupado todo el día si `llena`, más lo que ya agendó en la prueba
           const ocupadas = agendadas.map((c) => ({ inicio: c.inicio, fin: c.fin }));
           if (llena) for (let d = 0; d < 60; d++) {
@@ -695,7 +714,7 @@ export async function probarConversacion({ conversacion, agendaLlena = false, ci
     `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
     `Nombre registrado del paciente: ${nombre || "todavía no lo sabemos"}.`,
     citaProxima
-      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa mostrar_opciones_de_cita.`
+      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente.`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
@@ -725,8 +744,8 @@ export async function probarConversacion({ conversacion, agendaLlena = false, ci
   const texto =
     d.tipo === "humano"
       ? textos[d.urgente ? "pasar_urgencia" : "pasar_dra_gaby"]
-      : d.tipo === "menu_cita"
-        ? "[Botones de su cita: Cambiar mi cita · Cancelar mi cita · Hablar con Dra. Gaby]"
+      : d.tipo === "cita"
+        ? `[Flujo de su cita: ${d.accion}${d.fecha ? ` ${d.fecha}` : ""}${d.hora ? ` ${d.hora}` : ""}]`
         : d.texto || "";
-  return { tipo: d.tipo, ids: d.ids || [], urgente: Boolean(d.urgente), motivo: d.motivo || null, texto, borrador: d.borrador || null, agendadas, acciones: d.acciones || [], uso };
+  return { tipo: d.tipo, accion: d.accion || null, ids: d.ids || [], urgente: Boolean(d.urgente), motivo: d.motivo || null, texto, borrador: d.borrador || null, agendadas, acciones: d.acciones || [], uso };
 }
