@@ -19,7 +19,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { INSTRUCCIONES } from "./conocimiento";
-import { armar, catalogo, RESPUESTAS, textosEfectivos } from "./respuestas";
+import { armar, catalogo, ELEGIBLES, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { atenderBotonCita, botonDeAccion } from "@/lib/mi-cita";
@@ -100,7 +100,7 @@ const HERRAMIENTAS = [
     input_schema: {
       type: "object",
       properties: {
-        ids: { type: "array", items: { type: "string", enum: Object.keys(RESPUESTAS) } },
+        ids: { type: "array", items: { type: "string", enum: ELEGIBLES } },
         dia: { type: "string", description: 'Para ofrecer_horarios / sin_horarios, p. ej. "lunes 26 de octubre"; si no, ""' },
         horarios: { type: "string", description: 'Para ofrecer_horarios: 2 o 3 horas libres, p. ej. "10:00, 12:30 o 17:00"; si no, ""' },
       },
@@ -655,6 +655,11 @@ export async function atenderConAsistente(admin, telefono, waId) {
   }
   if (primerContacto) texto = `${textos.presentacion}\n\n${texto}`;
 
+  // "Voy tarde" / "Ya llegué": se le avisa a la Dra. Gaby (sin pasarle el chat), también en modo borrador
+  const quien = nombreValido(paciente.nombre) ? paciente.nombre : "Tu paciente";
+  if (d.ids?.includes("voy_tarde")) await avisar(admin, { titulo: `⏰ ${quien} va tarde`, cuerpo: "Avisó por WhatsApp", telefono });
+  if (d.ids?.includes("ya_llegue")) await avisar(admin, { titulo: `🚪 ${quien} ya llegó`, cuerpo: "Avisó por WhatsApp", telefono });
+
   // ¿Necesita su aprobación? Modo borrador, o respuesta propia sin permiso de ir sola
   const aprobar = modo === "borrador" || (d.tipo === "libre" && !libresSolas);
   if (aprobar && d.tipo !== "humano") {
@@ -683,11 +688,6 @@ export async function atenderConAsistente(admin, telefono, waId) {
     },
     { onConflict: "wa_id", ignoreDuplicates: true }
   );
-  // "Voy tarde" / "Ya llegué": se le avisa a la Dra. Gaby (sin pasarle el chat)
-  const quien = nombreValido(paciente.nombre) ? paciente.nombre : "Tu paciente";
-  if (d.ids?.includes("voy_tarde")) await avisar(admin, { titulo: `⏰ ${quien} va tarde`, cuerpo: "Avisó por WhatsApp", telefono });
-  if (d.ids?.includes("ya_llegue")) await avisar(admin, { titulo: `🚪 ${quien} ya llegó`, cuerpo: "Avisó por WhatsApp", telefono });
-
   // "Ya no me escriban": se marca para que no le lleguen mensajes automáticos
   if (d.ids?.includes("no_escribir_mas")) {
     await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "no_contactar"])] }).eq("id", paciente.id);

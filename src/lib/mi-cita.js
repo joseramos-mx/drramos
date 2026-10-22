@@ -37,7 +37,6 @@ const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 /** Botones del recordatorio (en el mismo orden que en WhatsApp Manager). */
-export const BOTONES_RECORDATORIO = ["confirmar", "cambiar", "cancelar"];
 /** Botones de las plantillas del sistema, en el mismo orden que en WhatsApp Manager. */
 export const BOTONES_PLANTILLA = {
   recordatorio_cita: ["confirmar", "cambiar", "cancelar"],

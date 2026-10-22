@@ -4,8 +4,8 @@ import { DESCANSO, horarioDelDia, hoyDurango, isoDesde, proximaApertura, sumarDi
 
 export const dynamic = "force-dynamic";
 
-/** Horas que se le dan al paciente para responder a un aviso por bloqueo antes de recordarle a la Dra. Gaby. */
-const HORAS_PARA_RESPONDER = 20;
+/** Horas que se le dan al paciente para responder a un aviso por bloqueo antes de recordarle a la Dra. Gaby (10: lo avisado antes de las 23:00 se recuerda a las 9:00). */
+const HORAS_PARA_RESPONDER = 10;
 
 /**
  * Resumen de la mañana para la Dra. Gaby (de 21:00 a 8:00 su celular no

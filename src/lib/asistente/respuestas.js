@@ -174,10 +174,14 @@ export function armar(ids, variables = {}, textos = ORIGINALES) {
 }
 
 /** Lista para las instrucciones del modelo (id: texto), sin la presentación. */
+/** Respuestas que manda SÓLO el sistema (al pasar el caso): el modelo no las puede elegir. */
+export const SOLO_SISTEMA = new Set(["pasar_dra_gaby", "pasar_urgencia", "pasar_dra_gaby_cerrado", "urgencia_cerrado"]);
+
+/** Ids que el modelo sí puede elegir con enviar_respuestas_aprobadas. */
+export const ELEGIBLES = Object.keys(RESPUESTAS).filter((id) => !SOLO_SISTEMA.has(id));
+
 export function catalogo(textos = ORIGINALES) {
-  return Object.keys(RESPUESTAS)
-    .map((id) => `- ${id}: ${textos[id]}`)
-    .join("\n");
+  return ELEGIBLES.map((id) => `- ${id}: ${textos[id]}`).join("\n");
 }
 
 /** [DÍA] → {dia} (y al revés) para la pantalla de edición. */

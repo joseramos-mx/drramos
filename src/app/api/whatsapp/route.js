@@ -119,10 +119,13 @@ export async function POST(request) {
         const ruta = archivo && (await guardarMedia(supabase, m.telefono, m.wa_id, archivo.buffer, archivo.mime));
         if (ruta) await supabase.from("whatsapp_mensajes").update({ media_ruta: ruta }).eq("id", nuevos[0].id);
       }
+      if (m.via === "paciente" && pacienteId) {
+        // Cualquier mensaje suyo cuenta como respuesta a un aviso por bloqueo (ya no hay que llamarle)
+        await supabase.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", pacienteId).not("aviso_bloqueo_en", "is", null);
+      }
       if (m.via === "paciente" && leerBoton(m.respuesta)) {
-        // Tocó un botón de "Mi cita": se resuelve sin el asistente
+        // Tocó un botón de "Mi cita": se resuelve sin el asistente (un texto en el mismo lote sí lo contesta el asistente)
         botonesCita.push({ telefono: m.telefono, respuesta: m.respuesta });
-        nuevosPorTel.delete(m.telefono);
       } else if (m.via === "paciente") nuevosPorTel.set(m.telefono, { pacienteId, waId: m.wa_id });
     } catch (e) {
       console.error("[whatsapp] mensaje", m.wa_id, e?.message || e);
