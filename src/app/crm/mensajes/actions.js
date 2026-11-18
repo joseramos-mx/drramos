@@ -9,7 +9,7 @@ import { BUCKET, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor"
 import { ETIQUETAS } from "./lib";
 import { PLANTILLAS, rellenar } from "./plantillas";
 import { ARCHIVOS } from "./archivos";
-import { ETIQUETAS_DATO, ORIGINALES, VARIABLES, deCorchetes } from "@/lib/asistente/respuestas";
+import { ETIQUETAS_DATO, ORIGINALES, VARIABLES, deCorchetes, esPropia } from "@/lib/asistente/respuestas";
 import { filtroDuro } from "@/lib/asistente";
 import { redirect } from "next/navigation";
 
@@ -264,6 +264,39 @@ export async function enviarArchivoAction(telefonoRaw, tipo, ruta, mime, nombre,
 }
 
 /** "Tomar el chat" (lo atiende ella) o "Devolver al asistente". */
+/** Ajustes → Cambiar contraseña (la de quien tiene la sesión abierta). */
+export async function cambiarContrasenaAction(nuevaRaw) {
+  const nueva = String(nuevaRaw || "");
+  if (nueva.length < 8) return { error: "Debe tener por lo menos 8 letras o números." };
+  if (nueva.length > 72) return { error: "Es demasiado larga (máximo 72)." };
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { error } = await supabase.auth.updateUser({ password: nueva });
+  if (error) {
+    if (/same|different/i.test(error.message)) return { error: "Es la misma que ya tenías; escribe una distinta." };
+    if (/weak|short|characters/i.test(error.message)) return { error: "Es muy fácil de adivinar; usa una más larga, con letras y números." };
+    if (/reauth|recent/i.test(error.message)) return { error: "Por seguridad, cierra sesión, vuelve a entrar y cámbiala enseguida." };
+    return { error: "No se pudo cambiar. Intenta de nuevo." };
+  }
+  return { ok: true };
+}
+
+/** "Ya quedó": el chat sale de Pendientes sin mandarle nada al paciente. */
+export async function marcarListoAction(pacienteId) {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { data: p, error } = await supabase
+    .from("pacientes")
+    .update({ chat_listo_en: new Date().toISOString() })
+    .eq("id", pacienteId)
+    .select("whatsapp")
+    .maybeSingle();
+  if (error) return { error: "No se pudo marcar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes");
+  if (p?.whatsapp) revalidatePath(`/crm/mensajes/${p.whatsapp}`);
+  return { ok: true };
+}
+
 export async function cambiarQuienAtiendeAction(pacienteId, quien) {
   if (!["asistente", "humano"].includes(quien)) return { error: "Opción no válida." };
   const { supabase, user } = await sesion();
@@ -382,7 +415,67 @@ export async function guardarRespuestaAction(id, textoConCorchetes) {
   return { ok: true, aviso: riesgo ? `Se guardó, pero ojo: ${riesgo}. Revísalo con Jesús.` : null };
 }
 
-/** Regresa una respuesta a su texto original. */
+/** "Cuando piden…" → "cuando piden…" (se lee como "Úsala cuando piden…"). */
+const minusculaInicial = (t) => t.charAt(0).toLowerCase() + t.slice(1);
+
+/** Revisa una respuesta que agregó ella: sin precios, promesas, medicamentos ni "especialista". */
+function revisarPropia(cuando, texto) {
+  if (cuando.length < 3) return "Escribe cuándo debe usarla el asistente (por ejemplo: cuando piden más información).";
+  if (cuando.length > 200) return "La descripción de cuándo usarla es muy larga (máximo 200 letras).";
+  if (!texto) return "Escribe la respuesta.";
+  if (texto.length > 1000) return "Es demasiado larga (máximo 1000 letras).";
+  if (/\{(dia|hora|horarios|nombre)\}/.test(texto)) return "En una respuesta nueva no se pueden usar datos como [DÍA] o [HORA]; escríbela completa.";
+  const riesgo = filtroDuro(texto);
+  if (riesgo && riesgo !== "demasiado largo") {
+    const porque = {
+      "menciona dinero": "trae una cantidad de dinero (el asistente sólo puede dar los $600 de la valoración)",
+      "da un rango o cantidad": "trae un precio o rango",
+      "habla de medicamentos": "habla de medicamentos",
+      "promete resultados": "promete resultados (por ejemplo \"el mejor\", \"sin dolor\", \"garantizado\")",
+      "dice especialista": "dice \"especialista\"",
+      "parece diagnóstico": "suena a diagnóstico",
+    };
+    return `No se puede guardar porque ${porque[riesgo] || riesgo}. Cámbialo o pídele ayuda a Jesús.`;
+  }
+  return null;
+}
+
+/** Agrega una respuesta nueva al asistente (la elige igual que las demás). */
+export async function crearRespuestaPropiaAction(cuandoRaw, textoRaw) {
+  const cuando = minusculaInicial(String(cuandoRaw || "").trim());
+  const texto = String(textoRaw || "").trim();
+  const problema = revisarPropia(cuando, texto);
+  if (problema) return { error: problema };
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const id = `propia_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const { error } = await supabase
+    .from("asistente_respuestas")
+    .insert({ id, cuando, texto, updated_at: new Date().toISOString(), updated_by: user.id });
+  if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/respuestas");
+  return { ok: true, id };
+}
+
+/** Cambia una respuesta que agregó ella. */
+export async function editarRespuestaPropiaAction(id, cuandoRaw, textoRaw) {
+  if (!esPropia(id)) return { error: "Esa respuesta no existe." };
+  const cuando = minusculaInicial(String(cuandoRaw || "").trim());
+  const texto = String(textoRaw || "").trim();
+  const problema = revisarPropia(cuando, texto);
+  if (problema) return { error: problema };
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const { error } = await supabase
+    .from("asistente_respuestas")
+    .update({ cuando, texto, updated_at: new Date().toISOString(), updated_by: user.id })
+    .eq("id", id);
+  if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+  revalidatePath("/crm/mensajes/respuestas");
+  return { ok: true };
+}
+
+/** Regresa una respuesta a su texto original (o borra una que agregó ella). */
 export async function restaurarRespuestaAction(id) {
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };

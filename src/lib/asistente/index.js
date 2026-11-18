@@ -19,7 +19,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { INSTRUCCIONES } from "./conocimiento";
-import { armar, catalogo, ELEGIBLES, textosEfectivos } from "./respuestas";
+import { armar, catalogo, elegiblesDe, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { atenderBotonCita, botonDeAccion, yaRespondio } from "@/lib/mi-cita";
@@ -100,7 +100,7 @@ const HERRAMIENTAS = [
     input_schema: {
       type: "object",
       properties: {
-        ids: { type: "array", items: { type: "string", enum: ELEGIBLES } },
+        ids: { type: "array", items: { type: "string" } }, // la lista de ids se pone en decidir()
         dia: { type: "string", description: 'Para ofrecer_horarios / sin_horarios, p. ej. "lunes 26 de octubre"; si no, ""' },
         horarios: { type: "string", description: 'Para ofrecer_horarios: 2 o 3 horas libres, p. ej. "10:00, 12:30 o 17:00"; si no, ""' },
       },
@@ -437,8 +437,14 @@ export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente 
  * Devuelve { tipo: "aprobada" | "libre" | "humano", texto, ids?, urgente?, motivo?, acciones }.
  */
 async function decidir(client, admin, { paciente, messages, contexto, puedeAgendar, tieneCita = false, textos, sistema }) {
+  const elegibles = elegiblesDe(textos);
   const tools = HERRAMIENTAS.filter(
     (t) => (t.name !== "agendar_valoracion" || puedeAgendar) && (t.name !== "cita_del_paciente" || (puedeAgendar && tieneCita))
+  ).map((t) =>
+    // La lista de respuestas incluye las que agregó la Dra. Gaby
+    t.name === "enviar_respuestas_aprobadas"
+      ? { ...t, input_schema: { ...t.input_schema, properties: { ...t.input_schema.properties, ids: { type: "array", items: { type: "string", enum: elegibles } } } } }
+      : t
   );
   const acciones = [];
   const consultados = new Map(); // "lunes 26 de octubre" → horas libres que el modelo sí vio
@@ -605,7 +611,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     .filter(Boolean)
     .join("\n");
 
-  const { data: editadas } = await admin.from("asistente_respuestas").select("id, texto");
+  const { data: editadas } = await admin.from("asistente_respuestas").select("*");
   const textos = textosEfectivos(editadas || []);
   const sistema = sistemaCon(textos);
 

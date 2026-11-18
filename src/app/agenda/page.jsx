@@ -30,48 +30,46 @@ export default async function AgendaPage({ searchParams }) {
   if (!user) redirect("/crm/login?from=/agenda");
 
   const { desde, hasta } = rangoDelDia(fecha);
-  const { data: citas, error } = await supabase
-    .from("citas")
-    .select(CITA_SELECT)
-    .gte("inicio", desde)
-    .lt("inicio", hasta)
-    .order("inicio");
-
-  // Viene de "Agendar" en Mensajes: el paciente ya va elegido
-  const { data: preseleccion } = sp.paciente
-    ? await supabase.from("pacientes").select("id, nombre, whatsapp").eq("id", String(sp.paciente)).maybeSingle()
-    : { data: null };
-
-  const { data: pendientes } = await supabase
-    .from("pendientes")
-    .select("id, texto, hecho")
-    .eq("fecha", fecha)
-    .order("created_at");
-
-  const extra = preseleccion ? `&paciente=${preseleccion.id}` : "";
-
   // Puntos del calendario del mes: cuántas citas hay cada día
   const primero = `${fecha.slice(0, 7)}-01`;
   const sigMes = new Date(`${primero}T00:00:00Z`);
   sigMes.setUTCMonth(sigMes.getUTCMonth() + 1);
-  const { data: delMes } = await supabase
-    .from("citas")
-    .select("inicio")
-    .gte("inicio", rangoDelDia(primero).desde)
-    .lt("inicio", rangoDelDia(sigMes.toISOString().slice(0, 10)).desde)
-    .neq("estado", "cancelada");
+  const finMes = sumarDias(sigMes.toISOString().slice(0, 10), -1);
+  const BLOQUEO = "id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota";
+
+  // Todo se pide al mismo tiempo (antes iba una consulta tras otra y la pantalla tardaba)
+  const [
+    { data: citas, error },
+    { data: preseleccion },
+    { data: pendientes },
+    { data: delMes },
+    // Días u horas sin consulta: los del mes (calendario y este día) y los que vienen (para quitarlos)
+    { data: bloqueosMes },
+    { data: proximos },
+  ] = await Promise.all([
+    supabase.from("citas").select(CITA_SELECT).gte("inicio", desde).lt("inicio", hasta).order("inicio"),
+    // Viene de "Agendar" en Mensajes: el paciente ya va elegido
+    sp.paciente
+      ? supabase.from("pacientes").select("id, nombre, whatsapp").eq("id", String(sp.paciente)).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("pendientes").select("id, texto, hecho").eq("fecha", fecha).order("created_at"),
+    supabase
+      .from("citas")
+      .select("inicio")
+      .gte("inicio", rangoDelDia(primero).desde)
+      .lt("inicio", rangoDelDia(sigMes.toISOString().slice(0, 10)).desde)
+      .neq("estado", "cancelada"),
+    supabase.from("bloqueos").select(BLOQUEO).lte("desde_fecha", finMes).gte("hasta_fecha", primero),
+    supabase.from("bloqueos").select(BLOQUEO).gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
+  ]);
+
+  const extra = preseleccion ? `&paciente=${preseleccion.id}` : "";
   const conteo = {};
   for (const c of delMes || []) {
     const dia = hoyDurango(new Date(c.inicio));
     conteo[dia] = (conteo[dia] || 0) + 1;
   }
 
-  // Días u horas sin consulta: los del mes (calendario y este día) y los que vienen (para quitarlos)
-  const finMes = sumarDias(sigMes.toISOString().slice(0, 10), -1);
-  const [{ data: bloqueosMes }, { data: proximos }] = await Promise.all([
-    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota").lte("desde_fecha", finMes).gte("hasta_fecha", primero),
-    supabase.from("bloqueos").select("id, desde_fecha, hasta_fecha, desde_min, hasta_min, motivo, evento, nota").gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
-  ]);
   const bloqueados = [];
   for (let f = primero; f <= finMes; f = sumarDias(f, 1)) {
     if (bloqueosDelDia(bloqueosMes, f).some((b) => b.todoElDia)) bloqueados.push(f);

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { PaperPlaneRightIcon } from "@phosphor-icons/react";
+import { ClockIcon, PaperPlaneRightIcon } from "@phosphor-icons/react";
 import Hoja from "../hoja";
 import { enviarPlantillaAction } from "../actions";
 import { PLANTILLAS, rellenar } from "../plantillas";
@@ -36,10 +36,11 @@ export default function Plantilla({ telefono, nombre, nuevo }) {
 
   return (
     <div className="space-y-2 px-1 py-1">
-      <p className="text-[16px] leading-snug text-[#3d372f]">
+      <p className="flex gap-2 text-[16px] leading-snug text-[#3d372f]">
+        {!nuevo && <ClockIcon size={22} weight="bold" aria-hidden className="mt-0.5 shrink-0 text-[#8a6d3f]" />}
         {nuevo
           ? "Este paciente todavía no te ha escrito. Para empezar, WhatsApp sólo deja mandar un mensaje aprobado."
-          : "⏰ Pasaron más de 24 horas desde su último mensaje. Para volver a escribirle, manda un mensaje aprobado."}
+          : "Pasaron más de 24 horas desde su último mensaje. Para volver a escribirle, manda un mensaje aprobado."}
       </p>
       <button
         type="button"
