@@ -13,6 +13,16 @@ export const ETIQUETAS = [
 
 export const etiquetaLabel = (id) => ETIQUETAS.find((e) => e.id === id)?.label || id;
 
+/**
+ * Falta contestar: el último mensaje es del paciente, o el asistente le pasó
+ * el caso a ella. Si ella tocó "Ya quedó" después de ese mensaje, ya no.
+ */
+export function esperaRespuesta(ultimo, paraElla, listoEn) {
+  if (!ultimo) return false;
+  const pendiente = ultimo.direccion === "entrada" || Boolean(paraElla && ultimo.via === "asistente");
+  return pendiente && !(listoEn && new Date(listoEn).getTime() >= new Date(ultimo.enviado_en).getTime());
+}
+
 /** Una fila por teléfono con su último mensaje; primero las que esperan respuesta. */
 export function conversaciones(mensajes) {
   const g = new Map();
@@ -22,14 +32,14 @@ export function conversaciones(mensajes) {
     if (m.paciente?.nombre) c.nombre = m.paciente.nombre;
     if (m.paciente?.etiquetas) c.etiquetas = m.paciente.etiquetas;
     if (m.paciente) c.paraElla = m.paciente.atiende === "humano" && m.paciente.atiende_desde && Date.now() - new Date(m.paciente.atiende_desde).getTime() < 8 * 3600 * 1000;
+    if (m.paciente) c.listoEn = m.paciente.chat_listo_en || null;
     g.set(m.telefono, c);
   }
   return [...g.values()]
     .map((c) => ({
       ...c,
       nombre: c.nombre || `WhatsApp ${c.telefono.slice(-10)}`,
-      // Falta contestar: el último mensaje es del paciente, o el asistente le pasó el caso a ella
-      esperando: c.ultimo.direccion === "entrada" || Boolean(c.paraElla && c.ultimo.via === "asistente"),
+      esperando: esperaRespuesta(c.ultimo, c.paraElla, c.listoEn),
     }))
     .sort((a, b) => {
       if (a.esperando !== b.esperando) return a.esperando ? -1 : 1;
@@ -68,8 +78,8 @@ export function horaDe(iso) {
 /** Texto de la lista cuando el último mensaje no es texto. */
 export function resumenDe(m) {
   if (m.texto) return m.texto;
-  const t = { image: "📷 Foto", audio: "🎤 Audio", video: "🎥 Video", document: "📄 Documento", sticker: "Sticker", location: "📍 Ubicación" };
-  return t[m.tipo] || "📎 Archivo";
+  const t = { image: "Foto", audio: "Nota de voz", video: "Video", document: "Documento", sticker: "Sticker", location: "Ubicación" };
+  return t[m.tipo] || "Archivo";
 }
 
 /** Para buscar sin que importen acentos ni mayúsculas ("Lopez" encuentra "López"). */

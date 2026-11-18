@@ -5,6 +5,7 @@ import { BarraInferior, BarraSuperior } from "../encabezado";
 import Avisos from "../avisos";
 import ModoAsistente from "./modo-asistente";
 import Recordatorios from "./recordatorios";
+import Contrasena from "./contrasena";
 
 /** Pantalla de Ajustes (la usa la app y la demo). */
 export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar", automaticos = {} }) {
@@ -63,6 +64,7 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
       <h2 className={titulo}>Cuenta</h2>
       <div className="border-y border-[#1c1a17]/[0.08]">
         {email && <p className="px-5 pt-4 text-[15px] text-[#7a7368]">{email}</p>}
+        <Contrasena demo={base !== "/crm/mensajes"} />
         <form action={base === "/crm/mensajes" ? signOutAction : undefined}>
           <button type="submit" className={`${fila} w-full font-semibold text-[#c0392b]`}>
             Cerrar sesión

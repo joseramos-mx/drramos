@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { seccionesParaEditar } from "@/lib/asistente/respuestas";
+import { propiasParaEditar, seccionesParaEditar } from "@/lib/asistente/respuestas";
 import { BarraInferior } from "../encabezado";
 import EditorRespuestas from "./editor";
 
@@ -13,11 +13,11 @@ export default async function RespuestasPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/crm/login?from=/crm/mensajes/respuestas");
-  const { data: editadas } = await supabase.from("asistente_respuestas").select("id, texto");
+  const { data: editadas } = await supabase.from("asistente_respuestas").select("*");
 
   return (
     <main className="mx-auto w-full max-w-[720px] pb-28">
-      <EditorRespuestas secciones={seccionesParaEditar(editadas)} />
+      <EditorRespuestas secciones={seccionesParaEditar(editadas)} propias={propiasParaEditar(editadas)} />
       <BarraInferior activo="ajustes" />
     </main>
   );

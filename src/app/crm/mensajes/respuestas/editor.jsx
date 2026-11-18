@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, PencilSimpleIcon } from "@phosphor-icons/react";
-import { guardarRespuestaAction, restaurarRespuestaAction } from "../actions";
+import { ArrowLeftIcon, PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { crearRespuestaPropiaAction, editarRespuestaPropiaAction, guardarRespuestaAction, restaurarRespuestaAction } from "../actions";
 import { aCorchetes } from "@/lib/asistente/respuestas";
 
 // Cómo se ven en el globo los datos que llena el sistema
@@ -151,8 +151,188 @@ function Tarjeta({ item, demo }) {
   );
 }
 
-/** "Mis respuestas": la Dra. Gaby ve y edita cómo contesta el asistente. */
-export default function EditorRespuestas({ secciones, volver = "/crm/mensajes/ajustes", demo = false }) {
+const CAJA =
+  "w-full resize-y rounded-[20px] border-0 bg-[#f2efe9] px-4 py-3 text-[18px] leading-snug text-[#1c1a17] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#b89968]";
+
+/** Formulario de una respuesta que agrega ella: cuándo usarla + el texto. */
+function FormaPropia({ inicial, onGuardar, onCancelar, pendiente }) {
+  const [cuando, setCuando] = useState(inicial?.cuando || "");
+  const [texto, setTexto] = useState(inicial?.texto || "");
+  const id = inicial?.id || "nueva";
+  return (
+    <div className="flex flex-col gap-2.5">
+      <label htmlFor={`c-${id}`} className="text-[15px] font-semibold text-[#5b544a]">
+        ¿Cuándo debe usarla el asistente?
+      </label>
+      <input
+        id={`c-${id}`}
+        value={cuando}
+        onChange={(e) => setCuando(e.target.value)}
+        placeholder="Por ejemplo: cuando preguntan si atienden en domingo"
+        autoCapitalize="sentences"
+        className={CAJA}
+      />
+      <label htmlFor={`t-${id}`} className="text-[15px] font-semibold text-[#5b544a]">
+        Lo que le contesta al paciente:
+      </label>
+      <textarea id={`t-${id}`} value={texto} onChange={(e) => setTexto(e.target.value)} rows={5} autoCapitalize="sentences" className={CAJA} />
+      <p className="text-[15px] leading-snug text-[#7a7368]">Sin precios (sólo los $600 de la valoración), sin promesas de resultados y sin decir &quot;especialista&quot;.</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onGuardar(cuando, texto)}
+          disabled={pendiente}
+          className="h-12 flex-1 rounded-full bg-[#1c1a17] px-5 text-[17px] font-semibold text-white disabled:opacity-50"
+        >
+          {pendiente ? "Guardando…" : "Guardar"}
+        </button>
+        <button type="button" onClick={onCancelar} className="h-12 flex-1 rounded-full bg-[#f2efe9] px-5 text-[17px] font-semibold text-[#1c1a17]">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const COLOR_MSG = { error: "text-[#c0392b]", aviso: "text-[#9a5b16]", ok: "text-[#2f7a4b]" };
+
+/** Una respuesta que agregó ella: se puede cambiar o borrar. */
+function TarjetaPropia({ item, demo, onBorrada }) {
+  const [actual, setActual] = useState(item);
+  const [editando, setEditando] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [pendiente, start] = useTransition();
+
+  const guardar = (cuando, texto) =>
+    start(async () => {
+      const res = demo ? { ok: true } : await editarRespuestaPropiaAction(item.id, cuando, texto);
+      if (res?.error) return setMsg({ tipo: "error", texto: res.error });
+      setActual({ ...actual, cuando: cuando.trim(), texto: texto.trim() });
+      setEditando(false);
+      setMsg({ tipo: "ok", texto: "Guardado ✓ El asistente ya la usa así." });
+    });
+
+  const borrar = () =>
+    start(async () => {
+      const res = demo ? { ok: true } : await restaurarRespuestaAction(item.id);
+      if (res?.error) return setMsg({ tipo: "error", texto: res.error });
+      onBorrada(item.id);
+    });
+
+  return (
+    <li className="flex flex-col gap-3 border-b border-[#1c1a17]/[0.07] px-5 py-4">
+      {!editando ? (
+        <>
+          <p className="text-[18px] font-bold text-[#1c1a17]">Úsala {actual.cuando}</p>
+          <Globo texto={actual.texto} />
+          {confirmar ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[16px] font-semibold text-[#1c1a17]">¿Borrar esta respuesta?</span>
+              <button type="button" onClick={borrar} disabled={pendiente} className="h-12 rounded-full bg-[#c0392b] px-5 text-[16px] font-semibold text-white disabled:opacity-50">
+                Sí, borrar
+              </button>
+              <button type="button" onClick={() => setConfirmar(false)} className="h-12 rounded-full bg-[#f2efe9] px-5 text-[16px] font-semibold text-[#1c1a17]">
+                No
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMsg(null);
+                  setEditando(true);
+                }}
+                className="flex h-12 w-fit items-center gap-2 rounded-full border-2 border-[#1c1a17]/10 bg-white px-5 text-[16px] font-semibold text-[#1c1a17]"
+              >
+                <PencilSimpleIcon size={20} weight="bold" /> Editar
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmar(true)}
+                className="flex h-12 w-fit items-center gap-2 rounded-full border-2 border-[#1c1a17]/10 bg-white px-5 text-[16px] font-semibold text-[#c0392b]"
+              >
+                <TrashIcon size={20} weight="bold" /> Borrar
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <FormaPropia inicial={actual} onGuardar={guardar} onCancelar={() => setEditando(false)} pendiente={pendiente} />
+      )}
+      {msg && (
+        <p role={msg.tipo === "error" ? "alert" : "status"} className={`text-[15px] font-medium ${COLOR_MSG[msg.tipo]}`}>
+          {msg.texto}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/** Sección "Respuestas que agregaste" con el botón para agregar una nueva. */
+function Propias({ iniciales, demo }) {
+  const [lista, setLista] = useState(iniciales);
+  const [agregando, setAgregando] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [pendiente, start] = useTransition();
+
+  const crear = (cuando, texto) =>
+    start(async () => {
+      const res = demo ? { ok: true, id: `propia_demo${Date.now().toString(36)}` } : await crearRespuestaPropiaAction(cuando, texto);
+      if (res?.error) return setMsg({ tipo: "error", texto: res.error });
+      setLista((l) => [...l, { id: res.id, cuando: cuando.trim(), texto: texto.trim() }]);
+      setAgregando(false);
+      setMsg({ tipo: "ok", texto: "Guardada ✓ El asistente ya la puede usar." });
+    });
+
+  return (
+    <section>
+      <h2 className="px-5 pb-1 pt-5 text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]">Respuestas que agregaste</h2>
+      {lista.length === 0 && !agregando && (
+        <p className="px-5 pb-2 text-[16px] leading-snug text-[#5b544a]">
+          ¿Los pacientes preguntan algo que no está aquí? Agrega la respuesta y el asistente la usará cuando venga al caso.
+        </p>
+      )}
+      <ul>
+        {lista.map((it) => (
+          <TarjetaPropia key={it.id} item={it} demo={demo} onBorrada={(id) => setLista((l) => l.filter((x) => x.id !== id))} />
+        ))}
+      </ul>
+      <div className="flex flex-col gap-3 px-5 py-4">
+        {agregando ? (
+          <FormaPropia
+            onGuardar={crear}
+            onCancelar={() => {
+              setAgregando(false);
+              setMsg(null);
+            }}
+            pendiente={pendiente}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setMsg(null);
+              setAgregando(true);
+            }}
+            className="flex h-12 w-fit items-center gap-2 rounded-full bg-[#1c1a17] px-5 text-[17px] font-semibold text-white"
+          >
+            <PlusIcon size={20} weight="bold" /> Agregar respuesta
+          </button>
+        )}
+        {msg && (
+          <p role={msg.tipo === "error" ? "alert" : "status"} className={`text-[15px] font-medium ${COLOR_MSG[msg.tipo]}`}>
+            {msg.texto}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** "Mis respuestas": la Dra. Gaby ve y edita cómo contesta el asistente, y agrega las suyas. */
+export default function EditorRespuestas({ secciones, propias = [], volver = "/crm/mensajes/ajustes", demo = false }) {
   const editadas = secciones.flatMap((s) => s.items).filter((i) => i.editada).length;
   return (
     <>
@@ -166,6 +346,7 @@ export default function EditorRespuestas({ secciones, volver = "/crm/mensajes/aj
         Así contesta el asistente a los pacientes. Toca <b>Editar</b> para decirlo a tu manera; el asistente lo usa así desde el
         siguiente mensaje.{editadas > 0 && ` Llevas ${editadas} editada${editadas === 1 ? "" : "s"}.`}
       </p>
+      <Propias iniciales={propias} demo={demo} />
       {secciones.map((s) => (
         <section key={s.seccion}>
           <h2 className="px-5 pb-1 pt-5 text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]">{s.seccion}</h2>

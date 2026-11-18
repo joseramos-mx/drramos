@@ -8,6 +8,8 @@ import Cabecera from "./cabecera";
 import Chat from "./chat";
 import Responder from "./responder";
 import QuienAtiende from "./quien-atiende";
+import YaQuedo from "./ya-quedo";
+import { esperaRespuesta } from "../lib";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ export default async function ConversacionPage({ params }) {
       .eq("telefono", telefono)
       .order("enviado_en")
       .limit(500),
-    supabase.from("pacientes").select("id, nombre, origen, etiquetas, atiende, atiende_desde").eq("whatsapp", telefono).limit(1).maybeSingle(),
+    supabase.from("pacientes").select("*").eq("whatsapp", telefono).limit(1).maybeSingle(),
     supabase.from("asistente_config").select("modo").eq("id", 1).maybeSingle(),
     supabase
       .from("asistente_borradores")
@@ -49,6 +51,7 @@ export default async function ConversacionPage({ params }) {
     paciente?.atiende === "humano" && paciente.atiende_desde && Date.now() - new Date(paciente.atiende_desde).getTime() < 8 * 3600 * 1000
       ? "humano"
       : "asistente";
+  const esperando = esperaRespuesta(mensajes?.at(-1), atiende === "humano", paciente?.chat_listo_en);
 
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] flex-col bg-[#f5f1ea]">
@@ -67,6 +70,7 @@ export default async function ConversacionPage({ params }) {
         <Chat mensajes={mensajes || []} />
       </div>
       <div className="sticky bottom-0 border-t border-[#1c1a17]/[0.08] bg-white px-3 pb-[calc(10px+env(safe-area-inset-bottom))] pt-2.5">
+        {paciente && esperando && <YaQuedo key={mensajes.at(-1).id} pacienteId={paciente.id} />}
         <Responder
           telefono={telefono}
           abierta={abierta}

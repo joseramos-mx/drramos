@@ -290,7 +290,7 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
 async function pasar(admin, telefono, paciente, motivo, texto) {
   await yaRespondio(admin, paciente.id);
   await pasarAHumano(admin, paciente, telefono, { motivo, urgente: false });
-  const { data: editadas } = await admin.from("asistente_respuestas").select("id, texto");
+  const { data: editadas } = await admin.from("asistente_respuestas").select("*");
   await decir(admin, telefono, paciente.id, texto || textoAlPasar(textosEfectivos(editadas || []), {}, new Date(), await diasCerrados(admin)));
 }
 

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { FileTextIcon, ImageIcon, LightningIcon, MicrophoneIcon, PaperPlaneRightIcon, PlusIcon, VideoCameraIcon, XIcon } from "@phosphor-icons/react";
+import { FileTextIcon, ImageIcon, LightningIcon, MicrophoneIcon, PaperPlaneRightIcon, PlusIcon, RobotIcon, VideoCameraIcon, XIcon } from "@phosphor-icons/react";
 import { createClient } from "@/utils/supabase/client";
 import { enviarArchivoAction, enviarFotoAction, enviarMensajeAction, prepararArchivoAction, resolverBorradorAction } from "../actions";
 import { ARCHIVOS, BUCKET_MEDIA, pesoLegible } from "../archivos";
@@ -55,7 +55,9 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
   const selectorVideo = useRef(null);
   const selectorDoc = useRef(null);
 
+  const enviando = useRef(false); // para que dos Enter seguidos no manden el mensaje dos veces
   useEffect(() => {
+    enviando.current = false;
     if (state?.ok) setTexto("");
   }, [state]);
 
@@ -202,14 +204,23 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
 
   const fila = "flex w-full items-center gap-4 px-5 py-3.5 text-left active:bg-[#f5f1ea]";
   return (
-    <form action={formAction}>
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (enviando.current) return e.preventDefault();
+        enviando.current = true;
+        setTimeout(() => (enviando.current = false), 8000); // por si se cae la red
+      }}
+    >
       <input type="hidden" name="telefono" value={telefono} />
       <input ref={selector} type="file" accept="image/*" onChange={elegirFoto} className="hidden" />
       <input ref={selectorVideo} type="file" accept={ARCHIVOS.video.tipos.join(",")} onChange={elegirAdjunto("video")} className="hidden" />
       <input ref={selectorDoc} type="file" accept={ARCHIVOS.document.tipos.join(",")} onChange={elegirAdjunto("document")} className="hidden" />
       {borrador && borradorVisible && (
         <div className="mb-2.5 rounded-[20px] border-2 border-dashed border-[#b89968]/60 bg-[#fbf6ec] p-3">
-          <p className="px-1 text-[14px] font-semibold uppercase tracking-wide text-[#8a6d3f]">🤖 Respuesta propuesta</p>
+          <p className="flex items-center gap-1.5 px-1 text-[14px] font-semibold uppercase tracking-wide text-[#8a6d3f]">
+            <RobotIcon size={18} weight="fill" aria-hidden /> Respuesta propuesta
+          </p>
           <p className="whitespace-pre-wrap px-1 pt-1 text-[17px] leading-snug text-[#1c1a17]">{borrador.texto}</p>
           <div className="mt-3 flex gap-2">
             {[
@@ -254,6 +265,13 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
           rows={Math.min(5, Math.max(1, texto.split("\n").length + Math.floor(texto.length / 30)))}
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => {
+            // En computadora Enter envía y Shift+Enter baja de renglón; en el celular Enter baja de renglón (como WhatsApp)
+            if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+            if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+            e.preventDefault();
+            if (texto.trim()) e.currentTarget.form?.requestSubmit();
+          }}
           placeholder="Mensaje"
           className={`min-h-[52px] resize-none py-3.5 ${campo}`}
         />

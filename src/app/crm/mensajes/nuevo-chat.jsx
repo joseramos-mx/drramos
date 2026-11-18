@@ -81,7 +81,7 @@ export default function NuevoChat({ base = "/crm/mensajes", demo = null }) {
               </li>
             ))}
             {!buscando && encontrados.length === 0 && (
-              <li className="px-5 py-3 text-[16px] text-[#9a9388]">No está en la lista. Agrégalo abajo 👇</li>
+              <li className="px-5 py-3 text-[16px] text-[#9a9388]">No está en la lista. Agrégalo abajo.</li>
             )}
           </ul>
         )}

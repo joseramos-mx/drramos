@@ -23,7 +23,7 @@ export async function POST(req) {
   if (!user || !esAdmin(user.email)) return Response.json({ error: "Sólo para administradores." }, { status: 403 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "Falta la llave ANTHROPIC_API_KEY." });
 
-  const { data: editadas } = await supabase.from("asistente_respuestas").select("id, texto");
+  const { data: editadas } = await supabase.from("asistente_respuestas").select("*");
   const r = await probarConversacion({ conversacion: caso.conversacion, agendaLlena: caso.agendaLlena, citaProxima: caso.citaProxima, textos: textosEfectivos(editadas || []) });
   return Response.json({ ...calificar(caso, r), resultado: r });
 }

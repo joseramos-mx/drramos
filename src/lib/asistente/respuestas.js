@@ -21,6 +21,8 @@ export const RESPUESTAS = {
   telefono: "Puede escribirnos aquí mismo o llamar al 618 568 0916.",
   sobre_doctor:
     "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista egresado de la UJED, con más de 30 años de experiencia. Es autor del libro \"El Arte de Hacer Dientes\" y fundador del Instituto Autónomo del Norte (IAN), escuela de posgrados en odontología.",
+  mas_informacion:
+    "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista con más de 30 años de experiencia en odontología estética, diseño de sonrisa, prótesis dental y rehabilitación con implantes 🦷 Es fundador del IAN, instituto de actualización para odontólogos, y autor de un libro de estética dental. Cada tratamiento se diseña a la medida de cada paciente. ¿Le gustaría agendar su valoración? Más información: drfelipedejesusramos.com",
   tecnologia:
     "El doctor trabaja con escaneo 3D de la boca (sin pastas ni moldes) y tiene laboratorio propio con fresadora e impresión 3D, así que los tratamientos requieren menos citas.",
 
@@ -110,7 +112,8 @@ export const SECCIONES = [
     ["saludo", "Saludo"], ["ubicacion", "¿Dónde están?"], ["horario", "¿Qué horario tienen?"],
     ["estacionamiento", "¿Hay estacionamiento?"], ["pagos", "¿Cómo se puede pagar? / meses sin intereses"],
     ["factura", "¿Facturan?"], ["telefono", "¿A qué número llamo?"],
-    ["sobre_doctor", "¿Quién es el doctor?"], ["tecnologia", "Escáner 3D y laboratorio propio"],
+    ["sobre_doctor", "¿Quién es el doctor?"], ["mas_informacion", "Cuando piden \"más información\" sin decir de qué"],
+    ["tecnologia", "Escáner 3D y laboratorio propio"],
   ]],
   ["Precios y valoración", [
     ["precio_tratamiento", "¿Cuánto cuesta un tratamiento? (nunca se da precio)"],
@@ -149,8 +152,26 @@ export const ORIGINALES = { presentacion: PRESENTACION, ...RESPUESTAS };
  */
 export function textosEfectivos(editadas = []) {
   const t = { ...ORIGINALES };
-  for (const e of editadas) if (e?.id in t && String(e.texto || "").trim()) t[e.id] = e.texto;
+  const cuando = {};
+  for (const e of editadas) {
+    if (!String(e?.texto || "").trim()) continue;
+    if (e.id in t) t[e.id] = e.texto;
+    else if (esPropia(e.id) && e.cuando) {
+      t[e.id] = e.texto;
+      cuando[e.id] = e.cuando;
+    }
+  }
+  // Las que agregó ella llevan su "cuándo usarla" (no enumerable: no se mezcla con los textos)
+  Object.defineProperty(t, "cuando", { value: cuando, enumerable: false });
   return t;
+}
+
+/** Respuestas que agregó la Dra. Gaby en "Mis respuestas" (id "propia_…"). */
+export const esPropia = (id) => /^propia_[a-z0-9]{6,20}$/.test(String(id || ""));
+
+/** Ids que el modelo puede elegir: las fijas más las que agregó ella. */
+export function elegiblesDe(textos = ORIGINALES) {
+  return [...ELEGIBLES, ...Object.keys(textos.cuando || {})];
 }
 
 /** Texto final de varias respuestas aprobadas, con sus datos. Devuelve { texto } o { error }. */
@@ -181,7 +202,9 @@ export const SOLO_SISTEMA = new Set(["pasar_dra_gaby", "pasar_urgencia", "pasar_
 export const ELEGIBLES = Object.keys(RESPUESTAS).filter((id) => !SOLO_SISTEMA.has(id));
 
 export function catalogo(textos = ORIGINALES) {
-  return ELEGIBLES.map((id) => `- ${id}: ${textos[id]}`).join("\n");
+  const fijas = ELEGIBLES.map((id) => `- ${id}: ${textos[id]}`);
+  const propias = Object.entries(textos.cuando || {}).map(([id, cuando]) => `- ${id} (úsala ${cuando}): ${textos[id]}`);
+  return [...fijas, ...propias].join("\n");
 }
 
 /** [DÍA] → {dia} (y al revés) para la pantalla de edición. */
@@ -197,6 +220,14 @@ export function deCorchetes(texto) {
 }
 
 /** Lista de respuestas con el texto que usa hoy el asistente (editado o original). */
+/** Las que agregó ella, para la pantalla de edición (las más nuevas al final). */
+export function propiasParaEditar(editadas) {
+  return (editadas || [])
+    .filter((e) => esPropia(e.id) && e.cuando)
+    .sort((a, b) => String(a.updated_at || "").localeCompare(String(b.updated_at || "")))
+    .map((e) => ({ id: e.id, cuando: e.cuando, texto: e.texto }));
+}
+
 export function seccionesParaEditar(editadas) {
   const mapa = Object.fromEntries((editadas || []).map((e) => [e.id, e.texto]));
   return SECCIONES.map(([seccion, items]) => ({

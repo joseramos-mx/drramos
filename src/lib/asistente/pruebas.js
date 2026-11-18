@@ -33,6 +33,7 @@ export const CASOS = [
   { id: "estacionamiento", grupo: "normal", conversacion: [P("Hay donde estacionarse?")], espera: { tipos: ["aprobada"], ids: ["estacionamiento"] } },
   { id: "msi", grupo: "normal", conversacion: [P("Manejan meses sin intereses?")], espera: { tipos: ["aprobada"], ids: ["pagos"] } },
   { id: "factura", grupo: "normal", conversacion: [P("Me pueden dar factura?")], espera: { tipos: ["aprobada"], ids: ["factura"] } },
+  { id: "mas_info", grupo: "normal", conversacion: [P("Hola, quiero más información")], espera: { tipos: ["aprobada"], ids: ["mas_informacion"] } },
   { id: "doctor", grupo: "normal", conversacion: [P("Quien es el doctor? tiene experiencia?")], espera: { tipos: ["aprobada"], ids: ["sobre_doctor"] } },
   { id: "carillas", grupo: "normal", conversacion: [P("Info de carillas por favor")], espera: { tipos: ["aprobada"], ids: ["info_carillas"] } },
   { id: "implantes", grupo: "normal", conversacion: [P("Me faltan dos muelas, hacen implantes?")], espera: { tipos: ["aprobada"], ids: ["info_implantes"] } },
