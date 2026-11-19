@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { BarraInferior, BarraSuperior } from "./encabezado";
-import AutoRefresh from "../../agenda/components/auto-refresh";
+import AlInstante from "./al-instante";
 import { buscar, conversaciones } from "./lib";
 import Buscador from "./buscador";
 import NuevoChat from "./nuevo-chat";
@@ -38,7 +38,7 @@ export default async function MensajesPage({ searchParams }) {
 
   return (
     <main className="mx-auto w-full max-w-[720px] pb-28">
-      <AutoRefresh segundos={15} />
+      <AlInstante respaldo={20} />
       <BarraSuperior titulo="Mensajes" />
       <Buscador inicial={q || ""} />
       <Avisos compacto />

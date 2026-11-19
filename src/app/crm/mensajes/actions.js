@@ -490,7 +490,7 @@ export async function restaurarRespuestaAction(id) {
  * Si cambia el número, su chat se va con él (los mensajes pasan al número nuevo) y se abre ahí.
  * No se deja poner un número que ya es de otro paciente, para no revolver dos chats.
  */
-export async function corregirPacienteAction(pacienteId, nombre, whatsapp) {
+export async function corregirPacienteAction(pacienteId, nombre, whatsapp, { juntar = false } = {}) {
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
   const limpio = String(nombre || "").trim().replace(/\s+/g, " ");
@@ -507,7 +507,7 @@ export async function corregirPacienteAction(pacienteId, nombre, whatsapp) {
 
   if (tel !== anterior) {
     const { data: otro } = await supabase.from("pacientes").select("nombre").eq("whatsapp", tel).neq("id", paciente.id).limit(1).maybeSingle();
-    if (otro) return { error: `Ese número ya es de ${otro.nombre || "otro paciente"}. Avísale a Jesús para juntarlos.` };
+    if (otro && !juntar) return { error: `Ese número ya es de ${otro.nombre || "otro paciente"}.`, duplicado: otro.nombre || "otro paciente" };
   }
 
   const { error } = await supabase.from("pacientes").update({ nombre: limpio, whatsapp: tel }).eq("id", paciente.id);
@@ -520,8 +520,71 @@ export async function corregirPacienteAction(pacienteId, nombre, whatsapp) {
     await admin.from("asistente_borradores").update({ telefono: tel }).eq("telefono", anterior);
     revalidatePath(`/crm/mensajes/${anterior}`);
   }
+  // "Es la misma persona": ya con el mismo número, se juntan las fichas
+  if (juntar) {
+    const r = await juntarPacientesAction(tel);
+    if (r.error && !/no tiene fichas repetidas/.test(r.error)) return r;
+  }
   revalidatePath("/crm/mensajes");
   revalidatePath(`/crm/mensajes/${tel}`);
   revalidatePath("/agenda");
   return { ok: true, telefono: tel };
+}
+
+/**
+ * Juntar fichas repetidas: el mismo número quedó en dos (o más) pacientes (uno por el
+ * chat y otro por la agenda). Se queda la ficha con más citas (o la más vieja); se le
+ * pasan las citas y mensajes de las otras y se llenan sus datos vacíos. Luego se borran
+ * las repetidas (ya sin nada adentro).
+ */
+export async function juntarPacientesAction(telefono) {
+  const { user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const tel = normalizarTelefono(telefono);
+  if (!tel) return { error: "Número no válido." };
+  const admin = supabaseServicio();
+
+  const { data: registros } = await admin.from("pacientes").select("*").eq("whatsapp", tel).order("created_at");
+  if (!registros || registros.length < 2) return { error: "Este paciente no tiene fichas repetidas." };
+
+  const cuantas = {};
+  for (const r of registros) {
+    const { count } = await admin.from("citas").select("id", { count: "exact", head: true }).eq("paciente_id", r.id);
+    cuantas[r.id] = count || 0;
+  }
+  const queda = [...registros].sort((a, b) => cuantas[b.id] - cuantas[a.id])[0];
+  const otras = registros.filter((r) => r.id !== queda.id);
+  const ids = otras.map((r) => r.id);
+
+  // Datos vacíos de la que se queda: se llenan con los de las otras
+  const generico = (n) => !n || /^WhatsApp /.test(n);
+  const cambios = {};
+  for (const o of otras) {
+    for (const [k, v] of Object.entries(o)) {
+      if (["id", "created_at", "nombre", "etiquetas", "whatsapp"].includes(k) || v == null) continue;
+      if ((queda[k] == null || queda[k] === "") && cambios[k] == null) cambios[k] = v;
+    }
+  }
+  if (generico(queda.nombre)) {
+    const real = otras.find((o) => !generico(o.nombre));
+    if (real) cambios.nombre = real.nombre;
+  }
+  const etiquetas = [...new Set(registros.flatMap((r) => r.etiquetas || []))];
+  if ("etiquetas" in queda) cambios.etiquetas = etiquetas;
+  if ("primer_mensaje_en" in queda) {
+    const fechas = registros.map((r) => r.primer_mensaje_en).filter(Boolean).sort();
+    if (fechas.length) cambios.primer_mensaje_en = fechas[0];
+  }
+
+  const e1 = (await admin.from("citas").update({ paciente_id: queda.id }).in("paciente_id", ids)).error;
+  const e2 = (await admin.from("whatsapp_mensajes").update({ paciente_id: queda.id }).in("paciente_id", ids)).error;
+  if (e1 || e2) return { error: "No se pudieron pasar las citas. Intenta de nuevo." };
+  if (Object.keys(cambios).length) await admin.from("pacientes").update(cambios).eq("id", queda.id);
+  const { error: e3 } = await admin.from("pacientes").delete().in("id", ids);
+  if (e3) return { error: "Se pasaron las citas, pero no se pudo borrar la ficha repetida. Avísale a Jesús." };
+
+  revalidatePath("/crm/mensajes");
+  revalidatePath(`/crm/mensajes/${tel}`);
+  revalidatePath("/agenda");
+  return { ok: true, juntadas: otras.length + 1, nombre: cambios.nombre || queda.nombre };
 }

@@ -37,7 +37,7 @@ const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado)
  * (monitor del consultorio); "auto" = sólo en pantallas anchas, en el
  * celular se queda con bloques altos para el dedo.
  */
-export default function AgendaDia({ fecha, citas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false, bloqueos = [], demo = false }) {
+export default function AgendaDia({ fecha, citas: todasLasCitas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false, bloqueos = [], demo = false }) {
   const [sheet, setSheet] = useState(null);
   const cerrar = useCallback(() => setSheet(null), []);
   // Tocar una hora vacía: menú (paciente / evento / bloquear) → `menu`; luego `rapida` o el evento elegido
@@ -49,6 +49,9 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
     setRapida(null);
     setVerEvento(null);
   }, []);
+  // Las canceladas NO ocupan lugar en la agenda (el horario queda libre); se listan aparte
+  const citas = todasLasCitas.filter((c) => c.estado !== "cancelada");
+  const canceladas = todasLasCitas.filter((c) => c.estado === "cancelada");
   const eventos = bloqueos.filter((b) => b.evento);
   const franjas = bloqueos.filter((b) => !b.evento);
 
@@ -84,6 +87,27 @@ export default function AgendaDia({ fecha, citas, pendientes, preseleccion = nul
         {pendientes && (
           <div className="rounded-2xl border border-[#1c1a17]/[0.08] bg-white p-3 lg:p-4">
             <Pendientes fecha={fecha} items={pendientes} soloLectura={soloLectura} />
+          </div>
+        )}
+        {canceladas.length > 0 && (
+          <div className="rounded-2xl border border-[#1c1a17]/[0.08] bg-white p-3 lg:p-4">
+            <p className="text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]">Canceladas</p>
+            <p className="mt-0.5 text-[13px] text-[#9a9388]">Su horario ya quedó libre.</p>
+            <ul className="mt-2 flex flex-col gap-1">
+              {canceladas.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    disabled={soloLectura}
+                    onClick={() => setSheet({ modo: "cita", cita: c })}
+                    className="flex w-full items-baseline gap-2 rounded-xl px-2 py-1.5 text-left text-[15px] text-[#7a7368] active:bg-[#f5f1ea]"
+                  >
+                    <span className="tabular-nums">{formatHora(minutosDelDia(c.inicio))}</span>
+                    <span className="truncate line-through decoration-[#9a9388]/60">{c.paciente?.nombre || "Sin nombre"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         <Leyenda />

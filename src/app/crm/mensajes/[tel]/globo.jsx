@@ -1,11 +1,11 @@
 import { CheckIcon, ChecksIcon, FileTextIcon, WarningCircleIcon } from "@phosphor-icons/react/dist/ssr";
-import { horaDe, separarBotones } from "../lib";
+import { horaDe, resumenDe, separarBotones } from "../lib";
 
 /**
  * Un mensaje del chat. Fotos, audios, videos y documentos se abren con
  * /crm/mensajes/archivo/[id] (link firmado al bucket privado).
  */
-export default function Globo({ m, archivoUrl }) {
+export default function Globo({ m, archivoUrl, cita = null }) {
   const mio = m.direccion === "salida";
   const url = archivoUrl || `/crm/mensajes/archivo/${m.id}`;
   const tieneArchivo = Boolean(m.media_id || m.media_ruta || archivoUrl);
@@ -19,6 +19,15 @@ export default function Globo({ m, archivoUrl }) {
           mio ? "rounded-br-md bg-[#efe3cc]" : "rounded-bl-md bg-white"
         }`}
       >
+        {cita && (
+          // A qué mensaje contesta (como en WhatsApp: una cajita arriba con el mensaje citado)
+          <div className="mx-1 mt-1 rounded-[14px] border-l-4 border-[#b89968] bg-[#1c1a17]/[0.05] px-3 py-1.5">
+            <p className="text-[13px] font-semibold text-[#8a6d3f]">
+              {cita.perdido ? "Contestó a un mensaje anterior" : cita.direccion === "salida" ? "Contestó a tu mensaje" : "Contestó a su mensaje"}
+            </p>
+            {!cita.perdido && <p className="line-clamp-2 text-[15px] leading-snug text-[#5b544a]">{separarBotones(resumenDe(cita)).texto}</p>}
+          </div>
+        )}
         {tieneArchivo && (m.tipo === "image" || m.tipo === "sticker") && (
           <a href={url} target="_blank" rel="noopener" className="block overflow-hidden rounded-[18px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
