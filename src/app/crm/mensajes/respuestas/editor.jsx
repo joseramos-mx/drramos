@@ -176,7 +176,7 @@ function FormaPropia({ inicial, onGuardar, onCancelar, pendiente }) {
         Lo que le contesta al paciente:
       </label>
       <textarea id={`t-${id}`} value={texto} onChange={(e) => setTexto(e.target.value)} rows={5} autoCapitalize="sentences" className={CAJA} />
-      <p className="text-[15px] leading-snug text-[#7a7368]">Sin precios (sólo los $600 de la valoración), sin promesas de resultados y sin decir &quot;especialista&quot;.</p>
+      <p className="text-[15px] leading-snug text-[#7a7368]">Sin precios (sólo los $500 de la valoración), sin promesas de resultados y sin decir &quot;especialista&quot;.</p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

@@ -4,65 +4,76 @@
  * {hora}, {horarios} y {nombre} con datos reales de la agenda o del
  * paciente). Es el carril principal contra las "alucinaciones".
  *
- * Reglas al editar: nunca precios de tratamientos (sólo los $600 de la
+ * Reglas al editar: nunca precios de tratamientos (sólo los $500 de la
  * valoración), nunca promesas de resultados, nunca "especialista".
  * Usar "usted". Mensajes cortos, como de WhatsApp.
  */
 export const RESPUESTAS = {
   // ── Saludo y datos del consultorio ──
-  saludo: "¿En qué le puedo ayudar? Con gusto le resuelvo sus dudas o le agendo una valoración con el Dr. Felipe 😊",
+  saludo:
+    "¡Hola! Bienvenido al consultorio del Dr. Felipe de Jesús Ramos 👋 ¿En qué le puedo ayudar? Con gusto le resuelvo sus dudas o le agendo su cita de valoración.",
   ubicacion:
-    "Estamos en Prol. Gómez Palacio 501 Pte., Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Hay estacionamiento gratuito.\nUbicación en el mapa: https://g.page/r/Cetfn6-lbzR1EBM",
-  horario: "Atendemos de lunes a viernes de 9:00 a 19:00 y sábados de 9:00 a 14:00. Los domingos está cerrado.",
-  estacionamiento: "Sí, hay estacionamiento gratuito en Central Médica Santa Ana.",
+    "Estamos en calle Gómez Palacio 501 Pte., entre Juárez y Victoria, Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Contamos con estacionamiento gratuito para pacientes en consulta, en la esquina de Gómez Palacio y Victoria.\nUbicación en el mapa: https://g.page/r/Cetfn6-lbzR1EBM",
+  horario: "Atendemos de lunes a viernes de 9:00 a 20:00 y sábados de 9:00 a 14:00. Los domingos está cerrado.",
+  estacionamiento:
+    "Sí, contamos con estacionamiento gratuito para pacientes en consulta. Está en la esquina de Gómez Palacio y Victoria.",
   pagos:
-    "Aceptamos efectivo, tarjeta y transferencia. Con Visa y American Express hay 6, 9 y 12 meses sin intereses.",
-  factura: "Sí, facturamos. Al momento de pagar le pedimos sus datos fiscales.",
+    "Aceptamos efectivo, tarjeta y transferencia. Tenemos 6 meses sin intereses con tarjetas de crédito participantes.",
+  factura:
+    "Sí, facturamos. Al momento de su pago solicite su factura, por favor, y envíe su Constancia de Situación Fiscal (CSF) al correo contacto@drfelipedejesusramos.com.",
   telefono: "Puede escribirnos aquí mismo o llamar al 618 568 0916.",
   sobre_doctor:
-    "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista egresado de la UJED, con más de 30 años de experiencia. Es autor del libro \"El Arte de Hacer Dientes\" y fundador del Instituto Autónomo del Norte (IAN), escuela de posgrados en odontología.",
+    "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista egresado de la UJED, con más de 30 años de experiencia. Es autor del libro \"El Arte de Hacer Dientes\", sobre estética dental.",
   mas_informacion:
     "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista con más de 30 años de experiencia en odontología estética, diseño de sonrisa, prótesis dental y rehabilitación con implantes 🦷 Es fundador del IAN, instituto de actualización para odontólogos, y autor de un libro de estética dental. Cada tratamiento se diseña a la medida de cada paciente. ¿Le gustaría agendar su valoración? Más información: drfelipedejesusramos.com",
   tecnologia:
-    "El doctor trabaja con escaneo 3D de la boca (sin pastas ni moldes) y tiene laboratorio propio con fresadora e impresión 3D, así que los tratamientos requieren menos citas.",
+    "Realizamos escaneo intraoral 3D de su boca para crear un modelo exacto de sus dientes, sin moldes de pasta, así que el proceso es cómodo y rápido. Nuestro laboratorio es totalmente digital: permite un ajuste muy preciso, tratamientos menos invasivos y, según el caso, coronas o incrustaciones hasta en una sola cita. Cada tratamiento es totalmente personalizado.",
 
   // ── Precios (nunca de tratamientos) ──
   precio_tratamiento:
-    "El Dr. Felipe no maneja precios fijos porque cada tratamiento se diseña a su medida: revisa cuántas piezas hay que trabajar, el procedimiento y le ofrece varias opciones de material. En la valoración (30 min) le escanea en 3D y sale con su presupuesto exacto. No tiene costo si hace su tratamiento con nosotros.",
+    "El Dr. Felipe no maneja precios fijos porque cada tratamiento se diseña a su medida: revisa cuántas piezas hay que trabajar y el procedimiento, y le ofrece el mejor tratamiento para su caso. En su valoración (unos 30 minutos) el Dr. Ramos:\n✔️ le escanea sus dientes en 3D\n✔️ le muestra en pantalla cómo están sus dientes, para ofrecerle una alternativa que se adapte a sus necesidades\n✔️ si hace falta, le toma radiografía digital, incluida en el costo de la valoración\nY sale con su presupuesto exacto.",
   precio_valoracion:
-    "La valoración no tiene costo si decide hacer su tratamiento con el doctor. Si sólo quiere la valoración, son $600.",
+    "La valoración tiene un costo de $500. Si en esa cita deja el anticipo de su tratamiento, se le toma a cuenta.",
   valoracion_que_es:
-    "La valoración dura unos 30 minutos: el doctor revisa su boca, la escanea en 3D sin pastas, platica con usted qué le gustaría mejorar y le da su presupuesto exacto con opciones.",
+    "La valoración dura unos 30 minutos: el doctor revisa su boca, hace un escaneo intraoral en 3D sin pastas de impresión, platica con usted qué le gustaría mejorar y le da su presupuesto exacto.",
   que_llevar: "No necesita llevar nada especial. Si tiene radiografías o estudios recientes, puede traerlos.",
   duele:
     "El doctor trabaja con mucho cuidado y usa anestesia cuando hace falta; el escaneo 3D no lleva pastas. En la valoración le explica cada paso.",
   cuanto_tarda:
-    "Depende de cada caso. Con el laboratorio propio los tiempos suelen ser más cortos, y en la valoración el doctor le da su plan con tiempos.",
+    "Depende de cada caso. Con el laboratorio propio los tiempos suelen ser más cortos, y en la cita de valoración el doctor le da su plan con tiempos.",
 
   // ── Tratamientos (información general; el doctor confirma en la valoración) ──
   info_carillas:
-    "Las carillas son láminas muy delgadas que se colocan sobre el frente de los dientes para mejorar su forma, color o tamaño. Pueden ser de resina o de cerámica, y el doctor le explica qué opción conviene en su caso durante la valoración.",
+    "Las carillas son láminas muy delgadas que se colocan sobre el frente de los dientes para mejorar su forma, color o tamaño. Pueden ser de diferentes materiales, y el doctor le explica qué opción conviene en su caso durante la cita de valoración.",
   info_blanqueamiento:
     "El blanqueamiento aclara el color natural de los dientes con un gel profesional. No cambia el color de resinas, coronas o carillas que ya tenga, y puede dar sensibilidad pasajera. Primero se revisa que encías y dientes estén sanos.",
   info_diseno_sonrisa:
-    "El diseño de sonrisa es un plan completo para mejorar cómo se ve su sonrisa (forma, color y proporción). El doctor lo diseña en computadora como parte del tratamiento y puede combinar carillas, coronas o blanqueamiento, según el caso.",
+    "El diseño de sonrisa es una planeación personalizada en la que la estética y la función de la mordida se integran para lograr un resultado natural. El doctor lo diseña en computadora como parte del tratamiento y puede combinar carillas, coronas o blanqueamiento, según el caso.",
   info_implantes:
     "Un implante reemplaza un diente que falta: se coloca un tornillo de titanio en el hueso, que funciona como raíz, y encima va una corona. El hueso necesita algunos meses para integrarse. En la valoración el doctor revisa si es candidato.",
   info_coronas:
-    "Las coronas son como \"fundas\" que cubren todo el diente cuando está muy dañado o desgastado. Con el escaneo 3D y el laboratorio propio, muchas se hacen en menos citas.",
+    "Las coronas son como \"fundas\" que cubren todo el diente cuando está muy dañado o desgastado. Con el escaneo 3D y el laboratorio propio, según el caso, muchas se hacen hasta en una cita.",
   info_puentes: "Un puente son dientes fijos que reemplazan uno o varios dientes faltantes apoyándose en los dientes vecinos.",
   info_protesis:
     "Hay prótesis removibles (se quitan y se ponen) y fijas (no se quitan, como puentes o prótesis sobre implantes). En la valoración el doctor le explica cuál conviene en su caso.",
   info_rehabilitacion:
-    "La rehabilitación oral es un tratamiento integral cuando faltan varios dientes, están muy desgastados o la mordida no funciona bien. Se planea por etapas, a la medida de cada persona.",
+    "La rehabilitación oral es un tratamiento integral cuando faltan o están dañados varios dientes, están muy desgastados o la mordida no funciona bien (por ejemplo, por bruxismo). Se planea por etapas, a la medida de cada persona.",
   info_resinas: "Las resinas arreglan caries pequeñas o dientes despostillados con material del color del diente.",
-  info_limpieza: "Hacemos limpieza profesional y revisión general. Se recomienda por lo menos una vez al año.",
+  info_limpieza:
+    "Hacemos limpieza profesional con ultrasonido y revisión general. Se recomienda cada 6 meses.",
+  info_endodoncia:
+    "El tratamiento de conductos (endodoncia) depende de cada caso: en la valoración el doctor revisa su diente y le indica cómo se puede atender.",
+  otros_tratamientos:
+    "Para ese tratamiento es importante valorar su caso, para ver si es candidato. ¿Le gustaría agendar una valoración?",
   urgencias_si: "Sí atendemos urgencias.",
 
   // ── Lo que no se hace ──
-  no_ortodoncia: "La ortodoncia (brackets o alineadores) no la realizamos en el consultorio, una disculpa 🙏",
-  no_endodoncia: "El tratamiento de conductos (endodoncia) no lo realizamos en el consultorio, una disculpa 🙏",
-  no_ninos: "En el consultorio no atendemos a niños, una disculpa 🙏",
+  no_ortodoncia:
+    "La ortodoncia (brackets o alineadores) por el momento no la realizamos en el consultorio, una disculpa 🙏",
+  no_cirugia_maxilofacial:
+    "La cirugía maxilofacial la realiza un cirujano maxilofacial; por el momento no la realizamos en el consultorio, una disculpa 🙏",
+  no_ninos:
+    "Por el momento no atendemos a niños, una disculpa 🙏 Atendemos a partir de los 18 años.",
 
   // ── Agendar ──
   invitar_valoracion: "¿Le gustaría agendar una valoración? ¿Le acomoda más entre semana o el sábado en la mañana?",
@@ -71,7 +82,7 @@ export const RESPUESTAS = {
   pedir_datos: "Perfecto. Para apartar su lugar, ¿me comparte su nombre completo y qué le gustaría mejorar de su sonrisa?",
   preguntar_origen: "Una última pregunta: ¿cómo se enteró del consultorio? (Facebook, Instagram, Google, recomendación…)",
   confirmar_cita:
-    "¡Listo{nombre}! Su valoración quedó el {dia} a las {hora} con el Dr. Felipe, en Prol. Gómez Palacio 501 Pte., dentro de Central Médica Santa Ana 📍 Le esperamos 😊 Sus datos se usan sólo para atenderle: drfelipedejesusramos.com/privacidad",
+    "¡Listo{nombre}! Su valoración quedó el {dia} a las {hora} con el Dr. Felipe, en Gómez Palacio 501 Pte., dentro de Central Médica Santa Ana 📍 Le esperamos 😊 Sus datos se usan sólo para atenderle: drfelipedejesusramos.com/privacidad",
 
   // ── Cierre y casos especiales ──
   gracias: "¡Con gusto! Aquí estamos para lo que necesite 😊",
@@ -124,10 +135,11 @@ export const SECCIONES = [
     ["info_carillas", "Carillas"], ["info_blanqueamiento", "Blanqueamiento"], ["info_diseno_sonrisa", "Diseño de sonrisa"],
     ["info_implantes", "Implantes"], ["info_coronas", "Coronas"], ["info_puentes", "Puentes"],
     ["info_protesis", "Prótesis"], ["info_rehabilitacion", "Rehabilitación oral"], ["info_resinas", "Resinas"],
-    ["info_limpieza", "Limpieza y revisión"], ["urgencias_si", "¿Atienden urgencias?"],
+    ["info_limpieza", "Limpieza y revisión"], ["info_endodoncia", "Tratamiento de conductos (depende del caso)"],
+    ["otros_tratamientos", "Extracciones, guardas, encías u otros: hay que valorar"], ["urgencias_si", "¿Atienden urgencias?"],
   ]],
   ["Lo que no hacemos", [
-    ["no_ortodoncia", "Brackets / alineadores"], ["no_endodoncia", "Tratamiento de conductos"], ["no_ninos", "Niños"],
+    ["no_ortodoncia", "Brackets / alineadores"], ["no_cirugia_maxilofacial", "Cirugía maxilofacial"], ["no_ninos", "Niños (atendemos desde 18 años)"],
   ]],
   ["Para agendar la valoración", [
     ["invitar_valoracion", "Invitar a agendar"], ["ofrecer_horarios", "Ofrecer horarios libres"],

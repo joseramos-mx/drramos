@@ -51,7 +51,7 @@ export default function Footer() {
               Lun a Vie
             </p>
             <p className="mt-2 font-[family-name:var(--font-albert)] text-[13px] font-light leading-[1.7] text-white/55">
-              9:00 a 19:00 hrs
+              9:00 a 20:00 hrs
               <br />
               Sábado: 9:00 a 14:00 hrs
             </p>
