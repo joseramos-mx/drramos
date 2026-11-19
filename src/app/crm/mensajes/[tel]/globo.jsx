@@ -1,5 +1,5 @@
 import { CheckIcon, ChecksIcon, FileTextIcon, WarningCircleIcon } from "@phosphor-icons/react/dist/ssr";
-import { horaDe } from "../lib";
+import { horaDe, separarBotones } from "../lib";
 
 /**
  * Un mensaje del chat. Fotos, audios, videos y documentos se abren con
@@ -9,6 +9,8 @@ export default function Globo({ m, archivoUrl }) {
   const mio = m.direccion === "salida";
   const url = archivoUrl || `/crm/mensajes/archivo/${m.id}`;
   const tieneArchivo = Boolean(m.media_id || m.media_ruta || archivoUrl);
+  // "[Botones: A · B]" al final del texto → botoncitos, como los ve el paciente
+  const { texto, botones } = separarBotones(m.texto);
 
   return (
     <li className={`flex ${mio ? "justify-end" : "justify-start"}`}>
@@ -30,14 +32,23 @@ export default function Globo({ m, archivoUrl }) {
             <FileTextIcon size={26} /> Abrir documento
           </a>
         )}
-        {m.texto ? (
-          <p className="whitespace-pre-wrap break-words px-3 pt-1.5 text-[17px] leading-[1.4] text-[#1c1a17]">{m.texto}</p>
+        {texto ? (
+          <p className="whitespace-pre-wrap break-words px-3 pt-1.5 text-[17px] leading-[1.4] text-[#1c1a17]">{texto}</p>
         ) : (
           !tieneArchivo && (
             <p className="px-3 pt-1.5 text-[16px] italic text-[#5b544a]">
               Este mensaje no se puede ver aquí. Pídele al paciente que lo mande como texto o foto.
             </p>
           )
+        )}
+        {botones.length > 0 && (
+          <div className="mt-1.5 flex flex-col gap-1 px-1" aria-label="Botones que le aparecen al paciente">
+            {botones.map((b) => (
+              <span key={b} className="flex h-10 items-center justify-center rounded-[14px] bg-white/70 px-3 text-center text-[16px] font-semibold text-[#8a6d3f]">
+                {b}
+              </span>
+            ))}
+          </div>
         )}
         <p className="px-3 pb-0.5 pt-1 text-right text-[13px] tabular-nums text-[#8b8478]">
           {horaDe(m.enviado_en)}

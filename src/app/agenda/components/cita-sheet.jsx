@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { CalendarBlankIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
+import { CalendarBlankIcon, PencilSimpleIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
+import CorregirPaciente from "@/app/crm/mensajes/corregir-paciente";
 import {
   buscarPacientesAction,
   guardarCitaAction,
@@ -261,6 +262,7 @@ function PacienteElegido({ paciente, onCambiar }) {
 // ─────────────────────────────────────────────────────────────
 function DetalleCita({ fecha, cita, onDone }) {
   const [editando, setEditando] = useState(false);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const ini = minutosDelDia(cita.inicio);
   const fin = minutosDelDia(cita.fin);
   const wa = cita.paciente?.whatsapp ? normalizar(cita.paciente.whatsapp) : null;
@@ -284,10 +286,36 @@ function DetalleCita({ fecha, cita, onDone }) {
             <WhatsappLogoIcon size={16} weight="light" /> Escribirle · {cita.paciente.whatsapp}
           </Link>
         )}
+        {cita.paciente?.id && !corrigiendo && (
+          <button
+            type="button"
+            onClick={() => setCorrigiendo(true)}
+            className="mt-3 flex items-center gap-2 text-[14px] font-normal text-[#5b544a] underline decoration-[#b89968]/50 underline-offset-4"
+          >
+            <PencilSimpleIcon size={16} /> {wa ? "Corregir nombre o número" : "Corregir nombre o agregar su WhatsApp"}
+          </button>
+        )}
         {cita.notas && (
           <p className="mt-3 text-[13px] font-normal text-[#5b544a]">{cita.notas}</p>
         )}
       </header>
+
+      {corrigiendo && (
+        <div className="-mx-5 rounded-[24px] bg-[#f2efe9] pt-5">
+          <CorregirPaciente
+            pacienteId={cita.paciente.id}
+            nombre={cita.paciente.nombre}
+            telefono={wa || ""}
+            onListo={() => {
+              setCorrigiendo(false);
+              onDone?.();
+            }}
+          />
+          <button type="button" onClick={() => setCorrigiendo(false)} className="mb-4 w-full text-center text-[16px] font-semibold text-[#7a7368]">
+            Cancelar
+          </button>
+        </div>
+      )}
 
       {editando ? (
         <EditarCita fecha={fecha} cita={cita} onDone={onDone} onCancel={() => setEditando(false)} />

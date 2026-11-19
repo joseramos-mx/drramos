@@ -26,12 +26,11 @@ export default async function MensajesPage({ searchParams }) {
   if (!user) redirect("/crm/login?from=/crm/mensajes");
 
   const desde = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
-  const { data: mensajes, error } = await supabase
-    .from("whatsapp_mensajes")
-    .select("telefono, direccion, via, enviado_en, texto, tipo, paciente:pacientes(*)")
-    .gte("enviado_en", desde)
-    .order("enviado_en")
-    .limit(10000);
+  // Con el estado (¿llegó?); si la migración aún no corre, sin él
+  const leer = (campos) => supabase.from("whatsapp_mensajes").select(campos).gte("enviado_en", desde).order("enviado_en").limit(10000);
+  const base = "telefono, direccion, via, enviado_en, texto, tipo, paciente:pacientes(*)";
+  let { data: mensajes, error } = await leer(`${base}, estado`);
+  if (error) ({ data: mensajes, error } = await leer(base));
 
   const todas = conversaciones(mensajes || []);
   const lista = filtrar(todas, f);
