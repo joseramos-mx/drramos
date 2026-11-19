@@ -158,12 +158,12 @@ export function proximaApertura(now = new Date(), cerrados = new Set()) {
   return { fecha: sumarDias(hoy, 1), texto: "mañana", hora: "9:00" };
 }
 
-// Horario de atención (de la landing): L-V 9-19, sáb 9-14, dom cerrado.
+// Horario de atención (de la landing): L-V 9-20 (Dra. Gaby, 2026-11-18), sáb 9-14, dom cerrado.
 export function horarioDelDia(fecha) {
   const dow = diaSemana(fecha);
   if (dow === 0) return null;
   if (dow === 6) return { abre: 9 * 60, cierra: 14 * 60 };
-  return { abre: 9 * 60, cierra: 19 * 60 };
+  return { abre: 9 * 60, cierra: 20 * 60 };
 }
 
 export const SLOT_MIN = 30;

@@ -11,7 +11,7 @@ export const RESPUESTAS_RAPIDAS = [
   },
   {
     titulo: "Horario",
-    texto: "Atendemos de lunes a viernes de 9:00 a 19:00 y sábados de 9:00 a 14:00. ¿Qué día le acomoda para su valoración?",
+    texto: "Atendemos de lunes a viernes de 9:00 a 20:00 y sábados de 9:00 a 14:00. ¿Qué día le acomoda para su valoración?",
   },
   {
     titulo: "¿Precio?",

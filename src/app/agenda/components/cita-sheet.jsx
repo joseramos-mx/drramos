@@ -3,8 +3,9 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { CalendarBlankIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
+import { CalendarBlankIcon, TrashIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
 import {
+  borrarCitaAction,
   buscarPacientesAction,
   guardarCitaAction,
 } from "../actions";
@@ -301,8 +302,55 @@ function DetalleCita({ fecha, cita, onDone }) {
             <CalendarBlankIcon size={22} /> Mover a otro día u hora
           </button>
           <CierreWizard cita={cita} onDone={onDone} />
+          <BorrarCita cita={cita} onDone={onDone} />
         </>
       )}
+    </div>
+  );
+}
+
+/** "La puse por error": borra la cita (pide confirmar). Si el paciente canceló, mejor se cierra como "Canceló". */
+function BorrarCita({ cita, onDone }) {
+  const [seguro, setSeguro] = useState(false);
+  const [error, setError] = useState(null);
+  const [pendiente, start] = useTransition();
+  if (Number(cita.pagado_monto) > 0) return null;
+
+  const borrar = () =>
+    start(async () => {
+      setError(null);
+      const res = await borrarCitaAction(cita.id);
+      if (res?.error) return setError(res.error);
+      onDone();
+    });
+
+  if (!seguro)
+    return (
+      <button
+        type="button"
+        onClick={() => setSeguro(true)}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-[16px] font-semibold text-[#c0392b] active:bg-[#fbeeee]"
+      >
+        <TrashIcon size={20} /> Borrar cita (la puse por error)
+      </button>
+    );
+
+  return (
+    <div className="space-y-3 rounded-2xl bg-[#fbeeee] p-4">
+      <p className="text-[16px] font-semibold text-[#1c1a17]">¿Borrar esta cita?</p>
+      <p className="text-[14px] text-[#5b544a]">
+        Desaparece de la agenda y no se le avisa al paciente. Si el paciente canceló, mejor no la borres: márcala como
+        &quot;Canceló&quot; para que cuente en los resultados.
+      </p>
+      <div className="flex gap-2">
+        <button type="button" onClick={borrar} disabled={pendiente} className="h-12 flex-1 rounded-full bg-[#c0392b] text-[16px] font-semibold text-white disabled:opacity-50">
+          {pendiente ? "Borrando…" : "Sí, borrarla"}
+        </button>
+        <button type="button" onClick={() => setSeguro(false)} className="h-12 flex-1 rounded-full bg-white text-[16px] font-semibold text-[#1c1a17]">
+          No
+        </button>
+      </div>
+      {error && <p role="alert" className="text-[14px] font-medium text-[#c0392b]">{error}</p>}
     </div>
   );
 }
