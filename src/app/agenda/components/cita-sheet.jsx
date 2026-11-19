@@ -3,8 +3,10 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { CalendarBlankIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
+import { CalendarBlankIcon, PencilSimpleIcon, TrashIcon, WhatsappLogoIcon, XIcon } from "@phosphor-icons/react";
+import CorregirPaciente from "@/app/crm/mensajes/corregir-paciente";
 import {
+  borrarCitaAction,
   buscarPacientesAction,
   guardarCitaAction,
 } from "../actions";
@@ -261,6 +263,7 @@ function PacienteElegido({ paciente, onCambiar }) {
 // ─────────────────────────────────────────────────────────────
 function DetalleCita({ fecha, cita, onDone }) {
   const [editando, setEditando] = useState(false);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const ini = minutosDelDia(cita.inicio);
   const fin = minutosDelDia(cita.fin);
   const wa = cita.paciente?.whatsapp ? normalizar(cita.paciente.whatsapp) : null;
@@ -284,10 +287,36 @@ function DetalleCita({ fecha, cita, onDone }) {
             <WhatsappLogoIcon size={16} weight="light" /> Escribirle · {cita.paciente.whatsapp}
           </Link>
         )}
+        {cita.paciente?.id && !corrigiendo && (
+          <button
+            type="button"
+            onClick={() => setCorrigiendo(true)}
+            className="mt-3 flex items-center gap-2 text-[14px] font-normal text-[#5b544a] underline decoration-[#b89968]/50 underline-offset-4"
+          >
+            <PencilSimpleIcon size={16} /> {wa ? "Corregir nombre o número" : "Corregir nombre o agregar su WhatsApp"}
+          </button>
+        )}
         {cita.notas && (
           <p className="mt-3 text-[13px] font-normal text-[#5b544a]">{cita.notas}</p>
         )}
       </header>
+
+      {corrigiendo && (
+        <div className="-mx-5 rounded-[24px] bg-[#f2efe9] pt-5">
+          <CorregirPaciente
+            pacienteId={cita.paciente.id}
+            nombre={cita.paciente.nombre}
+            telefono={wa || ""}
+            onListo={() => {
+              setCorrigiendo(false);
+              onDone?.();
+            }}
+          />
+          <button type="button" onClick={() => setCorrigiendo(false)} className="mb-4 w-full text-center text-[16px] font-semibold text-[#7a7368]">
+            Cancelar
+          </button>
+        </div>
+      )}
 
       {editando ? (
         <EditarCita fecha={fecha} cita={cita} onDone={onDone} onCancel={() => setEditando(false)} />
@@ -301,8 +330,55 @@ function DetalleCita({ fecha, cita, onDone }) {
             <CalendarBlankIcon size={22} /> Mover a otro día u hora
           </button>
           <CierreWizard cita={cita} onDone={onDone} />
+          <BorrarCita cita={cita} onDone={onDone} />
         </>
       )}
+    </div>
+  );
+}
+
+/** "La puse por error": borra la cita (pide confirmar). Si el paciente canceló, mejor se cierra como "Canceló". */
+function BorrarCita({ cita, onDone }) {
+  const [seguro, setSeguro] = useState(false);
+  const [error, setError] = useState(null);
+  const [pendiente, start] = useTransition();
+  if (Number(cita.pagado_monto) > 0) return null;
+
+  const borrar = () =>
+    start(async () => {
+      setError(null);
+      const res = await borrarCitaAction(cita.id);
+      if (res?.error) return setError(res.error);
+      onDone();
+    });
+
+  if (!seguro)
+    return (
+      <button
+        type="button"
+        onClick={() => setSeguro(true)}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-[16px] font-semibold text-[#c0392b] active:bg-[#fbeeee]"
+      >
+        <TrashIcon size={20} /> Borrar cita (la puse por error)
+      </button>
+    );
+
+  return (
+    <div className="space-y-3 rounded-2xl bg-[#fbeeee] p-4">
+      <p className="text-[16px] font-semibold text-[#1c1a17]">¿Borrar esta cita?</p>
+      <p className="text-[14px] text-[#5b544a]">
+        Desaparece de la agenda y no se le avisa al paciente. Si el paciente canceló, mejor no la borres: márcala como
+        &quot;Canceló&quot; para que cuente en los resultados.
+      </p>
+      <div className="flex gap-2">
+        <button type="button" onClick={borrar} disabled={pendiente} className="h-12 flex-1 rounded-full bg-[#c0392b] text-[16px] font-semibold text-white disabled:opacity-50">
+          {pendiente ? "Borrando…" : "Sí, borrarla"}
+        </button>
+        <button type="button" onClick={() => setSeguro(false)} className="h-12 flex-1 rounded-full bg-white text-[16px] font-semibold text-[#1c1a17]">
+          No
+        </button>
+      </div>
+      {error && <p role="alert" className="text-[14px] font-medium text-[#c0392b]">{error}</p>}
     </div>
   );
 }

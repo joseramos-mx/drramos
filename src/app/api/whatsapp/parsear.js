@@ -123,6 +123,8 @@ export function parsearWebhook(body) {
           ctwa_clid: m.referral?.ctwa_clid || null,
           referencia: m.referral || null,
           respuesta: respuestaDe(m),
+          // Si contestó "citando" un mensaje (o tocó un botón de uno), el id de ese mensaje
+          responde_a: m.context?.id || null,
           crudo: m,
         });
       }

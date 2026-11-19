@@ -325,6 +325,25 @@ export async function marcarVinoAction(id) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  Borrar una cita puesta por error (no es "canceló": desaparece)
+// ─────────────────────────────────────────────────────────────
+export async function borrarCitaAction(id) {
+  if (!id) return { error: "Cita inválida." };
+  const supabase = createClient(await cookies());
+  const { data: cita, error: e1 } = await supabase
+    .from("citas").select("id, pagado_monto").eq("id", String(id)).single();
+  if (e1 || !cita) return { error: "No encontré esa cita." };
+  // Lo cobrado cuenta en Resultados: una cita con pago no se borra
+  if (Number(cita.pagado_monto) > 0)
+    return { error: "Esta cita ya tiene un pago anotado, por eso no se puede borrar." };
+  const { error } = await supabase.from("citas").delete().eq("id", String(id));
+  if (error) return { error: "No se pudo borrar. Intenta de nuevo." };
+  revalidatePath("/agenda");
+  revalidatePath("/agenda/pantalla");
+  return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────
 //  Pendientes del día (las notas al pie de la libreta)
 // ─────────────────────────────────────────────────────────────
 export async function agregarPendienteAction(_prev, formData) {

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { normalizarTelefono } from "@/lib/telefono";
 import { ventanaAbierta, whatsappConfigurado } from "@/lib/whatsapp";
-import AutoRefresh from "../../../agenda/components/auto-refresh";
+import AlInstante from "../al-instante";
 import Cabecera from "./cabecera";
 import Chat from "./chat";
 import Responder from "./responder";
@@ -13,13 +13,16 @@ import { esperaRespuesta } from "../lib";
 
 export const dynamic = "force-dynamic";
 
-const CAMPOS = "id, direccion, via, enviado_en, texto, tipo, media_id, media_ruta";
+const CAMPOS = "id, wa_id, direccion, via, enviado_en, texto, tipo, media_id, media_ruta";
 
 /** Mensajes del chat con su estado (¿llegó?). Si la migración del estado aún no corre, sin él. */
 async function leerMensajes(supabase, telefono) {
   const q = (campos) => supabase.from("whatsapp_mensajes").select(campos).eq("telefono", telefono).order("enviado_en").limit(500);
-  const r = await q(`${CAMPOS}, estado, estado_error`);
-  return r.error ? q(CAMPOS) : r;
+  // Lo más nuevo primero; si alguna migración aún no corre, se pide sin esas columnas
+  for (const extra of [", estado, estado_error, responde_a", ", estado, estado_error", ""]) {
+    const r = await q(CAMPOS + extra);
+    if (!r.error || !extra) return r;
+  }
 }
 
 export default async function ConversacionPage({ params }) {
@@ -32,9 +35,9 @@ export default async function ConversacionPage({ params }) {
   } = await supabase.auth.getUser();
   if (!user) redirect(`/crm/login?from=/crm/mensajes/${telefono}`);
 
-  const [{ data: mensajes }, { data: paciente }, { data: config }, { data: borrador }] = await Promise.all([
+  const [{ data: mensajes }, { data: fichas }, { data: config }, { data: borrador }] = await Promise.all([
     leerMensajes(supabase, telefono),
-    supabase.from("pacientes").select("*").eq("whatsapp", telefono).order("created_at").limit(1).maybeSingle(),
+    supabase.from("pacientes").select("*").eq("whatsapp", telefono).order("created_at").limit(5),
     supabase.from("asistente_config").select("modo").eq("id", 1).maybeSingle(),
     supabase
       .from("asistente_borradores")
@@ -46,6 +49,9 @@ export default async function ConversacionPage({ params }) {
       .maybeSingle(),
   ]);
 
+  // El mismo número puede estar en dos fichas (chat y agenda): se usa la primera y se ofrece juntarlas
+  const paciente = fichas?.[0] || null;
+  const repetidas = (fichas || []).length;
   const ultimaEntrada = [...(mensajes || [])].reverse().find((m) => m.direccion === "entrada")?.enviado_en;
   const abierta = ventanaAbierta(ultimaEntrada);
   const nombre = paciente?.nombre || `WhatsApp ${telefono.slice(-10)}`;
@@ -59,13 +65,14 @@ export default async function ConversacionPage({ params }) {
 
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] flex-col bg-[#f5f1ea]">
-      <AutoRefresh segundos={10} />
+      <AlInstante telefono={telefono} respaldo={15} />
       <Cabecera
         nombre={nombre}
         telefono={telefono}
         origen={paciente?.origen}
         etiquetas={paciente?.etiquetas || []}
         pacienteId={paciente?.id}
+        repetidas={repetidas}
         volver="/crm/mensajes"
         agendarHref={paciente ? `/agenda?paciente=${paciente.id}` : null}
       />

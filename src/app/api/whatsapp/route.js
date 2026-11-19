@@ -93,8 +93,7 @@ export async function POST(request) {
   for (const m of mensajes) {
     try {
       const pacienteId = await pacienteDe(supabase, m);
-      const { data: nuevos, error } = await supabase.from("whatsapp_mensajes").upsert(
-        {
+      const fila = {
           wa_id: m.wa_id,
           telefono: m.telefono,
           direccion: m.direccion,
@@ -107,10 +106,15 @@ export async function POST(request) {
           referencia: m.referencia,
           media_id: m.media_id,
           media_mime: m.media_mime,
-        },
-        { onConflict: "wa_id", ignoreDuplicates: true }
-      )
-        .select("id");
+          ...(m.responde_a ? { responde_a: m.responde_a } : {}),
+      };
+      const guardar = (f) => supabase.from("whatsapp_mensajes").upsert(f, { onConflict: "wa_id", ignoreDuplicates: true }).select("id");
+      let { data: nuevos, error } = await guardar(fila);
+      // Si la migración de responde_a aún no corre, se guarda sin ese dato (nunca se pierde el mensaje)
+      if (error && fila.responde_a && /responde_a/.test(error.message || "")) {
+        const { responde_a: _omitido, ...sinCita } = fila;
+        ({ data: nuevos, error } = await guardar(sinCita));
+      }
       if (error) throw error;
       if (!nuevos?.length) continue; // Meta reintentó un mensaje que ya teníamos
       guardados++;

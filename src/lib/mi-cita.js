@@ -297,6 +297,30 @@ async function pasar(admin, telefono, paciente, motivo, texto) {
   await decir(admin, telefono, paciente.id, texto || textoAlPasar(textosEfectivos(editadas || []), {}, new Date(), await diasCerrados(admin)));
 }
 
+const HUMANO_HORAS = 8; // igual que en el asistente: si ella escribió/tomó el chat, es suyo 8 h
+
+/** ¿El sistema contesta solo los botones? Sólo con el asistente en "Contesta solo" y si ella no tomó el chat. */
+async function contestaSolo(admin, registros) {
+  const humano = registros.some(
+    (r) => r.atiende === "humano" && r.atiende_desde && Date.now() - new Date(r.atiende_desde).getTime() < HUMANO_HORAS * 3600 * 1000
+  );
+  if (humano) return false;
+  const { data: config } = await admin.from("asistente_config").select("modo").eq("id", 1).maybeSingle();
+  return config?.modo === "automatico";
+}
+
+/** Sin contestar: deja anotado lo que el paciente eligió (ella decide qué hacer). */
+async function anotarSinContestar(admin, paciente, b) {
+  if (b.accion.startsWith("presupuesto_") && b.citaId) {
+    await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", b.citaId).in("paciente_id", idsDe(paciente));
+    return;
+  }
+  const textos = { confirmar: "Confirmó por WhatsApp", cambiar: "Pidió cambiar su cita por WhatsApp", cancelar: "Pidió cancelar su cita por WhatsApp" };
+  if (!textos[b.accion]) return;
+  const cita = await citaDel(admin, paciente, b.citaId);
+  if (cita) await admin.from("citas").update({ notas: anotar(cita.notas, textos[b.accion]) }).eq("id", cita.id);
+}
+
 /**
  * Atiende el toque de un botón/opción de "Mi cita". Devuelve true si era
  * de "Mi cita" (y ya se contestó); false si no, para que siga el flujo normal.
@@ -308,7 +332,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
   // se buscan las citas en todos y se usa el registro dueño de la cita del botón.
   const { data: registros } = await admin
     .from("pacientes")
-    .select("id, nombre, etiquetas")
+    .select("id, nombre, etiquetas, atiende, atiende_desde")
     .eq("whatsapp", telefono)
     .order("created_at");
   if (!registros?.length) return false;
@@ -321,6 +345,15 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
   const base = dueno || registros.find((r) => r.nombre && !/^WhatsApp /.test(r.nombre)) || registros[0];
   const paciente = { ...base, ids, etiquetas: [...new Set(registros.flatMap((r) => r.etiquetas || []))] };
   const nombre = paciente.nombre && !/^WhatsApp /.test(paciente.nombre) ? paciente.nombre : "Paciente";
+
+  // Si ella lleva el chat o el asistente no está en "Contesta solo", el sistema NO le contesta
+  // al paciente: sólo anota lo que tocó y le avisa a ella para que conteste con sus palabras.
+  if (!(await contestaSolo(admin, registros))) {
+    await anotarSinContestar(admin, paciente, b);
+    const titulo = TITULOS[b.accion]?.[0] || (b.accion === "reagendar" ? "Elegir otro horario" : "una opción de su cita");
+    await avisar(admin, { titulo: `${nombre} tocó "${titulo}"`, cuerpo: "Contéstale tú en Mensajes", url: `/crm/mensajes/${telefono}` });
+    return true;
+  }
 
   if (b.accion === "hablar") {
     await yaRespondio(admin, idsDe(paciente));

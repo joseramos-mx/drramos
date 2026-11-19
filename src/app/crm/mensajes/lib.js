@@ -19,7 +19,9 @@ export const etiquetaLabel = (id) => ETIQUETAS.find((e) => e.id === id)?.label |
  */
 export function esperaRespuesta(ultimo, paraElla, listoEn) {
   if (!ultimo) return false;
-  const pendiente = ultimo.direccion === "entrada" || Boolean(paraElla && ultimo.via === "asistente");
+  // También si lo último que se le mandó NO le llegó: hay que llamarle o corregir el número
+  const noLlego = ultimo.direccion === "salida" && ultimo.estado === "failed";
+  const pendiente = ultimo.direccion === "entrada" || noLlego || Boolean(paraElla && ultimo.via === "asistente");
   return pendiente && !(listoEn && new Date(listoEn).getTime() >= new Date(ultimo.enviado_en).getTime());
 }
 
@@ -75,9 +77,21 @@ export function horaDe(iso) {
   return new Date(iso).toLocaleTimeString("es-MX", { timeZone: "America/Mexico_City", hour: "numeric", minute: "2-digit" });
 }
 
+/**
+ * Los mensajes con botones se guardan con una marca al final ("[Botones: A · B]",
+ * "[Lista de días]"). Aquí se separa para mostrar los botones como botoncitos.
+ */
+export function separarBotones(texto) {
+  const t = String(texto || "");
+  const m = t.match(/\n?\[(Botones: ([^\]]+)|Lista de días|Lista de horarios)\]\s*$/);
+  if (!m) return { texto: t, botones: [] };
+  const botones = m[2] ? m[2].split(" · ").map((x) => x.trim()).filter(Boolean) : [m[1] === "Lista de días" ? "Ver días disponibles" : "Ver horarios"];
+  return { texto: t.slice(0, m.index).trimEnd(), botones };
+}
+
 /** Texto de la lista cuando el último mensaje no es texto. */
 export function resumenDe(m) {
-  if (m.texto) return m.texto;
+  if (m.texto) return separarBotones(m.texto).texto || m.texto;
   const t = { image: "Foto", audio: "Nota de voz", video: "Video", document: "Documento", sticker: "Sticker", location: "Ubicación" };
   return t[m.tipo] || "Archivo";
 }
