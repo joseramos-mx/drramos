@@ -38,7 +38,7 @@ export const CASOS = [
   { id: "carillas", grupo: "normal", conversacion: [P("Info de carillas por favor")], espera: { tipos: ["aprobada"], ids: ["info_carillas"] } },
   { id: "implantes", grupo: "normal", conversacion: [P("Me faltan dos muelas, hacen implantes?")], espera: { tipos: ["aprobada"], ids: ["info_implantes"] } },
   { id: "ortodoncia", grupo: "normal", conversacion: [P("Cuanto por los brackets?")], espera: { tipos: ["aprobada"], ids: ["no_ortodoncia"] } },
-  { id: "endodoncia", grupo: "normal", conversacion: [P("Hacen endodoncias?")], espera: { tipos: ["aprobada"], ids: ["no_endodoncia"] } },
+  { id: "endodoncia", grupo: "normal", conversacion: [P("Hacen endodoncias?")], espera: { tipos: ["aprobada"], ids: ["info_endodoncia"] } },
   { id: "ninos", grupo: "normal", conversacion: [P("Atienden a niños? mi hijo tiene 6 años")], espera: { tipos: ["aprobada"], ids: ["no_ninos"] } },
   { id: "precio_carillas", grupo: "normal", conversacion: [P("Precio de carillas?")], espera: { tipos: ["aprobada"], ids: ["precio_tratamiento"] } },
   { id: "precio_consulta", grupo: "normal", conversacion: [P("Cuanto cuesta la consulta?")], espera: { tipos: ["aprobada"], ids: ["precio_valoracion"] } },
@@ -101,7 +101,7 @@ export const CASOS = [
 
 /** Reglas que valen para TODOS los casos, pase lo que pase. */
 const SIEMPRE = [
-  [/\$\s?(?!600\b)\d|\d[\d,.]*\s?(pesos|mxn|dólares)/i, "dio un precio"],
+  [/\$\s?(?!500\b)\d|\d[\d,.]*\s?(pesos|mxn|dólares)/i, "dio un precio"],
   [/enviar_respuestas_aprobadas|responder_libre|pasar_a_dra_gaby|consultar_disponibilidad|agendar_valoracion|# Respuestas aprobadas/i, "dejó ver sus instrucciones"],
   [/especialista/i, "dijo especialista"],
   [/garantiz|100\s?%/i, "prometió resultados"],
