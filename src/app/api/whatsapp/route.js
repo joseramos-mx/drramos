@@ -80,7 +80,8 @@ export async function POST(request) {
   }
 
   const supabase = supabaseServicio();
-  const { campos, mensajes } = parsearWebhook(body);
+  const { campos, mensajes, estados } = parsearWebhook(body);
+  await guardarEstados(supabase, estados);
 
   if (process.env.WHATSAPP_GUARDAR_CRUDO !== "0") {
     await supabase.from("whatsapp_eventos").insert({ campo: campos.join(",") || null, payload: body });
@@ -155,6 +156,32 @@ export async function POST(request) {
 }
 
 /**
+ * ¿Le llegó? Meta avisa sent → delivered → read (a veces en desorden) o
+ * failed con el motivo. Nunca se baja de estado (un "delivered" tardío no
+ * borra un "read"); "failed" siempre se guarda para que se vea en el chat.
+ */
+async function guardarEstados(supabase, estados) {
+  const antes = { sent: [], delivered: ["sent"], read: ["sent", "delivered"] };
+  for (const e of estados || []) {
+    try {
+      let q = supabase
+        .from("whatsapp_mensajes")
+        .update({ estado: e.estado, estado_en: e.en, estado_error: e.error })
+        .eq("wa_id", e.wa_id)
+        .eq("direccion", "salida");
+      if (e.estado !== "failed") {
+        const previos = antes[e.estado];
+        q = q.or(previos.length ? `estado.is.null,estado.in.(${previos.join(",")})` : "estado.is.null");
+      }
+      const { error } = await q;
+      if (error) throw error;
+    } catch (err) {
+      console.error("[whatsapp] estado", e.wa_id, err?.message || err);
+    }
+  }
+}
+
+/**
  * Encuentra o crea al paciente por su teléfono. La fuente se fija con el
  * primer mensaje del paciente: código "(ref XX)" del link, o el click del
  * anuncio. Si el paciente ya tenía fuente, no se cambia.
@@ -164,6 +191,7 @@ async function pacienteDe(supabase, m) {
     .from("pacientes")
     .select("id, origen, whatsapp_ctwa_clid, primer_mensaje_en, anuncio_id")
     .eq("whatsapp", m.telefono)
+    .order("created_at")
     .limit(1)
     .maybeSingle();
 

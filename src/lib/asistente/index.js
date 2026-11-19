@@ -344,7 +344,7 @@ async function agendar(admin, paciente, a) {
   const { data: yaTiene } = await admin
     .from("citas")
     .select("id")
-    .eq("paciente_id", paciente.id)
+    .in("paciente_id", paciente.ids || [paciente.id])
     .gte("inicio", new Date().toISOString())
     .neq("estado", "cancelada")
     .limit(1);
@@ -551,17 +551,17 @@ export async function atenderConAsistente(admin, telefono, waId) {
     ).data?.wa_id;
   if ((await ultimoDelPaciente()) !== waId) return;
 
-  const { data: paciente } = await admin
+  // El mismo teléfono puede estar en dos registros (el del chat y el de la agenda): se ven sus citas en todos
+  const { data: registros } = await admin
     .from("pacientes")
     .select("id, nombre, origen, etiquetas, atiende, atiende_desde")
     .eq("whatsapp", telefono)
-    .limit(1)
-    .maybeSingle();
-  if (!paciente) return;
-  const humanoReciente =
-    paciente.atiende === "humano" &&
-    paciente.atiende_desde &&
-    Date.now() - new Date(paciente.atiende_desde).getTime() < HUMANO_HORAS * 3600 * 1000;
+    .order("created_at");
+  if (!registros?.length) return;
+  const paciente = { ...registros[0], ids: registros.map((r) => r.id) };
+  const humanoReciente = registros.some(
+    (r) => r.atiende === "humano" && r.atiende_desde && Date.now() - new Date(r.atiende_desde).getTime() < HUMANO_HORAS * 3600 * 1000
+  );
   if (humanoReciente) return registrar(admin, telefono, "omitido", { motivo: "lo atiende la Dra. Gaby" });
 
   const { count: recientes } = await admin
@@ -589,7 +589,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const { data: proximas } = await admin
     .from("citas")
     .select("id, inicio, tipo")
-    .eq("paciente_id", paciente.id)
+    .in("paciente_id", paciente.ids || [paciente.id])
     .gte("inicio", new Date().toISOString())
     .neq("estado", "cancelada")
     .order("inicio")
@@ -654,7 +654,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "urgencia"])] }).eq("id", paciente.id);
     texto = textoAlPasar(textos, { urgente: true }, ahora, cerrados);
   } else if (d.tipo === "humano") {
-    await yaRespondio(admin, paciente.id); // el chat queda con la Dra. Gaby: ella lo resuelve
+    await yaRespondio(admin, paciente.ids || paciente.id); // el chat queda con la Dra. Gaby: ella lo resuelve
     await pasarAHumano(admin, paciente, telefono, d);
     texto = textoAlPasar(textos, d, ahora, cerrados);
   } else {

@@ -371,11 +371,16 @@ function Encimada({ state, label }) {
   );
 }
 
-/** Palomita (prendida por omisión) para mandarle la cita al paciente por WhatsApp. */
+/**
+ * Palomita (prendida por omisión) para mandarle la cita al paciente por WhatsApp.
+ * Controlada con estado: si el guardado regresa un aviso ("se encima con otra cita"),
+ * React reinicia el formulario y una palomita sin estado volvía a prenderse sola.
+ */
 function AvisarWhatsApp({ id, texto, detalle }) {
+  const [marcada, setMarcada] = useState(true);
   return (
     <label htmlFor={id} className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#f2efe9] p-4">
-      <input id={id} type="checkbox" name="avisar" value="1" defaultChecked className="mt-1 h-6 w-6 shrink-0 accent-[#b89968]" />
+      <input id={id} type="checkbox" name="avisar" value="1" checked={marcada} onChange={(e) => setMarcada(e.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-[#b89968]" />
       <span>
         <span className="block text-[17px] font-semibold text-[#1c1a17]">{texto}</span>
         <span className="block text-[14px] leading-snug text-[#7a7368]">{detalle}</span>
