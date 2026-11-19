@@ -128,12 +128,15 @@ async function decir(admin, telefono, pacienteId, texto) {
   await guardarSalida(admin, telefono, pacienteId, await enviarTexto(telefono, texto), texto);
 }
 
-/** La cita a la que se refiere el botón, si es de este paciente, futura y no cancelada. Sin id: su próxima cita. */
-async function citaDel(admin, pacienteId, citaId) {
+/** Todos los registros del paciente con ese teléfono (puede estar dos veces: por el chat y por la agenda). */
+const idsDe = (paciente) => paciente.ids?.length ? paciente.ids : [paciente.id];
+
+/** La cita a la que se refiere el botón, si es de este paciente (cualquiera de sus registros), futura y no cancelada. Sin id: su próxima cita. */
+async function citaDel(admin, paciente, citaId) {
   let q = admin
     .from("citas")
-    .select("id, inicio, fin, tipo, estado, notas, cambios_paciente")
-    .eq("paciente_id", pacienteId)
+    .select("id, paciente_id, inicio, fin, tipo, estado, notas, cambios_paciente")
+    .in("paciente_id", idsDe(paciente))
     .gte("inicio", new Date().toISOString())
     .neq("estado", "cancelada")
     .order("inicio")
@@ -151,7 +154,7 @@ const anotar = (notas, texto) => [notas, texto].filter(Boolean).join(" · ").sli
  * cualquiera ("ok", un sticker) NO lo resuelve.
  */
 export const yaRespondio = (admin, pacienteId) =>
-  admin.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", pacienteId).not("aviso_bloqueo_en", "is", null);
+  admin.from("citas").update({ aviso_bloqueo_en: null }).in("paciente_id", [].concat(pacienteId)).not("aviso_bloqueo_en", "is", null);
 
 /** Botones para una cita (los manda también el asistente cuando el paciente pregunta por su cita). */
 export async function enviarMenuCita(admin, telefono, paciente, cita) {
@@ -210,7 +213,7 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
     .from("citas")
     .select("id, inicio, fin, tipo, dentista, estado, notas")
     .eq("id", b.citaId || "")
-    .eq("paciente_id", paciente.id)
+    .in("paciente_id", idsDe(paciente))
     .maybeSingle();
   if (!previa) {
     await decir(admin, telefono, paciente.id, "No encontré esa cita. Si quiere agendar, con gusto le ayudo por aquí 😊");
@@ -230,7 +233,7 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
   }
 
   // Reagendar: sólo si ya no tiene otra cita próxima
-  const proxima = await citaDel(admin, paciente.id, null);
+  const proxima = await citaDel(admin, paciente, null);
   if (proxima) {
     await decir(admin, telefono, paciente.id, `Ya tiene cita el ${cuando(proxima.inicio)} 😊`);
     await enviarMenuCita(admin, telefono, paciente, proxima);
@@ -281,14 +284,14 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
     await pasar(admin, telefono, paciente, "Quiso reagendar su cita y no se pudo guardar");
     return true;
   }
-  await yaRespondio(admin, paciente.id);
+  await yaRespondio(admin, idsDe(paciente));
   await decir(admin, telefono, paciente.id, `¡Listo! ✅ Su nueva cita quedó el ${cuando(nuevoInicio)}. Le esperamos en Prol. Gómez Palacio 501 Pte., Zona Centro.`);
   await avisar(admin, { titulo: `📅 ${nombre} reagendó su cita`, cuerpo: `${diaCorto(fecha)}, ${formatHora(inicioMin)}`, url: `/agenda?fecha=${fecha}` });
   return true;
 }
 
 async function pasar(admin, telefono, paciente, motivo, texto) {
-  await yaRespondio(admin, paciente.id);
+  await yaRespondio(admin, idsDe(paciente));
   await pasarAHumano(admin, paciente, telefono, { motivo, urgente: false });
   const { data: editadas } = await admin.from("asistente_respuestas").select("*");
   await decir(admin, telefono, paciente.id, texto || textoAlPasar(textosEfectivos(editadas || []), {}, new Date(), await diasCerrados(admin)));
@@ -301,17 +304,26 @@ async function pasar(admin, telefono, paciente, motivo, texto) {
 export async function atenderBotonCita(admin, telefono, respuesta) {
   const b = leerBoton(respuesta);
   if (!b) return false;
-  const { data: paciente } = await admin
+  // El mismo teléfono puede estar en dos registros (el que creó el chat y el de la agenda):
+  // se buscan las citas en todos y se usa el registro dueño de la cita del botón.
+  const { data: registros } = await admin
     .from("pacientes")
     .select("id, nombre, etiquetas")
     .eq("whatsapp", telefono)
-    .limit(1)
-    .maybeSingle();
-  if (!paciente) return false;
+    .order("created_at");
+  if (!registros?.length) return false;
+  const ids = registros.map((r) => r.id);
+  let dueno = null;
+  if (b.citaId) {
+    const { data: c } = await admin.from("citas").select("paciente_id").eq("id", b.citaId).in("paciente_id", ids).maybeSingle();
+    dueno = c && registros.find((r) => r.id === c.paciente_id);
+  }
+  const base = dueno || registros.find((r) => r.nombre && !/^WhatsApp /.test(r.nombre)) || registros[0];
+  const paciente = { ...base, ids, etiquetas: [...new Set(registros.flatMap((r) => r.etiquetas || []))] };
   const nombre = paciente.nombre && !/^WhatsApp /.test(paciente.nombre) ? paciente.nombre : "Paciente";
 
   if (b.accion === "hablar") {
-    await yaRespondio(admin, paciente.id);
+    await yaRespondio(admin, idsDe(paciente));
     await pasar(admin, telefono, paciente, "Pidió hablar con usted (desde los botones de su cita)");
     return true;
   }
@@ -320,7 +332,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
     return atenderCitaAnterior(admin, telefono, paciente, nombre, b);
   }
 
-  const cita = await citaDel(admin, paciente.id, b.citaId);
+  const cita = await citaDel(admin, paciente, b.citaId);
   if (!cita) {
     await decir(admin, telefono, paciente.id, "No encontré una cita próxima a su nombre. Si quiere agendar una valoración, con gusto le ayudo por aquí 😊");
     return true;

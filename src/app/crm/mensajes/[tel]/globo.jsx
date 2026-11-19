@@ -1,4 +1,4 @@
-import { FileTextIcon } from "@phosphor-icons/react/dist/ssr";
+import { CheckIcon, ChecksIcon, FileTextIcon, WarningCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { horaDe } from "../lib";
 
 /**
@@ -44,8 +44,26 @@ export default function Globo({ m, archivoUrl }) {
           {m.via === "app" && " · desde el celular"}
           {m.via === "asistente" && " · asistente"}
           {m.via === "recordatorio" && " · recordatorio automático"}
+          {mio && <Estado estado={m.estado} />}
         </p>
+        {mio && m.estado === "failed" && (
+          <p className="mx-1 mb-1 flex items-start gap-2 rounded-[14px] bg-[#fbe9e7] px-3 py-2 text-[15px] leading-snug text-[#8a2a1c]">
+            <WarningCircleIcon size={20} weight="fill" className="mt-0.5 shrink-0" />
+            <span>
+              <span className="block font-semibold">No le llegó.</span>
+              {m.estado_error || "Meta no lo entregó."}
+            </span>
+          </p>
+        )}
       </div>
     </li>
   );
+}
+
+/** Palomitas como en WhatsApp: una = enviado, dos = le llegó, dos doradas = lo leyó. */
+function Estado({ estado }) {
+  if (estado === "sent") return <CheckIcon size={15} weight="bold" className="ml-1 inline align-[-2px]" aria-label="Enviado" />;
+  if (estado === "delivered") return <ChecksIcon size={15} weight="bold" className="ml-1 inline align-[-2px]" aria-label="Le llegó" />;
+  if (estado === "read") return <ChecksIcon size={15} weight="bold" className="ml-1 inline align-[-2px] text-[#b89968]" aria-label="Lo leyó" />;
+  return null;
 }

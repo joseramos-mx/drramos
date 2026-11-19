@@ -20,7 +20,7 @@ export default function Cabecera({ nombre, telefono, origen, etiquetas = [], pac
         <h1 className="truncate text-[19px] font-bold leading-tight text-[#1c1a17]">{nombre}</h1>
         {detalle && <p className={`truncate text-[14px] ${urgente ? "font-semibold text-[#c0392b]" : "text-[#7a7368]"}`}>{detalle}</p>}
       </div>
-      <MenuChat pacienteId={pacienteId} etiquetas={etiquetas} telefono={telefono} agendarHref={agendarHref} />
+      <MenuChat pacienteId={pacienteId} nombre={nombre} etiquetas={etiquetas} telefono={telefono} agendarHref={agendarHref} />
     </header>
   );
 }

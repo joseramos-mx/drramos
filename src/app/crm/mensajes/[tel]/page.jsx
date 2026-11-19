@@ -13,6 +13,15 @@ import { esperaRespuesta } from "../lib";
 
 export const dynamic = "force-dynamic";
 
+const CAMPOS = "id, direccion, via, enviado_en, texto, tipo, media_id, media_ruta";
+
+/** Mensajes del chat con su estado (¿llegó?). Si la migración del estado aún no corre, sin él. */
+async function leerMensajes(supabase, telefono) {
+  const q = (campos) => supabase.from("whatsapp_mensajes").select(campos).eq("telefono", telefono).order("enviado_en").limit(500);
+  const r = await q(`${CAMPOS}, estado, estado_error`);
+  return r.error ? q(CAMPOS) : r;
+}
+
 export default async function ConversacionPage({ params }) {
   const { tel } = await params;
   const telefono = normalizarTelefono(tel);
@@ -24,13 +33,8 @@ export default async function ConversacionPage({ params }) {
   if (!user) redirect(`/crm/login?from=/crm/mensajes/${telefono}`);
 
   const [{ data: mensajes }, { data: paciente }, { data: config }, { data: borrador }] = await Promise.all([
-    supabase
-      .from("whatsapp_mensajes")
-      .select("id, direccion, via, enviado_en, texto, tipo, media_id, media_ruta")
-      .eq("telefono", telefono)
-      .order("enviado_en")
-      .limit(500),
-    supabase.from("pacientes").select("*").eq("whatsapp", telefono).limit(1).maybeSingle(),
+    leerMensajes(supabase, telefono),
+    supabase.from("pacientes").select("*").eq("whatsapp", telefono).order("created_at").limit(1).maybeSingle(),
     supabase.from("asistente_config").select("modo").eq("id", 1).maybeSingle(),
     supabase
       .from("asistente_borradores")

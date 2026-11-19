@@ -484,3 +484,44 @@ export async function restaurarRespuestaAction(id) {
   revalidatePath("/crm/mensajes/respuestas");
   return { ok: true };
 }
+
+/**
+ * Corregir el nombre o el número de un paciente (p. ej. un número mal tecleado al agendar).
+ * Si cambia el número, su chat se va con él (los mensajes pasan al número nuevo) y se abre ahí.
+ * No se deja poner un número que ya es de otro paciente, para no revolver dos chats.
+ */
+export async function corregirPacienteAction(pacienteId, nombre, whatsapp) {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
+  const limpio = String(nombre || "").trim().replace(/\s+/g, " ");
+  if (limpio.length < 2 || limpio.length > 80) return { error: "Escribe su nombre." };
+  const digitos = String(whatsapp || "").replace(/\D+/g, "");
+  if (digitos.length !== 10 && !(digitos.length === 12 && digitos.startsWith("52")) && !(digitos.length === 13 && digitos.startsWith("521"))) {
+    return { error: "El número debe tener 10 dígitos, por ejemplo 618 123 4567." };
+  }
+  const tel = normalizarTelefono(digitos);
+
+  const { data: paciente } = await supabase.from("pacientes").select("id, whatsapp").eq("id", pacienteId).maybeSingle();
+  if (!paciente) return { error: "No encontramos a ese paciente." };
+  const anterior = normalizarTelefono(paciente.whatsapp);
+
+  if (tel !== anterior) {
+    const { data: otro } = await supabase.from("pacientes").select("nombre").eq("whatsapp", tel).neq("id", paciente.id).limit(1).maybeSingle();
+    if (otro) return { error: `Ese número ya es de ${otro.nombre || "otro paciente"}. Avísale a Jesús para juntarlos.` };
+  }
+
+  const { error } = await supabase.from("pacientes").update({ nombre: limpio, whatsapp: tel }).eq("id", paciente.id);
+  if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+
+  if (anterior && tel !== anterior) {
+    // El chat se mueve con el paciente (los mensajes sólo los escribe el servidor)
+    const admin = supabaseServicio();
+    await admin.from("whatsapp_mensajes").update({ telefono: tel }).eq("telefono", anterior);
+    await admin.from("asistente_borradores").update({ telefono: tel }).eq("telefono", anterior);
+    revalidatePath(`/crm/mensajes/${anterior}`);
+  }
+  revalidatePath("/crm/mensajes");
+  revalidatePath(`/crm/mensajes/${tel}`);
+  revalidatePath("/agenda");
+  return { ok: true, telefono: tel };
+}

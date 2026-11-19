@@ -47,6 +47,30 @@ export function mediaDe(m) {
   return { id: m[m.type].id, mime: m[m.type].mime_type || null };
 }
 
+/** Motivos más comunes por los que Meta no entrega un mensaje, en palabras sencillas. */
+const MOTIVOS = {
+  131026: "Ese número no tiene WhatsApp o no puede recibir mensajes. Revisa que el número esté bien escrito.",
+  131021: "No se puede mandar al mismo número del consultorio.",
+  131047: "Pasaron más de 24 horas desde su último mensaje: hay que mandar un mensaje aprobado.",
+  131049: "Meta lo detuvo para no llenar al paciente de mensajes. Intenta otro día o llámale.",
+  130472: "Meta no lo entregó (lo hace a veces con números nuevos). Llámale o intenta más tarde.",
+  131050: "El paciente pidió no recibir mensajes de este tipo.",
+  131056: "Se le mandaron demasiados mensajes seguidos. Espera un rato.",
+  131042: "Hay un problema con el pago de WhatsApp. Avísale a Jesús.",
+  131053: "No se pudo mandar el archivo.",
+  132000: "El mensaje aprobado no se llenó bien. Avísale a Jesús.",
+  132001: "Ese mensaje aprobado no existe o todavía no lo aprueba Meta.",
+  132015: "Meta pausó ese mensaje aprobado. Avísale a Jesús.",
+  132016: "Meta desactivó ese mensaje aprobado. Avísale a Jesús.",
+};
+
+export function motivoDeFalla(e) {
+  const codigo = Number(e?.code);
+  if (MOTIVOS[codigo]) return MOTIVOS[codigo];
+  const detalle = e?.error_data?.details || e?.message || e?.title;
+  return `Meta no lo entregó${codigo ? ` (código ${codigo})` : ""}${detalle ? `: ${String(detalle).slice(0, 160)}` : ""}.`;
+}
+
 /** Saca los cambios (field + value) de un cuerpo de webhook. */
 function cambios(body) {
   if (Array.isArray(body?.entry)) {
@@ -65,6 +89,7 @@ function cambios(body) {
 export function parsearWebhook(body) {
   const mensajes = [];
   const campos = [];
+  const estados = [];
 
   for (const { campo, valor } of cambios(body)) {
     campos.push(campo);
@@ -74,6 +99,17 @@ export function parsearWebhook(body) {
     );
 
     if (campo === "messages") {
+      // ¿Llegó? Meta avisa después de mandar: sent → delivered → read, o failed con el motivo
+      for (const st of valor?.statuses || []) {
+        if (!st?.id || !["sent", "delivered", "read", "failed"].includes(st.status)) continue;
+        const e = st.errors?.[0];
+        estados.push({
+          wa_id: st.id,
+          estado: st.status,
+          en: aIso(st.timestamp),
+          error: st.status === "failed" ? motivoDeFalla(e) : null,
+        });
+      }
       for (const m of valor?.messages || []) {
         mensajes.push({
           wa_id: m.id,
@@ -137,6 +173,7 @@ export function parsearWebhook(body) {
   // El mensaje original sigue en `crudo` para sacar foto/audio si trae
   return {
     campos,
+    estados,
     mensajes: mensajes
       .filter((m) => m.wa_id && m.telefono)
       .map(({ crudo, ...m }) => ({ ...m, media_id: mediaDe(crudo)?.id || null, media_mime: mediaDe(crudo)?.mime || null })),
