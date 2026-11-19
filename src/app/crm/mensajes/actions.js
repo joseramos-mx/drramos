@@ -400,7 +400,7 @@ export async function guardarRespuestaAction(id, textoConCorchetes) {
   }
   const riesgo = filtroDuro(texto);
   if (riesgo === "menciona dinero" || riesgo === "da un rango o cantidad") {
-    return { error: "El asistente no da precios (sólo los $600 de la valoración). Quita la cantidad, por favor." };
+    return { error: "El asistente no da precios (sólo los $500 de la valoración). Quita la cantidad, por favor." };
   }
 
   const { supabase, user } = await sesion();
@@ -428,7 +428,7 @@ function revisarPropia(cuando, texto) {
   const riesgo = filtroDuro(texto);
   if (riesgo && riesgo !== "demasiado largo") {
     const porque = {
-      "menciona dinero": "trae una cantidad de dinero (el asistente sólo puede dar los $600 de la valoración)",
+      "menciona dinero": "trae una cantidad de dinero (el asistente sólo puede dar los $500 de la valoración)",
       "da un rango o cantidad": "trae un precio o rango",
       "habla de medicamentos": "habla de medicamentos",
       "promete resultados": "promete resultados (por ejemplo \"el mejor\", \"sin dolor\", \"garantizado\")",

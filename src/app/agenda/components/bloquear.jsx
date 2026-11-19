@@ -151,7 +151,7 @@ export default function Bloquear({ fecha, hoy, proximos = [], demo = false }) {
   const [desde, setDesde] = useState(fecha < hoy ? hoy : fecha);
   const [hasta, setHasta] = useState(fecha < hoy ? hoy : fecha);
   const [horaDesde, setHoraDesde] = useState("16:00");
-  const [horaHasta, setHoraHasta] = useState("19:00");
+  const [horaHasta, setHoraHasta] = useState("20:00");
   const [motivo, setMotivo] = useState("Vacaciones");
   const [nota, setNota] = useState("");
   const [otro, setOtro] = useState(null); // mensaje de festivos / quitar
