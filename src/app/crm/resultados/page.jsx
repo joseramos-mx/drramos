@@ -6,6 +6,7 @@ import ResultadosVista from "./resultados-vista";
 import { kpisAnuncios, leerAnunciosMeta, leerPorAnuncioMeta, tablaPorAnuncio } from "./meta-ads";
 import { gastoPorCanal, mesDe, tablaFuentes } from "./fuentes";
 import { embudoWhatsapp, sinContestar, tiemposRespuesta } from "./stats-whatsapp";
+import { resultadosPruebaPrecio } from "@/lib/prueba-precio";
 
 export const dynamic = "force-dynamic";
 
@@ -73,13 +74,15 @@ export default async function ResultadosPage({ searchParams }) {
     .limit(20000);
   if (desdeMensajes) qMensajes = qMensajes.gte("enviado_en", desdeMensajes);
   const [{ data: contactos }, { data: mensajesWa }] = await Promise.all([
-    supabase.from("pacientes").select("id, origen, primer_mensaje_en").not("primer_mensaje_en", "is", null),
+    supabase.from("pacientes").select("id, origen, whatsapp, primer_mensaje_en").not("primer_mensaje_en", "is", null),
     qMensajes,
   ]);
   const wa = {
     embudo: embudoWhatsapp(contactos, citas, rango),
     tiempos: tiemposRespuesta(mensajesWa, rango),
     sinContestar: sinContestar((mensajesWa || []).filter((m) => m.enviado_en >= hace30)),
+    // Prueba de precio: todos los pacientes desde que empezó (no depende del periodo elegido)
+    pruebaPrecio: resultadosPruebaPrecio(contactos, citas),
   };
 
   const filasFuentes = tablaFuentes(r.porOrigen, gastos_, wa.embudo.porOrigen);

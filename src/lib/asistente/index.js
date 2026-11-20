@@ -17,6 +17,7 @@
  * Modo (tabla asistente_config): automatico | borrador | apagado.
  */
 
+import { entraALaPrueba, grupoPrecio } from "@/lib/prueba-precio";
 import Anthropic from "@anthropic-ai/sdk";
 import { INSTRUCCIONES } from "./conocimiento";
 import { armar, catalogo, elegiblesDe, textosEfectivos } from "./respuestas";
@@ -575,7 +576,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   // El mismo teléfono puede estar en dos registros (el del chat y el de la agenda): se ven sus citas en todos
   const { data: registros } = await admin
     .from("pacientes")
-    .select("id, nombre, origen, etiquetas, atiende, atiende_desde")
+    .select("id, nombre, origen, etiquetas, atiende, atiende_desde, primer_mensaje_en")
     .eq("whatsapp", telefono)
     .order("created_at");
   if (!registros?.length) return;
@@ -688,7 +689,16 @@ export async function atenderConAsistente(admin, telefono, waId) {
   } else {
     texto = d.texto;
   }
-  if (primerContacto) texto = `${textos.presentacion}\n\n${texto}`;
+  if (primerContacto) {
+    // Prueba de precio: a la mitad de los pacientes nuevos se les dice el costo de la valoración
+    // desde el primer mensaje (no si es urgencia o se pasa a la Dra. Gaby, ni si ya lo trae)
+    const decirPrecio =
+      grupoPrecio(telefono) === "dice" &&
+      entraALaPrueba(paciente.primer_mensaje_en || ahora.toISOString()) &&
+      ["aprobada", "libre"].includes(d.tipo) &&
+      !d.ids?.includes("precio_valoracion");
+    texto = [textos.presentacion, decirPrecio ? textos.precio_valoracion : null, texto].filter(Boolean).join("\n\n");
+  }
 
   // "Voy tarde" / "Ya llegué": se le avisa a la Dra. Gaby (sin pasarle el chat), también en modo borrador
   const quien = nombreValido(paciente.nombre) ? paciente.nombre : "Tu paciente";

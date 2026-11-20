@@ -40,7 +40,7 @@ export const RESPUESTAS = {
   duele:
     "El doctor trabaja con mucho cuidado y usa anestesia cuando hace falta; el escaneo 3D no lleva pastas. En la valoración le explica cada paso.",
   cuanto_tarda:
-    "Depende de cada caso. Con el laboratorio propio los tiempos suelen ser más cortos, y en la cita de valoración el doctor le da su plan con tiempos.",
+    "El plazo de entrega depende de su valoración en la primera consulta: ahí el Dr. Felipe revisa su caso y le dice cuánto tiempo toma. Con nuestro laboratorio propio los tiempos suelen ser más cortos. ¿Le gustaría agendar su valoración?",
 
   // ── Tratamientos (información general; el doctor confirma en la valoración) ──
   info_carillas:
@@ -129,7 +129,7 @@ export const SECCIONES = [
   ["Precios y valoración", [
     ["precio_tratamiento", "¿Cuánto cuesta un tratamiento? (nunca se da precio)"],
     ["precio_valoracion", "¿Cuánto cuesta la valoración?"], ["valoracion_que_es", "¿Qué hacen en la valoración?"],
-    ["que_llevar", "¿Qué llevo a la valoración?"], ["duele", "¿Duele?"], ["cuanto_tarda", "¿Cuánto tarda el tratamiento?"],
+    ["que_llevar", "¿Qué llevo a la valoración?"], ["duele", "¿Duele?"], ["cuanto_tarda", "¿Cuánto tarda? / ¿En cuánto me lo entregan? (nunca se promete un plazo)"],
   ]],
   ["Tratamientos", [
     ["info_carillas", "Carillas"], ["info_blanqueamiento", "Blanqueamiento"], ["info_diseno_sonrisa", "Diseño de sonrisa"],
