@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { buscarPorNombre } from "@/lib/buscar-nombre";
 import { normalizarTelefono } from "@/lib/telefono";
 import { supabaseServicio } from "@/lib/mensajes-servidor";
 import { mandarPlantillaCita } from "@/lib/avisos-cita";
@@ -58,23 +59,23 @@ export async function buscarPacientesAction(q) {
 
   const supabase = createClient(await cookies());
   const digits = term.replace(/\D+/g, "");
-  const like = `%${term.replace(/[%_,()]/g, "")}%`;
 
-  let pq = supabase.from("pacientes").select("id, nombre, whatsapp, lead_id").limit(6);
-  pq = digits.length >= 4
-    ? pq.ilike("whatsapp", `%${digits}%`)
-    : pq.ilike("nombre", like);
-
-  let lq = supabase
-    .from("leads")
-    .select("id, nombre, whatsapp")
-    .order("created_at", { ascending: false })
-    .limit(4);
-  lq = digits.length >= 4
-    ? lq.ilike("whatsapp", `%${digits}%`)
-    : lq.ilike("nombre", like);
-
-  const [{ data: pacientes }, { data: leads }] = await Promise.all([pq, lq]);
+  // Por número: como antes. Por nombre: se traen los nombres y se comparan aquí, sin que
+  // importen acentos ni un error de dedo ("Jesus" encuentra "Jesús"). Son pocos cientos.
+  let pacientes, leads;
+  if (digits.length >= 4) {
+    [{ data: pacientes }, { data: leads }] = await Promise.all([
+      supabase.from("pacientes").select("id, nombre, whatsapp, lead_id").ilike("whatsapp", `%${digits}%`).limit(6),
+      supabase.from("leads").select("id, nombre, whatsapp").ilike("whatsapp", `%${digits}%`).order("created_at", { ascending: false }).limit(4),
+    ]);
+  } else {
+    const [{ data: todos }, { data: todosLeads }] = await Promise.all([
+      supabase.from("pacientes").select("id, nombre, whatsapp, lead_id").order("created_at", { ascending: false }).limit(5000),
+      supabase.from("leads").select("id, nombre, whatsapp").order("created_at", { ascending: false }).limit(2000),
+    ]);
+    pacientes = buscarPorNombre(todos, term, 6);
+    leads = buscarPorNombre(todosLeads, term, 4);
+  }
 
   const ligados = new Set((pacientes || []).map((p) => p.lead_id).filter(Boolean));
   return [
@@ -128,6 +129,7 @@ export async function guardarCitaAction(_prev, formData) {
       .eq("id", id);
     if (error) return { error: error.message };
     if (cambioHora && avisar) await confirmarPorWhatsApp(supabase, id);
+    else if (cambioHora) await recordatorioSiYaPaso(id);
     revalidatePath("/agenda");
     return { ok: true };
   }
@@ -138,6 +140,7 @@ export async function guardarCitaAction(_prev, formData) {
   const { data: nueva, error } = await supabase.from("citas").insert({ ...base, paciente_id: pacienteId }).select("id").single();
   if (error) return { error: error.message };
   if (avisar) await confirmarPorWhatsApp(supabase, nueva.id);
+  else await recordatorioSiYaPaso(nueva.id);
 
   revalidatePath("/agenda");
   return { ok: true };
@@ -185,6 +188,29 @@ async function confirmarPorWhatsApp(supabase, citaId) {
   if (r.ok && hoyDurango(new Date(cita.inicio)) <= sumarDias(hoyDurango(), 1)) {
     await supabase.from("citas").update({ recordatorio_enviado_en: new Date().toISOString() }).eq("id", cita.id);
   }
+}
+
+/**
+ * Lo normal (Dra. Gaby, 2026-11-19): al paciente sólo le llega el RECORDATORIO un día antes
+ * (11:00), no un mensaje en cuanto se agenda. Pero si la cita es para mañana y ya pasaron las
+ * 11:00 de hoy, el recordatorio automático ya salió sin ella: se le manda en este momento.
+ * Respeta el interruptor "Recordar la cita un día antes" de Ajustes.
+ */
+const HORA_RECORDATORIOS = 11 * 60;
+async function recordatorioSiYaPaso(citaId) {
+  const admin = supabaseServicio();
+  const { data: cita } = await admin
+    .from("citas")
+    .select("id, inicio, recordatorio_enviado_en, paciente:pacientes(id, nombre, whatsapp, etiquetas)")
+    .eq("id", citaId)
+    .maybeSingle();
+  if (!cita || cita.recordatorio_enviado_en) return;
+  const manana = sumarDias(hoyDurango(), 1);
+  if (hoyDurango(new Date(cita.inicio)) !== manana || minutosDelDia(new Date().toISOString()) < HORA_RECORDATORIOS) return;
+  const { data: config } = await admin.from("asistente_config").select("recordatorios").eq("id", 1).maybeSingle();
+  if (config?.recordatorios === false) return;
+  const r = await mandarPlantillaCita(admin, cita, "recordatorio_cita", { via: "recordatorio" });
+  if (r.ok) await admin.from("citas").update({ recordatorio_enviado_en: new Date().toISOString(), recordatorio_error: null }).eq("id", cita.id);
 }
 
 /**

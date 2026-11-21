@@ -151,7 +151,7 @@ function NuevaCita({ fecha, dentista: dentistaInicial, minutos: minutosIniciales
         <input id="notas" name="notas" autoComplete="off" className={inputClass} />
       </div>
 
-      <AvisarWhatsApp id="avisar-nueva" texto="Mandarle su cita por WhatsApp" detalle="Con botones para confirmar, cambiar o cancelar (si tiene WhatsApp)." />
+      <AvisarWhatsApp id="avisar-nueva" texto="Mandarle su cita por WhatsApp ahorita" detalle="Si no la marcas, le llega sólo el recordatorio un día antes (con botones para confirmar o cambiar)." />
 
       <Encimada state={state} label="Agendar de todos modos" />
       <Acciones state={state} label="Agendar" />
@@ -423,7 +423,7 @@ function EditarCita({ fecha, cita, onDone, onCancel }) {
         <FieldLabel htmlFor="notas-edit">Nota</FieldLabel>
         <input id="notas-edit" name="notas" defaultValue={cita.notas || ""} autoComplete="off" className={inputClass} />
       </div>
-      <AvisarWhatsApp id="avisar-editar" texto="Si cambió la hora, avisarle por WhatsApp" detalle="Le llega su nueva hora con botones para confirmar o cambiar." />
+      <AvisarWhatsApp id="avisar-editar" texto="Si cambió la hora, avisarle por WhatsApp ahorita" detalle="Si no la marcas, le llega el recordatorio con la hora nueva un día antes." />
       <Encimada state={state} label="Guardar de todos modos" />
       <Acciones state={state} label="Guardar cambios" onCancel={onCancel} />
     </form>
@@ -448,12 +448,13 @@ function Encimada({ state, label }) {
 }
 
 /**
- * Palomita (prendida por omisión) para mandarle la cita al paciente por WhatsApp.
+ * Palomita (APAGADA por omisión: lo normal es sólo el recordatorio un día antes, Dra. Gaby
+ * 2026-11-19) para mandarle la cita al paciente por WhatsApp en ese momento.
  * Controlada con estado: si el guardado regresa un aviso ("se encima con otra cita"),
  * React reinicia el formulario y una palomita sin estado volvía a prenderse sola.
  */
 function AvisarWhatsApp({ id, texto, detalle }) {
-  const [marcada, setMarcada] = useState(true);
+  const [marcada, setMarcada] = useState(false);
   return (
     <label htmlFor={id} className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#f2efe9] p-4">
       <input id={id} type="checkbox" name="avisar" value="1" checked={marcada} onChange={(e) => setMarcada(e.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-[#b89968]" />

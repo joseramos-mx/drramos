@@ -29,7 +29,7 @@ import { enviarBotones, enviarLista, enviarTexto } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { diasCerrados, disponibilidad, pasarAHumano, textoAlPasar } from "@/lib/asistente";
 import { textosEfectivos } from "@/lib/asistente/respuestas";
-import { SLOT_MIN, esFechaValida, formatFechaLarga, formatHora, hoyDurango, isoDesde, minutosDelDia, sumarDias } from "@/app/agenda/lib";
+import { SLOT_MIN, abiertoAhora, esFechaValida, formatFechaLarga, formatHora, hoyDurango, isoDesde, minutosDelDia, sumarDias } from "@/app/agenda/lib";
 
 const MAX_CAMBIOS = 2;
 const DIAS_A_OFRECER = 14;
@@ -322,6 +322,45 @@ async function anotarSinContestar(admin, paciente, b) {
 }
 
 /**
+ * Con el asistente sin "Contesta solo" (o si ella lleva el chat): el paciente SIEMPRE recibe
+ * una respuesta corta y amable, pero los cambios los hace ella. Confirmar → "¡Gracias, le
+ * esperamos…!"; "Ya no, gracias" → se agradece; lo demás (cambiar, cancelar, dudas) → "la
+ * asistente le escribe en un momento" (o "mañana a partir de las 9:00" si está cerrado) y a
+ * ella le llega el chat como "Para ti".
+ */
+async function contestarLoBasico(admin, telefono, paciente, nombre, b) {
+  await anotarSinContestar(admin, paciente, b);
+
+  if (b.accion === "confirmar") {
+    const cita = await citaDel(admin, paciente, b.citaId);
+    if (cita) {
+      await yaRespondio(admin, idsDe(paciente));
+      await decir(admin, telefono, paciente.id, `¡Gracias por confirmar! Le esperamos el ${cuando(cita.inicio)} 😊`);
+      return true;
+    }
+  }
+  if (b.accion === "presupuesto_no") {
+    await decir(admin, telefono, paciente.id, "Entendido, gracias por avisarnos. Aquí estamos cuando guste 😊");
+    return true;
+  }
+
+  const abierto = abiertoAhora(new Date(), await diasCerrados(admin));
+  const frases = {
+    cambiar: ["Quiere cambiar su cita", "Con gusto le ayudamos a cambiar su cita. La asistente del Dr. Felipe le escribe en un momento para buscarle otro horario 😊"],
+    reagendar: ["Quiere otro horario", "Con gusto le buscamos otro horario. La asistente del Dr. Felipe le escribe en un momento 😊"],
+    cancelar: ["Quiere cancelar su cita", "Entendido. La asistente del Dr. Felipe le escribe en un momento para confirmar la cancelación."],
+    presupuesto_si: ["Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La asistente del Dr. Felipe le escribe en un momento para agendar su tratamiento 😊"],
+    presupuesto_duda: ["Tiene una duda sobre su plan de tratamiento", null],
+    confirmar: ["Quiso confirmar, pero no encontré su cita", "¡Gracias! La asistente del Dr. Felipe revisa su cita y le escribe en un momento 😊"],
+  };
+  const [motivo, texto] = frases[b.accion] || [`Tocó "${TITULOS[b.accion]?.[0] || "una opción de su cita"}"`, null];
+  // pasar(): el chat queda con ella ("Para ti"), le suena el aviso y el paciente recibe la frase
+  // (con el consultorio cerrado, la aprobada "le escribe mañana a partir de las 9:00")
+  await pasar(admin, telefono, paciente, `${motivo} (${nombre})`, abierto ? texto : null);
+  return true;
+}
+
+/**
  * Atiende el toque de un botón/opción de "Mi cita". Devuelve true si era
  * de "Mi cita" (y ya se contestó); false si no, para que siga el flujo normal.
  */
@@ -349,10 +388,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
   // Si ella lleva el chat o el asistente no está en "Contesta solo", el sistema NO le contesta
   // al paciente: sólo anota lo que tocó y le avisa a ella para que conteste con sus palabras.
   if (!(await contestaSolo(admin, registros))) {
-    await anotarSinContestar(admin, paciente, b);
-    const titulo = TITULOS[b.accion]?.[0] || (b.accion === "reagendar" ? "Elegir otro horario" : "una opción de su cita");
-    await avisar(admin, { titulo: `${nombre} tocó "${titulo}"`, cuerpo: "Contéstale tú en Mensajes", url: `/crm/mensajes/${telefono}` });
-    return true;
+    return contestarLoBasico(admin, telefono, paciente, nombre, b);
   }
 
   if (b.accion === "hablar") {

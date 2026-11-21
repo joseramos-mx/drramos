@@ -188,6 +188,8 @@ function SeccionWhatsapp({ wa }) {
         <Kpi label="Sin contestar ahora" valor={wa.sinContestar.length} destacado={wa.sinContestar.length > 0} />
       </div>
 
+      {wa.pruebaPrecio && <PruebaPrecio prueba={wa.pruebaPrecio} pct={pct} />}
+
       {wa.sinContestar.length > 0 && (
         <div className="mt-4">
           <p className="mb-2 font-[family-name:var(--font-albert)] text-[13px] text-white/70">
@@ -205,6 +207,49 @@ function SeccionWhatsapp({ wa }) {
         </div>
       )}
     </Seccion>
+  );
+}
+
+/**
+ * Prueba del costo de la valoración: a la mitad de los pacientes nuevos se les dice
+ * el costo en el primer mensaje y a la otra mitad sólo si preguntan.
+ */
+function PruebaPrecio({ prueba, pct }) {
+  const filas = [
+    ["Se les dice el costo de entrada", prueba.grupos.dice],
+    ["Sólo si preguntan", prueba.grupos.pregunta],
+  ];
+  const fecha = new Date(`${prueba.desde}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "long" });
+  return (
+    <div className="mt-5">
+      <p className="mb-2 font-[family-name:var(--font-albert)] text-[13px] text-white/70">
+        Prueba del costo de la valoración (pacientes nuevos desde el {fecha}). Gana el grupo con más “Pagaron”; esperar a tener al menos 30 por grupo.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] font-[family-name:var(--font-albert)] text-[14px] text-white/90">
+          <thead>
+            <tr className="text-left text-[12px] uppercase tracking-[0.12em] text-white/50">
+              <th className="py-2 pr-3 font-normal">Grupo</th>
+              <th className="py-2 pr-3 font-normal">Escribieron</th>
+              <th className="py-2 pr-3 font-normal">Agendaron</th>
+              <th className="py-2 pr-3 font-normal">Vinieron</th>
+              <th className="py-2 font-normal">Pagaron</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map(([nombre, g]) => (
+              <tr key={nombre} className="border-t border-white/10">
+                <td className="py-2 pr-3">{nombre}</td>
+                <td className="py-2 pr-3 tabular-nums">{g.escribieron}</td>
+                <td className="py-2 pr-3 tabular-nums">{g.agendaron} <span className="text-white/50">({pct(g.agendaron, g.escribieron)})</span></td>
+                <td className="py-2 pr-3 tabular-nums">{g.vinieron} <span className="text-white/50">({pct(g.vinieron, g.escribieron)})</span></td>
+                <td className="py-2 tabular-nums">{g.pagaron} <span className="text-white/50">({pct(g.pagaron, g.escribieron)})</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
