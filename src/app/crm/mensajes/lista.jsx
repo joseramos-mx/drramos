@@ -92,7 +92,7 @@ export function FilaChat({ c, base }) {
                 {urgente && <span className="font-bold text-[#c0392b]">Urgente · </span>}
                       {!urgente && c.paraElla && c.esperando && <span className="font-bold text-[#8a6d3f]">Para ti · </span>}
                 {c.ultimo.direccion === "salida" && c.ultimo.estado === "failed" && <span className="font-bold text-[#c0392b]">No le llegó · </span>}
-                {c.ultimo.direccion === "salida" && (c.ultimo.via === "asistente" ? "Asistente: " : c.ultimo.via === "recordatorio" ? "Recordatorio: " : "Tú: ")}
+                {c.ultimo.direccion === "salida" && (c.ultimo.via === "asistente" ? "Asistente: " : c.ultimo.via === "recordatorio" ? "Automático: " : "Tú: ")}
                 {resumenDe(c.ultimo)}
               </p>
               {c.esperando && <span aria-label="Sin contestar" className="h-3.5 w-3.5 shrink-0 rounded-full bg-[#b89968]" />}

@@ -8,7 +8,7 @@
  * Resultados compara cuántos de cada grupo agendan, vienen y pagan.
  * PRUEBA_PRECIO_DESDE (AAAA-MM-DD) cambia el inicio; "no" la apaga.
  */
-export const PRUEBA_PRECIO_DESDE = process.env.PRUEBA_PRECIO_DESDE || "2026-11-30";
+export const PRUEBA_PRECIO_DESDE = process.env.PRUEBA_PRECIO_DESDE || "2026-11-23";
 
 export const pruebaActiva = () => /^\d{4}-\d{2}-\d{2}$/.test(PRUEBA_PRECIO_DESDE);
 

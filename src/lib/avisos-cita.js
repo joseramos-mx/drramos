@@ -21,7 +21,7 @@ export function primerNombre(nombre) {
  * `cita`: { id, inicio, paciente: { id, nombre, whatsapp, etiquetas } }.
  * Devuelve { ok } | { sinWhatsapp } | { noContactar } | { error }.
  */
-export async function mandarPlantillaCita(admin, cita, nombrePlantilla, { via = "api", valores: propios = null } = {}) {
+export async function mandarPlantillaCita(admin, cita, nombrePlantilla, { via = "recordatorio", valores: propios = null } = {}) {
   const p = [...PLANTILLAS, ...PLANTILLAS_SISTEMA].find((x) => x.nombre === nombrePlantilla);
   if (!p) return { error: "Plantilla desconocida" };
   if ((cita.paciente?.etiquetas || []).includes("no_contactar")) return { noContactar: true };

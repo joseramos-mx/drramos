@@ -43,12 +43,14 @@ const FUERA_DE_VENTANA = {
 
 /** Guarda lo que mandó el consultorio (service_role: el personal sólo tiene lectura). */
 async function guardarSalida(admin, fila) {
-  const { data: paciente } = await admin.from("pacientes").select("id").eq("whatsapp", fila.telefono).limit(1).maybeSingle();
-  // Si ella contesta, el chat es suyo: el asistente no se mete (8 h desde su último mensaje)
+  const { data: fichas } = await admin.from("pacientes").select("id").eq("whatsapp", fila.telefono).order("created_at");
+  const paciente = fichas?.[0] || null;
+  // Si ella contesta, el chat es suyo (en todas las fichas con ese número): el robot no se mete 8 h
   if (paciente) {
-    await admin.from("pacientes").update({ atiende: "humano", atiende_desde: new Date().toISOString() }).eq("id", paciente.id);
+    const ids = fichas.map((f) => f.id);
+    await admin.from("pacientes").update({ atiende: "humano", atiende_desde: new Date().toISOString() }).in("id", ids);
     // Si tenía un aviso por bloqueo sin resolver, ella ya lo está atendiendo
-    await admin.from("citas").update({ aviso_bloqueo_en: null }).eq("paciente_id", paciente.id).not("aviso_bloqueo_en", "is", null);
+    await admin.from("citas").update({ aviso_bloqueo_en: null }).in("paciente_id", ids).not("aviso_bloqueo_en", "is", null);
   }
   await admin.from("whatsapp_mensajes").upsert(
     { ...fila, direccion: "salida", via: "api", enviado_en: new Date().toISOString(), paciente_id: paciente?.id || null },
@@ -301,12 +303,12 @@ export async function cambiarQuienAtiendeAction(pacienteId, quien) {
   if (!["asistente", "humano"].includes(quien)) return { error: "Opción no válida." };
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
-  const { data: p, error } = await supabase
-    .from("pacientes")
-    .update({ atiende: quien, atiende_desde: quien === "humano" ? new Date().toISOString() : null })
-    .eq("id", pacienteId)
-    .select("whatsapp")
-    .maybeSingle();
+  const { data: p } = await supabase.from("pacientes").select("whatsapp").eq("id", pacienteId).maybeSingle();
+  // Todas las fichas con ese número (si está repetido, el robot revisa cualquiera de ellas)
+  const cambio = { atiende: quien, atiende_desde: quien === "humano" ? new Date().toISOString() : null };
+  const { error } = p?.whatsapp
+    ? await supabase.from("pacientes").update(cambio).eq("whatsapp", p.whatsapp)
+    : await supabase.from("pacientes").update(cambio).eq("id", pacienteId);
   if (error) return { error: "No se pudo cambiar. Intenta de nuevo." };
   if (p?.whatsapp) revalidatePath(`/crm/mensajes/${p.whatsapp}`);
   return { ok: true };

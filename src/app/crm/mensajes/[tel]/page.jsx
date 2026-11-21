@@ -57,10 +57,10 @@ export default async function ConversacionPage({ params }) {
   const nombre = paciente?.nombre || `WhatsApp ${telefono.slice(-10)}`;
   const modo = config?.modo || "apagado";
   // Lo lleva ella si lo tomó (o le pasaron el caso) hace menos de 8 h
-  const atiende =
-    paciente?.atiende === "humano" && paciente.atiende_desde && Date.now() - new Date(paciente.atiende_desde).getTime() < 8 * 3600 * 1000
-      ? "humano"
-      : "asistente";
+  // Cualquier ficha con ese número cuenta (si está repetido, ella pudo tomarlo en otra)
+  const tomas = (fichas || []).filter((f) => f.atiende === "humano" && f.atiende_desde && Date.now() - new Date(f.atiende_desde).getTime() < 8 * 3600 * 1000);
+  const atiende = tomas.length ? "humano" : "asistente";
+  const atiendeDesde = tomas.map((f) => f.atiende_desde).sort().at(-1) || null;
   const esperando = esperaRespuesta(mensajes?.at(-1), atiende === "humano", paciente?.chat_listo_en);
 
   return (
@@ -76,7 +76,7 @@ export default async function ConversacionPage({ params }) {
         volver="/crm/mensajes"
         agendarHref={paciente ? `/agenda?paciente=${paciente.id}` : null}
       />
-      {paciente && modo !== "apagado" && <QuienAtiende key={atiende} pacienteId={paciente.id} atiende={atiende} />}
+      {paciente && <QuienAtiende key={`${atiende}-${modo}`} pacienteId={paciente.id} atiende={atiende} desde={atiendeDesde} modo={modo} />}
       <div className="flex flex-1 flex-col px-3">
         <Chat mensajes={mensajes || []} />
       </div>

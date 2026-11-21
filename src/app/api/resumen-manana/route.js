@@ -82,7 +82,7 @@ export async function GET(req) {
     const n = telefonos.length;
     await avisar(admin, {
       titulo: `🌅 Anoche escribieron ${n} paciente${n === 1 ? "" : "s"}`,
-      cuerpo: urgencias ? `${urgencias} marcada${urgencias === 1 ? "" : "s"} como urgencia. Revisa Pendientes.` : "El asistente ya les contestó. Revisa Pendientes.",
+      cuerpo: urgencias ? `${urgencias} marcada${urgencias === 1 ? "" : "s"} como urgencia. Revisa Pendientes.` : "Revisa Pendientes para ver a quién falta contestar.",
       url: "/crm/mensajes",
       siempre: true,
     });
