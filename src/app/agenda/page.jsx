@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import AgendaDia from "./components/agenda-dia";
+import AgendaSemana, { lunesDe } from "./components/agenda-semana";
 import Reloj from "./components/reloj";
 import BotonesDia from "./components/botones-dia";
 import { BarraInferior } from "../crm/mensajes/encabezado";
@@ -22,6 +23,10 @@ export default async function AgendaPage({ searchParams }) {
   const sp = (await searchParams) || {};
   const hoy = hoyDurango();
   const fecha = esFechaValida(sp.fecha) ? sp.fecha : hoy;
+  const semana = sp.vista === "semana";
+  const lunes = lunesDe(fecha);
+  const hora = /^\d{1,4}$/.test(String(sp.hora || "")) ? Number(sp.hora) : null;
+  const abrirCita = typeof sp.cita === "string" && /^[0-9a-f-]{36}$/i.test(sp.cita) ? sp.cita : null;
 
   const supabase = createClient(await cookies());
   const {
@@ -29,7 +34,9 @@ export default async function AgendaPage({ searchParams }) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/crm/login?from=/agenda");
 
-  const { desde, hasta } = rangoDelDia(fecha);
+  // Día: sus citas. Semana: de lunes a sábado (y los bloqueos de esos días)
+  const desde = rangoDelDia(semana ? lunes : fecha).desde;
+  const hasta = rangoDelDia(semana ? sumarDias(lunes, 5) : fecha).hasta;
   // Puntos del calendario del mes: cuántas citas hay cada día
   const primero = `${fecha.slice(0, 7)}-01`;
   const sigMes = new Date(`${primero}T00:00:00Z`);
@@ -59,7 +66,12 @@ export default async function AgendaPage({ searchParams }) {
       .gte("inicio", rangoDelDia(primero).desde)
       .lt("inicio", rangoDelDia(sigMes.toISOString().slice(0, 10)).desde)
       .neq("estado", "cancelada"),
-    supabase.from("bloqueos").select(BLOQUEO).lte("desde_fecha", finMes).gte("hasta_fecha", primero),
+    // Del mes (calendario) y de la semana completa aunque cruce de mes
+    supabase
+      .from("bloqueos")
+      .select(BLOQUEO)
+      .lte("desde_fecha", finMes > sumarDias(lunes, 5) ? finMes : sumarDias(lunes, 5))
+      .gte("hasta_fecha", primero < lunes ? primero : lunes),
     supabase.from("bloqueos").select(BLOQUEO).gte("hasta_fecha", hoy).order("desde_fecha").limit(40),
   ]);
 
@@ -88,16 +100,50 @@ export default async function AgendaPage({ searchParams }) {
           </div>
         </div>
         <p className="text-[18px] font-semibold text-[#5b544a] first-letter:uppercase">
-            {formatFechaLarga(fecha)}
-            {fecha === hoy && <span className="text-[#8a6d3f]"> · hoy</span>}
+            {semana ? (
+              `Semana del ${formatFechaLarga(lunes)} al ${formatFechaLarga(sumarDias(lunes, 5))}`
+            ) : (
+              <>
+                {formatFechaLarga(fecha)}
+                {fecha === hoy && <span className="text-[#8a6d3f]"> · hoy</span>}
+              </>
+            )}
           </p>
       </header>
 
-      <nav className="mt-2 flex gap-2" aria-label="Cambiar de día">
-        <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}${extra}`} label="‹ Ayer" />
-        <NavBtn href={`/agenda?fecha=${hoy}${extra}`} label="Hoy" activo={fecha === hoy} />
-        <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}${extra}`} label="Mañana ›" />
-      </nav>
+      {/* Día o semana completa */}
+      <div className="mt-3 inline-flex rounded-full bg-[#f2efe9] p-1" role="tablist" aria-label="Ver por día o por semana">
+        <Link
+          href={`/agenda?fecha=${fecha}${extra}`}
+          role="tab"
+          aria-selected={!semana}
+          className={`inline-flex h-10 items-center rounded-full px-5 text-[16px] font-semibold ${!semana ? "bg-white text-[#1c1a17] shadow-sm" : "text-[#7a7368]"}`}
+        >
+          Día
+        </Link>
+        <Link
+          href={`/agenda?vista=semana&fecha=${fecha}${extra}`}
+          role="tab"
+          aria-selected={semana}
+          className={`inline-flex h-10 items-center rounded-full px-5 text-[16px] font-semibold ${semana ? "bg-white text-[#1c1a17] shadow-sm" : "text-[#7a7368]"}`}
+        >
+          Semana
+        </Link>
+      </div>
+
+      {semana ? (
+        <nav className="mt-3 flex gap-2" aria-label="Cambiar de semana">
+          <NavBtn href={`/agenda?vista=semana&fecha=${sumarDias(lunes, -7)}${extra}`} label="‹ Anterior" />
+          <NavBtn href={`/agenda?vista=semana&fecha=${hoy}${extra}`} label="Esta semana" activo={lunesDe(hoy) === lunes} />
+          <NavBtn href={`/agenda?vista=semana&fecha=${sumarDias(lunes, 7)}${extra}`} label="Siguiente ›" />
+        </nav>
+      ) : (
+        <nav className="mt-3 flex gap-2" aria-label="Cambiar de día">
+          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, -1)}${extra}`} label="‹ Ayer" />
+          <NavBtn href={`/agenda?fecha=${hoy}${extra}`} label="Hoy" activo={fecha === hoy} />
+          <NavBtn href={`/agenda?fecha=${sumarDias(fecha, 1)}${extra}`} label="Mañana ›" />
+        </nav>
+      )}
 
       {error && (
         <div
@@ -118,14 +164,21 @@ export default async function AgendaPage({ searchParams }) {
         </p>
       )}
 
-      <AgendaDia
-        fecha={fecha}
-        citas={citas || []}
-        pendientes={null}
-        preseleccion={preseleccion}
-        ajustarAlto="auto"
-        bloqueos={bloqueosDelDia(bloqueosMes, fecha)}
-      />
+      {semana ? (
+        <AgendaSemana lunes={lunes} citas={citas || []} bloqueos={bloqueosMes || []} extra={extra} />
+      ) : (
+        <AgendaDia
+          key={`${fecha}-${hora ?? ""}-${abrirCita ?? ""}`}
+          fecha={fecha}
+          citas={citas || []}
+          pendientes={null}
+          preseleccion={preseleccion}
+          ajustarAlto="auto"
+          bloqueos={bloqueosDelDia(bloqueosMes, fecha)}
+          abrirHora={hora}
+          abrirCita={abrirCita}
+        />
+      )}
       <BarraInferior activo="agenda" />
     </main>
   );

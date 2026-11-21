@@ -37,11 +37,24 @@ const ANCHO_PANTALLA = 600; // desde tableta (cualquier iPad, parado o acostado)
  * (monitor del consultorio); "auto" = sólo en pantallas anchas, en el
  * celular se queda con bloques altos para el dedo.
  */
-export default function AgendaDia({ fecha, citas: todasLasCitas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false, bloqueos = [], demo = false }) {
-  const [sheet, setSheet] = useState(null);
+export default function AgendaDia({ fecha, citas: todasLasCitas, pendientes, preseleccion = null, soloLectura = false, ajustarAlto = false, bloqueos = [], demo = false, abrirHora = null, abrirCita = null }) {
+  // Desde la vista de semana: tocar un hueco abre el menú en esa hora; tocar una cita, su detalle
+  const [sheet, setSheet] = useState(() => {
+    const c = abrirCita && todasLasCitas.find((x) => x.id === abrirCita);
+    if (c) return { modo: "cita", cita: c };
+    // Viene de "Agendar" desde un chat: el hueco va directo a la cita nueva
+    if (preseleccion && Number.isInteger(abrirHora) && !soloLectura) return { modo: "nueva", dentista: DENTISTAS[0].value, minutos: abrirHora };
+    return null;
+  });
   const cerrar = useCallback(() => setSheet(null), []);
   // Tocar una hora vacía: menú (paciente / evento / bloquear) → `menu`; luego `rapida` o el evento elegido
-  const [menu, setMenu] = useState(null); // { dentista, minutos }
+  const [menu, setMenu] = useState(() =>
+    Number.isInteger(abrirHora) && !soloLectura && !abrirCita
+      ? preseleccion
+        ? null
+        : { dentista: DENTISTAS[0].value, minutos: abrirHora }
+      : null
+  ); // { dentista, minutos }
   const [rapida, setRapida] = useState(null); // { modo: "evento" | "bloquear", minutos }
   const [verEvento, setVerEvento] = useState(null);
   const cerrarMenus = useCallback(() => {
