@@ -6,6 +6,7 @@ import Avisos from "../avisos";
 import ModoAsistente from "./modo-asistente";
 import Recordatorios from "./recordatorios";
 import Contrasena from "./contrasena";
+import ReportarBoton from "../reportar-boton";
 
 /** Pantalla de Ajustes (la usa la app y la demo). */
 export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar", automaticos = {}, llave = null }) {
@@ -33,6 +34,8 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
         <span className="text-[#9a9388]">›</span>
       </Link>
 
+      <ReportarBoton />
+
       <h2 className={titulo}>Mensajes automáticos</h2>
       <Recordatorios estado={automaticos} demo={base !== "/crm/mensajes"} />
 
@@ -58,6 +61,11 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
             <li className="border-b border-[#1c1a17]/[0.06]">
               <Link href={`${base}/pruebas`} className={fila}>
                 Probar asistente <span className="text-[#9a9388]">›</span>
+              </Link>
+            </li>
+            <li className="border-b border-[#1c1a17]/[0.06]">
+              <Link href={`${base}/reportes`} className={fila}>
+                Reportes de problemas <span className="text-[#9a9388]">›</span>
               </Link>
             </li>
             <li>
