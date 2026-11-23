@@ -585,6 +585,11 @@ export async function atenderConAsistente(admin, telefono, waId) {
     (r) => r.atiende === "humano" && r.atiende_desde && Date.now() - new Date(r.atiende_desde).getTime() < HUMANO_HORAS * 3600 * 1000
   );
   if (humanoReciente) return registrar(admin, telefono, "omitido", { motivo: "lo atiende la Dra. Gaby" });
+  // Claude tarda unos segundos: si en ese rato ella tomó el chat o le escribió, el robot no manda nada
+  const ellaLoTomo = async () => {
+    const { data: rs } = await admin.from("pacientes").select("atiende, atiende_desde").eq("whatsapp", telefono);
+    return (rs || []).some((r) => r.atiende === "humano" && r.atiende_desde && Date.now() - new Date(r.atiende_desde).getTime() < HUMANO_HORAS * 3600 * 1000);
+  };
 
   const { count: recientes } = await admin
     .from("whatsapp_mensajes")
@@ -642,8 +647,11 @@ export async function atenderConAsistente(admin, telefono, waId) {
   try {
     d = await decidir(client, admin, { paciente, messages: [...messages], contexto, puedeAgendar: modo === "automatico", tieneCita: Boolean(proximas?.length), textos, sistema });
   } catch (e) {
+    // Sin despedida automática: si la llave falla o no hay saldo, a cada paciente le saldría sola.
+    // Sólo se le pasa el chat a ella (con aviso) y queda el error para Ajustes.
     await registrar(admin, telefono, "error", { mensaje: String(e?.message || e).slice(0, 500) });
-    d = { tipo: "humano", motivo: "error del asistente", acciones: [] };
+    await pasarAHumano(admin, paciente, telefono, { motivo: "el asistente no pudo contestar", urgente: false });
+    return;
   }
 
   // Carriles de la respuesta propia: filtro fijo + verificador
@@ -661,6 +669,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
 
   if (d.tipo === "nada") return registrar(admin, telefono, "omitido", { acciones: d.acciones });
   if ((await ultimoDelPaciente()) !== waId) return registrar(admin, telefono, "omitido", { motivo: "llegó otro mensaje", decision: d });
+  if (await ellaLoTomo()) return registrar(admin, telefono, "omitido", { motivo: "ella tomó el chat mientras pensaba", decision: d });
   if (d.tipo === "cita" && proximas?.length) {
     // Lo que escribió se resuelve con el mismo flujo de los botones (todo se revalida ahí)
     await atenderBotonCita(admin, telefono, botonDeAccion(d, proximas[0].id));
@@ -707,7 +716,8 @@ export async function atenderConAsistente(admin, telefono, waId) {
 
   // ¿Necesita su aprobación? Modo borrador, o respuesta propia sin permiso de ir sola
   const aprobar = modo === "borrador" || (d.tipo === "libre" && !libresSolas);
-  if (aprobar && d.tipo !== "humano") {
+  // En "Me propone y yo apruebo" NADA del robot sale solo (tampoco la despedida al pasarle el chat)
+  if (modo === "borrador" || (aprobar && d.tipo !== "humano")) {
     await admin.from("asistente_borradores").update({ estado: "descartado" }).eq("telefono", telefono).eq("estado", "pendiente");
     await admin.from("asistente_borradores").insert({ telefono, texto });
     await avisar(admin, {
@@ -718,6 +728,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     return registrar(admin, telefono, "borrador", { decision: d });
   }
 
+  if (await ellaLoTomo() && !["humano"].includes(d.tipo)) return registrar(admin, telefono, "omitido", { motivo: "ella tomó el chat", decision: d });
   const envio = await enviarTexto(telefono, texto);
   if (envio.error) return registrar(admin, telefono, "error", { envio: envio.error, decision: d });
   await admin.from("whatsapp_mensajes").upsert(

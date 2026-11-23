@@ -114,7 +114,7 @@ async function guardarSalida(admin, telefono, pacienteId, envio, texto) {
       wa_id: envio.wa_id || `micita-${Date.now()}`,
       telefono,
       direccion: "salida",
-      via: "asistente",
+      via: "recordatorio", // automático (no es el robot ni ella)
       tipo: "text",
       texto,
       enviado_en: new Date().toISOString(),
@@ -299,12 +299,12 @@ async function pasar(admin, telefono, paciente, motivo, texto) {
 
 const HUMANO_HORAS = 8; // igual que en el asistente: si ella escribió/tomó el chat, es suyo 8 h
 
-/** ¿El sistema contesta solo los botones? Sólo con el asistente en "Contesta solo" y si ella no tomó el chat. */
-async function contestaSolo(admin, registros) {
-  const humano = registros.some(
-    (r) => r.atiende === "humano" && r.atiende_desde && Date.now() - new Date(r.atiende_desde).getTime() < HUMANO_HORAS * 3600 * 1000
-  );
-  if (humano) return false;
+/**
+ * ¿Los botones hacen el flujo completo (días, horas, cancelar)? Con el asistente en "Contesta solo".
+ * Regla de Jesús (2026-11-21): "tomar el chat" sólo decide quién CONVERSA (robot o ella); los botones
+ * de cita funcionan igual aunque ella lo haya tomado, por si olvida devolverlo.
+ */
+async function contestaSolo(admin) {
   const { data: config } = await admin.from("asistente_config").select("modo").eq("id", 1).maybeSingle();
   return config?.modo === "automatico";
 }
@@ -387,7 +387,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
 
   // Si ella lleva el chat o el asistente no está en "Contesta solo", el sistema NO le contesta
   // al paciente: sólo anota lo que tocó y le avisa a ella para que conteste con sus palabras.
-  if (!(await contestaSolo(admin, registros))) {
+  if (!(await contestaSolo(admin))) {
     return contestarLoBasico(admin, telefono, paciente, nombre, b);
   }
 

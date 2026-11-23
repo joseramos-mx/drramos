@@ -7,6 +7,10 @@ import { horaDe, resumenDe, separarBotones } from "../lib";
  */
 export default function Globo({ m, archivoUrl, cita = null }) {
   const mio = m.direccion === "salida";
+  // Quién lo mandó: ella (app/api), el asistente virtual (robot) o un mensaje automático (recordatorio,
+  // plantillas de cita, botones). Cada uno con su color para que nunca se confundan.
+  const quien = !mio ? "paciente" : m.via === "asistente" ? "robot" : m.via === "recordatorio" ? "auto" : "ella";
+  const fondo = { paciente: "rounded-bl-md bg-white", ella: "rounded-br-md bg-[#efe3cc]", robot: "rounded-br-md bg-[#dcebdc]", auto: "rounded-br-md bg-[#dfe6f0]" }[quien];
   const url = archivoUrl || `/crm/mensajes/archivo/${m.id}`;
   const tieneArchivo = Boolean(m.media_id || m.media_ruta || archivoUrl);
   // "[Botones: A · B]" al final del texto → botoncitos, como los ve el paciente
@@ -15,9 +19,7 @@ export default function Globo({ m, archivoUrl, cita = null }) {
   return (
     <li className={`flex ${mio ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[88%] rounded-[20px] p-1 shadow-[0_1px_1px_rgba(28,26,23,0.08)] sm:max-w-[75%] ${
-          mio ? "rounded-br-md bg-[#efe3cc]" : "rounded-bl-md bg-white"
-        }`}
+        className={`max-w-[88%] rounded-[20px] p-1 shadow-[0_1px_1px_rgba(28,26,23,0.08)] sm:max-w-[75%] ${fondo}`}
       >
         {cita && (
           // A qué mensaje contesta (como en WhatsApp: una cajita arriba con el mensaje citado)
@@ -61,9 +63,9 @@ export default function Globo({ m, archivoUrl, cita = null }) {
         )}
         <p className="px-3 pb-0.5 pt-1 text-right text-[13px] tabular-nums text-[#8b8478]">
           {horaDe(m.enviado_en)}
-          {m.via === "app" && " · desde el celular"}
-          {m.via === "asistente" && " · asistente"}
-          {m.via === "recordatorio" && " · recordatorio automático"}
+          {quien === "ella" && (m.via === "app" ? " · tú, desde el celular" : " · tú")}
+          {quien === "robot" && " · asistente virtual"}
+          {quien === "auto" && " · mensaje automático"}
           {mio && <Estado estado={m.estado} />}
         </p>
         {mio && m.estado === "failed" && (

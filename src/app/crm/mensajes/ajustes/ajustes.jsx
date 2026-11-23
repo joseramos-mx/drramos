@@ -6,9 +6,10 @@ import Avisos from "../avisos";
 import ModoAsistente from "./modo-asistente";
 import Recordatorios from "./recordatorios";
 import Contrasena from "./contrasena";
+import ReportarBoton from "../reportar-boton";
 
 /** Pantalla de Ajustes (la usa la app y la demo). */
-export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar", automaticos = {} }) {
+export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, admin = false, modo = "apagado", libres = "aprobar", automaticos = {}, llave = null }) {
   const titulo = "px-5 pb-2 pt-6 text-[14px] font-semibold uppercase tracking-wide text-[#9a9388]";
   const fila = "flex h-16 items-center justify-between px-5 text-[17px] text-[#1c1a17] active:bg-[#f5f1ea]";
   return (
@@ -16,6 +17,15 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
       <BarraSuperior titulo="Ajustes" />
 
       <h2 className={titulo}>Asistente virtual</h2>
+      {llave && llave.estado !== "ok" && (
+        // Sin llave (o con una que falla) el asistente no contesta: todo le llega a ella
+        <p className="mx-5 mb-3 rounded-[16px] bg-[#fbe9e7] px-4 py-3 text-[16px] leading-snug text-[#8a2a1c]">
+          <span className="block font-semibold">El asistente no está funcionando.</span>
+          {llave.estado === "falta"
+            ? "Falta la llave de Claude en Vercel. Mientras, todos los mensajes te llegan a ti."
+            : `Su último intento falló (${new Date(llave.en).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "America/Mexico_City" })}). Puede ser la llave de Claude o el saldo. Los mensajes te llegan a ti.`}
+        </p>
+      )}
       <ModoAsistente modo={modo} libres={libres} demo={base !== "/crm/mensajes"} />
       <Link href={`${base}/respuestas`} className="mx-5 mt-3 flex h-16 items-center justify-between rounded-[20px] border-2 border-[#1c1a17]/10 bg-white px-5 text-[18px] font-semibold text-[#1c1a17]">
         <span className="flex items-center gap-3">
@@ -23,6 +33,8 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
         </span>
         <span className="text-[#9a9388]">›</span>
       </Link>
+
+      <ReportarBoton />
 
       <h2 className={titulo}>Mensajes automáticos</h2>
       <Recordatorios estado={automaticos} demo={base !== "/crm/mensajes"} />
@@ -49,6 +61,11 @@ export default function Ajustes({ email, base = "/crm/mensajes", agendaHref, adm
             <li className="border-b border-[#1c1a17]/[0.06]">
               <Link href={`${base}/pruebas`} className={fila}>
                 Probar asistente <span className="text-[#9a9388]">›</span>
+              </Link>
+            </li>
+            <li className="border-b border-[#1c1a17]/[0.06]">
+              <Link href={`${base}/reportes`} className={fila}>
+                Reportes de problemas <span className="text-[#9a9388]">›</span>
               </Link>
             </li>
             <li>
