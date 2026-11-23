@@ -20,6 +20,7 @@
 import { entraALaPrueba, grupoPrecio } from "@/lib/prueba-precio";
 import Anthropic from "@anthropic-ai/sdk";
 import { INSTRUCCIONES } from "./conocimiento";
+import { esSoloCortesia } from "./cortesia";
 import { armar, catalogo, elegiblesDe, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
@@ -612,6 +613,34 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const orden = (filas || []).reverse();
   const messages = historial(orden);
   if (messages[messages.length - 1]?.role !== "user") return;
+
+  // Sólo agradece o se despide ("Muy bien, gracias, bonito día"): nunca se le pasa a la
+  // Dra. Gaby ni se le pregunta a Claude. Se contesta "¡Con gusto!" una vez y sale de Pendientes.
+  const ultimaSalida = [...orden].reverse().find((m) => m.direccion === "salida");
+  const nuevas = ultimaSalida ? orden.slice(orden.lastIndexOf(ultimaSalida) + 1) : [];
+  if (
+    ultimaSalida &&
+    !String(ultimaSalida.texto || "").includes("?") && // a una pregunta, un "gracias" puede ser respuesta
+    nuevas.length &&
+    nuevas.every((m) => m.direccion === "entrada" && m.tipo === "text" && esSoloCortesia(m.texto))
+  ) {
+    const { data: editadas } = await admin.from("asistente_respuestas").select("*");
+    const gracias = textosEfectivos(editadas || []).gracias;
+    let contesto = false;
+    if (modo === "automatico" && gracias && ultimaSalida.texto !== gracias && !(await ellaLoTomo())) {
+      const envio = await enviarTexto(telefono, gracias);
+      if (!envio.error) {
+        contesto = true;
+        await admin.from("whatsapp_mensajes").upsert(
+          { wa_id: envio.wa_id || `asistente-${Date.now()}`, telefono, direccion: "salida", via: "asistente", tipo: "text", texto: gracias, enviado_en: new Date().toISOString(), paciente_id: paciente.id },
+          { onConflict: "wa_id", ignoreDuplicates: true }
+        );
+      }
+    }
+    await admin.from("pacientes").update({ chat_listo_en: new Date().toISOString() }).eq("whatsapp", telefono);
+    return registrar(admin, telefono, "cortesia", { contesto });
+  }
+
   const primerContacto = !orden.some((m) => m.direccion === "salida");
 
   const { data: proximas } = await admin
