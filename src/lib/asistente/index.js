@@ -23,7 +23,7 @@ import { INSTRUCCIONES } from "./conocimiento";
 import { armar, catalogo, elegiblesDe, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
-import { enviarConMenu } from "@/lib/menu";
+import { botonesPara, enviarConMenu } from "@/lib/menu";
 import { atenderBotonCita, botonDeAccion, yaRespondio } from "@/lib/mi-cita";
 import {
   SLOT_MIN,
@@ -530,7 +530,7 @@ async function decidir(client, admin, { paciente, messages, contexto, puedeAgend
             nombre: agendada?.nombre,
           }, textos);
           if (armado.error) r = { error: armado.error };
-          else decision = { tipo: "aprobada", texto: armado.texto, ids };
+          else decision = { tipo: "aprobada", texto: armado.texto, ids, horas };
         }
       } else if (uso.name === "responder_libre") {
         decision = { tipo: "libre", texto: String(uso.input.texto || "").trim(), porque: uso.input.por_que_no_sirve_una_aprobada };
@@ -730,16 +730,12 @@ export async function atenderConAsistente(admin, telefono, waId) {
   }
 
   if (await ellaLoTomo() && !["humano"].includes(d.tipo)) return registrar(admin, telefono, "omitido", { motivo: "ella tomó el chat", decision: d });
-  // 3 botones: Agendar valoración · Costo de la consulta · Más opciones
-  // Cualquier respuesta aprobada de información (y el primer mensaje) lleva los 3 botones;
-  // no mientras agenda (pide hora, nombre…) ni en despedidas o avisos, donde estorbarían.
-  const SIN_MENU = ["invitar_valoracion", "ofrecer_horarios", "sin_horarios", "pedir_datos", "preguntar_origen", "confirmar_cita",
-    "gracias", "voy_tarde", "ya_llegue", "no_escribir_mas", "escribir_audio"];
-  const conMenu = d.tipo !== "humano" && (primerContacto || (d.tipo === "aprobada" && !d.ids?.some((id) => SIN_MENU.includes(id))));
+  // 3 botones a la vista (menú, horas para agendar, ¿entre semana o sábado?, ¿cómo nos conoció?)
+  const botones = d.tipo === "humano" ? null : botonesPara(d, primerContacto);
   let envio;
   let guardado = texto;
-  if (conMenu) {
-    ({ envio, guardado } = await enviarConMenu(telefono, texto));
+  if (botones) {
+    ({ envio, guardado } = await enviarConMenu(telefono, texto, botones));
     if (envio.error) ((envio = await enviarTexto(telefono, texto)), (guardado = texto)); // si los botones fallan, va el texto solo
   } else envio = await enviarTexto(telefono, texto);
   if (envio.error) return registrar(admin, telefono, "error", { envio: envio.error, decision: d });

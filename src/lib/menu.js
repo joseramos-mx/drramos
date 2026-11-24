@@ -53,6 +53,35 @@ const OPCIONES = {
   t_otro: { ids: ["otros_tratamientos"] },
 };
 
+/** Respuestas donde no van botones (despedidas, avisos, o cuando hay que escribir: nombre, otro día). */
+const SIN_BOTONES = ["sin_horarios", "pedir_datos", "confirmar_cita", "gracias", "voy_tarde", "ya_llegue", "no_escribir_mas", "escribir_audio"];
+
+/**
+ * Los 3 botones que van debajo de una respuesta del asistente, o null.
+ * Los que no son del menú ("hora|10:00", "agenda|…") llegan al asistente
+ * como texto (el título), igual que si el paciente lo escribiera.
+ */
+export function botonesPara(d, primerContacto = false) {
+  const ids = d?.ids || [];
+  if (ids.includes("ofrecer_horarios") && d.horas?.length) {
+    const horas = d.horas.slice(0, 3).map((h) => ({ id: `hora|${h}`, titulo: h }));
+    return horas.length < 3 ? [...horas, { id: "agenda|otro", titulo: "Otro día u hora" }] : horas;
+  }
+  if (ids.includes("preguntar_origen")) {
+    return [
+      { id: "origen|redes", titulo: "Facebook o Instagram" },
+      { id: "origen|google", titulo: "Google" },
+      { id: "origen|recomendacion", titulo: "Recomendación" },
+    ];
+  }
+  if (ids.includes("invitar_valoracion")) {
+    return [{ id: "agenda|semana", titulo: "Entre semana" }, { id: "agenda|sabado", titulo: "Sábado" }, COSTO];
+  }
+  if (ids.some((id) => SIN_BOTONES.includes(id))) return null;
+  if (d?.tipo === "aprobada" || primerContacto) return BOTONES_INICIO;
+  return null;
+}
+
 /** "menu|costo" → "costo". Null si no es del menú. */
 export function leerMenu(respuesta) {
   const t = String(respuesta || "");
