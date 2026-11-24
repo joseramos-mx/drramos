@@ -61,7 +61,13 @@ const SIN_BOTONES = ["sin_horarios", "pedir_datos", "confirmar_cita", "gracias",
  * Los que no son del menú ("hora|10:00", "agenda|…") llegan al asistente
  * como texto (el título), igual que si el paciente lo escribiera.
  */
-export function botonesPara(d, primerContacto = false) {
+export function botonesPara(d, primerContacto = false, yaDijoPrecio = false) {
+  const lista = botonesSegun(d, primerContacto);
+  // Si el mensaje ya dice el costo (prueba de precio o lo preguntó), "Costo de la consulta" sobra
+  return yaDijoPrecio && lista ? lista.map((b) => (b.id === COSTO.id ? UBICACION : b)) : lista;
+}
+
+function botonesSegun(d, primerContacto) {
   const ids = d?.ids || [];
   if (ids.includes("ofrecer_horarios") && d.horas?.length) {
     const horas = d.horas.slice(0, 3).map((h) => ({ id: `hora|${h}`, titulo: h }));

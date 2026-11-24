@@ -673,15 +673,25 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const textos = textosEfectivos(editadas || []);
   const sistema = sistemaCon(textos);
 
-  // Nota de voz: el asistente no la puede escuchar → el chat pasa a la Dra. Gaby con aviso,
-  // sin mandarle nada al paciente. Cuenta cualquier audio aún sin contestar.
+  // Lo que llegó desde nuestra última respuesta (todo, si nunca le hemos escrito)
   const idxSalida = orden.map((m) => m.direccion).lastIndexOf("salida");
-  const mandoAudio = orden.slice(idxSalida + 1).some((m) => m.direccion === "entrada" && m.tipo === "audio");
-  if (mandoAudio) {
-    // Sin contestarle al paciente (sería raro que el robot conteste y luego ella): sólo se le pasa con aviso
+  const sinContestar = orden.slice(idxSalida + 1).filter((m) => m.direccion === "entrada");
+
+  // Sólo una reacción (👍) o un sticker a algo que ya le contestamos: no hay nada que responder
+  if (idxSalida >= 0 && sinContestar.length && sinContestar.every((m) => ["reaction", "sticker"].includes(m.tipo))) {
+    await admin.from("pacientes").update({ chat_listo_en: new Date().toISOString() }).eq("whatsapp", telefono); // sale de Pendientes
+    return registrar(admin, telefono, "omitido", { motivo: "sólo reacción o sticker" });
+  }
+
+  // Nota de voz, foto, video o documento: el asistente no puede verlos ni escucharlos (y una foto
+  // de los dientes es para el doctor) → el chat pasa a la Dra. Gaby con aviso, sin mandarle nada
+  // al paciente (sería raro que el robot conteste y luego ella).
+  const AVISO_MEDIA = { audio: "Mandó una nota de voz", image: "Mandó una foto", video: "Mandó un video", document: "Mandó un documento" };
+  const media = sinContestar.find((m) => AVISO_MEDIA[m.tipo]);
+  if (media) {
     await yaRespondio(admin, paciente.ids || paciente.id);
-    await pasarAHumano(admin, paciente, telefono, { motivo: "mandó una nota de voz", urgente: false, aviso: "Mandó una nota de voz" });
-    return registrar(admin, telefono, "paso_a_humano", { motivo: "nota de voz" });
+    await pasarAHumano(admin, paciente, telefono, { motivo: `mandó ${media.tipo}`, urgente: false, aviso: AVISO_MEDIA[media.tipo] });
+    return registrar(admin, telefono, "paso_a_humano", { motivo: AVISO_MEDIA[media.tipo] });
   }
 
   const client = new Anthropic();
@@ -772,7 +782,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
 
   if (await ellaLoTomo() && !["humano"].includes(d.tipo)) return registrar(admin, telefono, "omitido", { motivo: "ella tomó el chat", decision: d });
   // 3 botones a la vista (menú, horas para agendar, ¿entre semana o sábado?, ¿cómo nos conoció?)
-  const botones = d.tipo === "humano" ? null : botonesPara(d, primerContacto);
+  const botones = d.tipo === "humano" ? null : botonesPara(d, primerContacto, /\$\s?500/.test(texto));
   let envio;
   let guardado = texto;
   if (botones) {
