@@ -758,7 +758,9 @@ export async function atenderConAsistente(admin, telefono, waId) {
       entraALaPrueba(paciente.primer_mensaje_en || ahora.toISOString()) &&
       ["aprobada", "libre"].includes(d.tipo) &&
       !d.ids?.includes("precio_valoracion");
-    texto = [textos.presentacion, decirPrecio ? textos.precio_valoracion : null, texto].filter(Boolean).join("\n\n");
+    // El costo va sin su "¿Le agendo?": la pregunta la hace la respuesta de abajo (una sola pregunta por mensaje)
+    const precio = decirPrecio ? textos.precio_valoracion.replace(/\s*¿Le agendo\?\s*$/, "") : null;
+    texto = [textos.presentacion, precio, texto].filter(Boolean).join("\n\n");
   }
 
   // "Voy tarde" / "Ya llegué": se le avisa a la Dra. Gaby (sin pasarle el chat), también en modo borrador

@@ -203,7 +203,9 @@ export function armar(ids, variables = {}, textos = ORIGINALES) {
     );
   }
   if (!partes.length) return { error: "No se eligió ninguna respuesta." };
-  return { texto: partes.join("\n\n") };
+  // Al juntar varias, el "¿Le agendo?" sólo va en la última (una sola pregunta por mensaje)
+  const ultima = partes.length - 1;
+  return { texto: partes.map((p, i) => (i < ultima ? p.replace(/\s*¿Le agendo\?\s*$/, "") : p)).join("\n\n") };
 }
 
 /** Lista para las instrucciones del modelo (id: texto), sin la presentación. */
