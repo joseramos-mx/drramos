@@ -672,15 +672,20 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const textos = textosEfectivos(editadas || []);
   const sistema = sistemaCon(textos);
 
-  // Nota de voz: el asistente no la puede escuchar → el chat pasa a la Dra. Gaby con aviso
-  // (sin pedirle al paciente que lo escriba). Cuenta cualquier audio aún sin contestar.
+  // Nota de voz: el asistente no la puede escuchar → el chat pasa a la Dra. Gaby con aviso,
+  // sin mandarle nada al paciente. Cuenta cualquier audio aún sin contestar.
   const idxSalida = orden.map((m) => m.direccion).lastIndexOf("salida");
   const mandoAudio = orden.slice(idxSalida + 1).some((m) => m.direccion === "entrada" && m.tipo === "audio");
+  if (mandoAudio) {
+    // Sin contestarle al paciente (sería raro que el robot conteste y luego ella): sólo se le pasa con aviso
+    await yaRespondio(admin, paciente.ids || paciente.id);
+    await pasarAHumano(admin, paciente, telefono, { motivo: "mandó una nota de voz", urgente: false, aviso: "Mandó una nota de voz" });
+    return registrar(admin, telefono, "paso_a_humano", { motivo: "nota de voz" });
+  }
 
   const client = new Anthropic();
   let d;
-  if (mandoAudio) d = { tipo: "humano", motivo: "mandó una nota de voz", urgente: false, aviso: "Mandó una nota de voz", acciones: [] };
-  else try {
+  try {
     d = await decidir(client, admin, { paciente, messages: [...messages], contexto, puedeAgendar: modo === "automatico", tieneCita: Boolean(proximas?.length), textos, sistema });
   } catch (e) {
     // Sin despedida automática: si la llave falla o no hay saldo, a cada paciente le saldría sola.
