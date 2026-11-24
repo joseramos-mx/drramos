@@ -76,13 +76,13 @@ export const RESPUESTAS = {
     "Por el momento no atendemos a niños, una disculpa 🙏 Atendemos a partir de los 18 años.",
 
   // ── Agendar ──
-  invitar_valoracion: "¿Le gustaría agendar una valoración? ¿Le acomoda más entre semana o el sábado en la mañana?",
+  invitar_valoracion: "¿Le acomoda más entre semana o el sábado en la mañana?",
   ofrecer_horarios: "Para el {dia} tenemos libre a las {horarios}. ¿Cuál le acomoda?",
   sin_horarios: "Para el {dia} ya no tenemos espacio. ¿Le acomoda otro día?",
   pedir_datos: "Perfecto. Para apartar su lugar, ¿me comparte su nombre completo y qué le gustaría mejorar de su sonrisa?",
-  preguntar_origen: "Una última pregunta: ¿cómo se enteró del consultorio? (Facebook, Instagram, Google, recomendación…)",
+  preguntar_origen: "Una última pregunta: ¿cómo se enteró del consultorio?",
   confirmar_cita:
-    "¡Listo{nombre}! Su valoración quedó el {dia} a las {hora} con el Dr. Felipe, en Gómez Palacio 501 Pte., dentro de Central Médica Santa Ana 📍 Le esperamos 😊 Sus datos se usan sólo para atenderle: drfelipedejesusramos.com/privacidad",
+    "¡Listo{nombre}! Su valoración quedó el {dia} a las {hora} con el Dr. Felipe 📍 Gómez Palacio 501 Pte., dentro de Central Médica Santa Ana. Aviso de privacidad: drfelipedejesusramos.com/privacidad",
 
   // ── Cierre y casos especiales ──
   gracias: "¡Con gusto! Aquí estamos para lo que necesite 😊",
