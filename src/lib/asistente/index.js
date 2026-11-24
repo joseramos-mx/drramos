@@ -660,6 +660,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
       ? ""
       : `El consultorio está CERRADO en este momento; abre ${proximaApertura(ahora, cerrados).texto} a las ${proximaApertura(ahora, cerrados).hora}. Si la persona quiere cita, ofrécele lugar desde esa hora.`,
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
+    paciente.origen ? `Ya sabemos cómo nos conoció (${paciente.origen}): NO uses preguntar_origen.` : "",
     proximas?.length
       ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
       : "No tiene citas próximas.",
