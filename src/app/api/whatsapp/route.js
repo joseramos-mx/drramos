@@ -6,6 +6,7 @@ import { bajarMedia } from "@/lib/whatsapp";
 import { avisarMensajeNuevo, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 import { atenderConAsistente } from "@/lib/asistente";
 import { atenderBotonCita, leerBoton } from "@/lib/mi-cita";
+import { atenderMenu, leerMenu, seContestaSola } from "@/lib/menu";
 
 /**
  * Buzón de WhatsApp: recibe los webhooks de la Cloud API de Meta
@@ -127,7 +128,11 @@ export async function POST(request) {
       if (m.via === "paciente" && leerBoton(m.respuesta)) {
         // Tocó un botón de "Mi cita": se resuelve sin el asistente (un texto en el mismo lote sí lo contesta el asistente)
         botonesCita.push({ telefono: m.telefono, respuesta: m.respuesta });
-      } else if (m.via === "paciente") nuevosPorTel.set(m.telefono, { pacienteId, waId: m.wa_id });
+      } else if (m.via === "paciente") {
+        // Un toque del menú ("Ver opciones") de información se contesta sin el asistente (si contesta solo)
+        const opcion = leerMenu(m.respuesta);
+        nuevosPorTel.set(m.telefono, { pacienteId, waId: m.wa_id, menu: opcion && seContestaSola(opcion) ? opcion : null });
+      }
     } catch (e) {
       console.error("[whatsapp] mensaje", m.wa_id, e?.message || e);
     }
@@ -138,14 +143,16 @@ export async function POST(request) {
   }
 
   const modo = await modoAsistente(supabase);
-  for (const [telefono, { pacienteId, waId }] of nuevosPorTel) {
+  for (const [telefono, { pacienteId, waId, menu }] of nuevosPorTel) {
     try {
       const { data: p } = pacienteId
         ? await supabase.from("pacientes").select("nombre, atiende, atiende_desde").eq("id", pacienteId).maybeSingle()
         : { data: null };
       const loLlevaElla =
         p?.atiende === "humano" && p.atiende_desde && Date.now() - new Date(p.atiende_desde).getTime() < 8 * 3600 * 1000;
-      if (modo !== "apagado" && !loLlevaElla) {
+      if (menu && modo === "automatico" && !loLlevaElla) {
+        after(() => atenderMenu(supabaseServicio(), telefono, pacienteId, menu).catch((e) => console.error("[menu]", e)));
+      } else if (modo !== "apagado" && !loLlevaElla) {
         // Contesta el asistente; a la Dra. Gaby sólo le llega lo que él le pase
         after(() => atenderConAsistente(supabaseServicio(), telefono, waId).catch((e) => console.error("[asistente]", e)));
       } else {
