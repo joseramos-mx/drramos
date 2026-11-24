@@ -730,13 +730,13 @@ export async function atenderConAsistente(admin, telefono, waId) {
   }
 
   if (await ellaLoTomo() && !["humano"].includes(d.tipo)) return registrar(admin, telefono, "omitido", { motivo: "ella tomó el chat", decision: d });
-  // Primer mensaje, saludo o "más información": va con el botón "Ver opciones" (menú de un toque)
+  // Primer mensaje, saludo o "más información": va con 3 botones: Agendar valoración · Costo de la consulta · Más opciones
   const conMenu = d.tipo !== "humano" && (primerContacto || d.ids?.some((id) => ["saludo", "mas_informacion"].includes(id)));
   let envio;
   let guardado = texto;
   if (conMenu) {
     ({ envio, guardado } = await enviarConMenu(telefono, texto));
-    if (envio.error) ((envio = await enviarTexto(telefono, texto)), (guardado = texto)); // si la lista falla, va el texto solo
+    if (envio.error) ((envio = await enviarTexto(telefono, texto)), (guardado = texto)); // si los botones fallan, va el texto solo
   } else envio = await enviarTexto(telefono, texto);
   if (envio.error) return registrar(admin, telefono, "error", { envio: envio.error, decision: d });
   await admin.from("whatsapp_mensajes").upsert(
