@@ -437,7 +437,7 @@ export async function postoperatorioReciente(admin, pacienteId) {
   return Boolean(data?.length);
 }
 
-export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente, despertar = false }) {
+export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente, despertar = false, aviso = null }) {
   const etiquetas = new Set(paciente.etiquetas || []);
   if (urgente) etiquetas.add("urgencia");
   await admin
@@ -447,7 +447,7 @@ export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente,
   // El aviso no lleva el motivo (puede ser de salud y se ve con el celular bloqueado)
   await avisar(admin, {
     titulo: `${urgente ? "🚨 URGENCIA · " : "🙋 "}${nombreValido(paciente.nombre) ? paciente.nombre : "Paciente"}`,
-    cuerpo: despertar ? "Urgencia de un paciente operado hace pocos días" : urgente ? "Necesita atención urgente" : "El asistente te pasó este chat",
+    cuerpo: despertar ? "Urgencia de un paciente operado hace pocos días" : urgente ? "Necesita atención urgente" : aviso || "El asistente te pasó este chat",
     telefono,
     siempre: despertar,
   });
@@ -672,9 +672,15 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const textos = textosEfectivos(editadas || []);
   const sistema = sistemaCon(textos);
 
+  // Nota de voz: el asistente no la puede escuchar → el chat pasa a la Dra. Gaby con aviso
+  // (sin pedirle al paciente que lo escriba). Cuenta cualquier audio aún sin contestar.
+  const idxSalida = orden.map((m) => m.direccion).lastIndexOf("salida");
+  const mandoAudio = orden.slice(idxSalida + 1).some((m) => m.direccion === "entrada" && m.tipo === "audio");
+
   const client = new Anthropic();
   let d;
-  try {
+  if (mandoAudio) d = { tipo: "humano", motivo: "mandó una nota de voz", urgente: false, aviso: "Mandó una nota de voz", acciones: [] };
+  else try {
     d = await decidir(client, admin, { paciente, messages: [...messages], contexto, puedeAgendar: modo === "automatico", tieneCita: Boolean(proximas?.length), textos, sistema });
   } catch (e) {
     // Sin despedida automática: si la llave falla o no hay saldo, a cada paciente le saldría sola.
