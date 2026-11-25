@@ -11,53 +11,53 @@
 export const RESPUESTAS = {
   // ── Saludo y datos del consultorio ──
   saludo:
-    "¡Hola! Bienvenido al consultorio del Dr. Felipe de Jesús Ramos 👋 ¿En qué le puedo ayudar? Con gusto le resuelvo sus dudas o le agendo su cita de valoración.",
+    "¿En qué le puedo ayudar?",
   ubicacion:
-    "Estamos en calle Gómez Palacio 501 Pte., entre Juárez y Victoria, Zona Centro, Durango, dentro de Central Médica Santa Ana 📍 Contamos con estacionamiento gratuito para pacientes en consulta, en la esquina de Gómez Palacio y Victoria.\nUbicación en el mapa: https://g.page/r/Cetfn6-lbzR1EBM",
+    "Estamos en Gómez Palacio 501 Pte., Zona Centro, dentro de Central Médica Santa Ana. Estacionamiento gratis 📍 https://g.page/r/Cetfn6-lbzR1EBM",
   horario: "Atendemos de lunes a viernes de 9:00 a 20:00 y sábados de 9:00 a 14:00. Los domingos está cerrado.",
   estacionamiento:
     "Sí, contamos con estacionamiento gratuito para pacientes en consulta. Está en la esquina de Gómez Palacio y Victoria.",
   pagos:
     "Aceptamos efectivo, tarjeta y transferencia. Tenemos 6 meses sin intereses con tarjetas de crédito participantes.",
   factura:
-    "Sí, facturamos. Al momento de su pago solicite su factura, por favor, y envíe su Constancia de Situación Fiscal (CSF) al correo contacto@drfelipedejesusramos.com.",
+    "Sí facturamos. Pídala al pagar y mande su Constancia de Situación Fiscal a contacto@drfelipedejesusramos.com",
   telefono: "Puede escribirnos aquí mismo o llamar al 618 568 0916.",
   sobre_doctor:
-    "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista egresado de la UJED, con más de 30 años de experiencia. Es autor del libro \"El Arte de Hacer Dientes\", sobre estética dental.",
+    "El Dr. Felipe es cirujano dentista de la UJED, con más de 30 años de experiencia y autor del libro \"El Arte de Hacer Dientes\".",
   mas_informacion:
-    "El Dr. Felipe de Jesús Ramos Sotelo es cirujano dentista con más de 30 años de experiencia en odontología estética, diseño de sonrisa, prótesis dental y rehabilitación con implantes 🦷 Es fundador del IAN, instituto de actualización para odontólogos, y autor de un libro de estética dental. Cada tratamiento se diseña a la medida de cada paciente. ¿Le gustaría agendar su valoración? Más información: drfelipedejesusramos.com",
+    "El Dr. Felipe es cirujano dentista con más de 30 años de experiencia en estética dental e implantes. ¿Qué le gustaría mejorar de su sonrisa?",
   tecnologia:
-    "Realizamos escaneo intraoral 3D de su boca para crear un modelo exacto de sus dientes, sin moldes de pasta, así que el proceso es cómodo y rápido. Nuestro laboratorio es totalmente digital: permite un ajuste muy preciso, tratamientos menos invasivos y, según el caso, coronas o incrustaciones hasta en una sola cita. Cada tratamiento es totalmente personalizado.",
+    "Escaneamos sus dientes en 3D, sin pastas, y fabricamos su trabajo en nuestro laboratorio propio. ¿Le agendo una valoración?",
 
   // ── Precios (nunca de tratamientos) ──
   precio_tratamiento:
-    "El Dr. Felipe no maneja precios fijos porque cada tratamiento se diseña a su medida: revisa cuántas piezas hay que trabajar y el procedimiento, y le ofrece el mejor tratamiento para su caso. En su valoración (unos 30 minutos) el Dr. Ramos:\n✔️ le escanea sus dientes en 3D\n✔️ le muestra en pantalla cómo están sus dientes, para ofrecerle una alternativa que se adapte a sus necesidades\n✔️ si hace falta, le toma radiografía digital, incluida en el costo de la valoración\nY sale con su presupuesto exacto.",
+    "Cada tratamiento se cotiza a su medida. En su valoración sale con su presupuesto exacto. ¿Le agendo?",
   precio_valoracion:
-    "La valoración tiene un costo de $500. Si en esa cita deja el anticipo de su tratamiento, se le toma a cuenta.",
+    "La valoración cuesta $500 y se le toma a cuenta si ese día deja el anticipo de su tratamiento. ¿Le agendo?",
   valoracion_que_es:
-    "La valoración dura unos 30 minutos: el doctor revisa su boca, hace un escaneo intraoral en 3D sin pastas de impresión, platica con usted qué le gustaría mejorar y le da su presupuesto exacto.",
+    "Dura 30 min: el doctor escanea sus dientes en 3D, sin pastas, y le da su presupuesto. ¿Le agendo?",
   que_llevar: "No necesita llevar nada especial. Si tiene radiografías o estudios recientes, puede traerlos.",
   duele:
-    "El doctor trabaja con mucho cuidado y usa anestesia cuando hace falta; el escaneo 3D no lleva pastas. En la valoración le explica cada paso.",
+    "El doctor trabaja con mucho cuidado y usa anestesia cuando hace falta. El escaneo 3D no lleva pastas.",
   cuanto_tarda:
-    "El plazo de entrega depende de su valoración en la primera consulta: ahí el Dr. Felipe revisa su caso y le dice cuánto tiempo toma. Con nuestro laboratorio propio los tiempos suelen ser más cortos. ¿Le gustaría agendar su valoración?",
+    "Depende de su caso; el doctor le dice el tiempo en su valoración. ¿Le agendo?",
 
   // ── Tratamientos (información general; el doctor confirma en la valoración) ──
   info_carillas:
-    "Las carillas son láminas muy delgadas que se colocan sobre el frente de los dientes para mejorar su forma, color o tamaño. Pueden ser de diferentes materiales, y el doctor le explica qué opción conviene en su caso durante la cita de valoración.",
+    "Las carillas son láminas delgadas que se colocan al frente de los dientes para mejorar su forma y color. En la valoración el doctor le dice qué material le conviene.",
   info_blanqueamiento:
-    "El blanqueamiento aclara el color natural de los dientes con un gel profesional. No cambia el color de resinas, coronas o carillas que ya tenga, y puede dar sensibilidad pasajera. Primero se revisa que encías y dientes estén sanos.",
+    "El blanqueamiento aclara el color natural de sus dientes con gel profesional. No cambia resinas ni coronas, y primero revisamos que sus encías estén sanas.",
   info_diseno_sonrisa:
-    "El diseño de sonrisa es una planeación personalizada en la que la estética y la función de la mordida se integran para lograr un resultado natural. El doctor lo diseña en computadora como parte del tratamiento y puede combinar carillas, coronas o blanqueamiento, según el caso.",
+    "El diseño de sonrisa se planea en computadora, a su medida, y puede combinar carillas, coronas o blanqueamiento.",
   info_implantes:
-    "Un implante reemplaza un diente que falta: se coloca un tornillo de titanio en el hueso, que funciona como raíz, y encima va una corona. El hueso necesita algunos meses para integrarse. En la valoración el doctor revisa si es candidato.",
+    "Un implante reemplaza un diente que falta: un tornillo de titanio funciona como raíz y encima va una corona. En la valoración vemos si es candidato.",
   info_coronas:
-    "Las coronas son como \"fundas\" que cubren todo el diente cuando está muy dañado o desgastado. Con el escaneo 3D y el laboratorio propio, según el caso, muchas se hacen hasta en una cita.",
+    "Una corona es una funda que cubre todo el diente cuando está muy dañado. La fabricamos en nuestro laboratorio propio.",
   info_puentes: "Un puente son dientes fijos que reemplazan uno o varios dientes faltantes apoyándose en los dientes vecinos.",
   info_protesis:
-    "Hay prótesis removibles (se quitan y se ponen) y fijas (no se quitan, como puentes o prótesis sobre implantes). En la valoración el doctor le explica cuál conviene en su caso.",
+    "Hay prótesis que se quitan y se ponen, y fijas (puentes o sobre implantes). En la valoración el doctor le dice cuál le conviene.",
   info_rehabilitacion:
-    "La rehabilitación oral es un tratamiento integral cuando faltan o están dañados varios dientes, están muy desgastados o la mordida no funciona bien (por ejemplo, por bruxismo). Se planea por etapas, a la medida de cada persona.",
+    "La rehabilitación oral arregla la boca cuando faltan o están dañados varios dientes. Se planea por etapas, a su medida.",
   info_resinas: "Las resinas arreglan caries pequeñas o dientes despostillados con material del color del diente.",
   info_limpieza:
     "Hacemos limpieza profesional con ultrasonido y revisión general. Se recomienda cada 6 meses.",
@@ -76,13 +76,13 @@ export const RESPUESTAS = {
     "Por el momento no atendemos a niños, una disculpa 🙏 Atendemos a partir de los 18 años.",
 
   // ── Agendar ──
-  invitar_valoracion: "¿Le gustaría agendar una valoración? ¿Le acomoda más entre semana o el sábado en la mañana?",
+  invitar_valoracion: "¿Le acomoda más entre semana o el sábado en la mañana?",
   ofrecer_horarios: "Para el {dia} tenemos libre a las {horarios}. ¿Cuál le acomoda?",
   sin_horarios: "Para el {dia} ya no tenemos espacio. ¿Le acomoda otro día?",
   pedir_datos: "Perfecto. Para apartar su lugar, ¿me comparte su nombre completo y qué le gustaría mejorar de su sonrisa?",
-  preguntar_origen: "Una última pregunta: ¿cómo se enteró del consultorio? (Facebook, Instagram, Google, recomendación…)",
+  preguntar_origen: "Una última pregunta: ¿cómo se enteró del consultorio?",
   confirmar_cita:
-    "¡Listo{nombre}! Su valoración quedó el {dia} a las {hora} con el Dr. Felipe, en Gómez Palacio 501 Pte., dentro de Central Médica Santa Ana 📍 Le esperamos 😊 Sus datos se usan sólo para atenderle: drfelipedejesusramos.com/privacidad",
+    "¡Listo{nombre}! Su valoración quedó el {dia} a las {hora} con el Dr. Felipe 📍 Gómez Palacio 501 Pte., dentro de Central Médica Santa Ana. Aviso de privacidad: drfelipedejesusramos.com/privacidad",
 
   // ── Cierre y casos especiales ──
   gracias: "¡Con gusto! Aquí estamos para lo que necesite 😊",
@@ -97,12 +97,12 @@ export const RESPUESTAS = {
   pasar_dra_gaby_cerrado:
     "Ya le dejé su mensaje a la asistente del Dr. Felipe 🙏 En este momento el consultorio está cerrado; ella le escribe {dia} a partir de las 9:00.",
   urgencia_cerrado:
-    "Lamentamos mucho su molestia 🙏 En este momento el consultorio está cerrado. Abrimos {dia} a las 9:00 y con gusto le apartamos un lugar a primera hora; ¿quiere que se lo aparte? Si tiene sangrado que no para, hinchazón que le dificulta respirar o tragar, o fiebre alta, acuda a urgencias de un hospital.",
+    "Lamentamos su molestia 🙏 Ahorita estamos cerrados; abrimos {dia} a las 9:00. ¿Le aparto lugar a primera hora? Si tiene sangrado que no para, hinchazón que no le deja respirar o tragar, o fiebre alta, acuda a urgencias de un hospital.",
 };
 
 /** Primer renglón del primer mensaje a un paciente nuevo (lo agrega el código, el modelo no lo elige). */
 export const PRESENTACION =
-  "Hola, soy el asistente virtual del consultorio del Dr. Felipe Ramos 😊 Al escribirnos acepta nuestro aviso de privacidad: drfelipedejesusramos.com/privacidad";
+  "¡Hola! Soy el asistente virtual del Dr. Felipe Ramos 😊";
 
 /** Respuestas que llevan datos y cuáles (el sistema los llena con la agenda). */
 export const VARIABLES = {
@@ -203,7 +203,9 @@ export function armar(ids, variables = {}, textos = ORIGINALES) {
     );
   }
   if (!partes.length) return { error: "No se eligió ninguna respuesta." };
-  return { texto: partes.join("\n\n") };
+  // Al juntar varias, el "¿Le agendo?" sólo va en la última (una sola pregunta por mensaje)
+  const ultima = partes.length - 1;
+  return { texto: partes.map((p, i) => (i < ultima ? p.replace(/\s*¿Le agendo\?\s*$/, "") : p)).join("\n\n") };
 }
 
 /** Lista para las instrucciones del modelo (id: texto), sin la presentación. */

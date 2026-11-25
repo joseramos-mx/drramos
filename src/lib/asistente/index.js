@@ -20,9 +20,11 @@
 import { entraALaPrueba, grupoPrecio } from "@/lib/prueba-precio";
 import Anthropic from "@anthropic-ai/sdk";
 import { INSTRUCCIONES } from "./conocimiento";
+import { esSoloCortesia } from "./cortesia";
 import { armar, catalogo, elegiblesDe, textosEfectivos } from "./respuestas";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
+import { botonesPara, enviarConMenu } from "@/lib/menu";
 import { atenderBotonCita, botonDeAccion, yaRespondio } from "@/lib/mi-cita";
 import {
   SLOT_MIN,
@@ -435,7 +437,7 @@ export async function postoperatorioReciente(admin, pacienteId) {
   return Boolean(data?.length);
 }
 
-export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente, despertar = false }) {
+export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente, despertar = false, aviso = null }) {
   const etiquetas = new Set(paciente.etiquetas || []);
   if (urgente) etiquetas.add("urgencia");
   await admin
@@ -445,7 +447,7 @@ export async function pasarAHumano(admin, paciente, telefono, { motivo, urgente,
   // El aviso no lleva el motivo (puede ser de salud y se ve con el celular bloqueado)
   await avisar(admin, {
     titulo: `${urgente ? "🚨 URGENCIA · " : "🙋 "}${nombreValido(paciente.nombre) ? paciente.nombre : "Paciente"}`,
-    cuerpo: despertar ? "Urgencia de un paciente operado hace pocos días" : urgente ? "Necesita atención urgente" : "El asistente te pasó este chat",
+    cuerpo: despertar ? "Urgencia de un paciente operado hace pocos días" : urgente ? "Necesita atención urgente" : aviso || "El asistente te pasó este chat",
     telefono,
     siempre: despertar,
   });
@@ -529,7 +531,7 @@ async function decidir(client, admin, { paciente, messages, contexto, puedeAgend
             nombre: agendada?.nombre,
           }, textos);
           if (armado.error) r = { error: armado.error };
-          else decision = { tipo: "aprobada", texto: armado.texto, ids };
+          else decision = { tipo: "aprobada", texto: armado.texto, ids, horas };
         }
       } else if (uso.name === "responder_libre") {
         decision = { tipo: "libre", texto: String(uso.input.texto || "").trim(), porque: uso.input.por_que_no_sirve_una_aprobada };
@@ -611,6 +613,34 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const orden = (filas || []).reverse();
   const messages = historial(orden);
   if (messages[messages.length - 1]?.role !== "user") return;
+
+  // Sólo agradece o se despide ("Muy bien, gracias, bonito día"): nunca se le pasa a la
+  // Dra. Gaby ni se le pregunta a Claude. Se contesta "¡Con gusto!" una vez y sale de Pendientes.
+  const ultimaSalida = [...orden].reverse().find((m) => m.direccion === "salida");
+  const nuevas = ultimaSalida ? orden.slice(orden.lastIndexOf(ultimaSalida) + 1) : [];
+  if (
+    ultimaSalida &&
+    !String(ultimaSalida.texto || "").includes("?") && // a una pregunta, un "gracias" puede ser respuesta
+    nuevas.length &&
+    nuevas.every((m) => m.direccion === "entrada" && m.tipo === "text" && esSoloCortesia(m.texto))
+  ) {
+    const { data: editadas } = await admin.from("asistente_respuestas").select("*");
+    const gracias = textosEfectivos(editadas || []).gracias;
+    let contesto = false;
+    if (modo === "automatico" && gracias && ultimaSalida.texto !== gracias && !(await ellaLoTomo())) {
+      const envio = await enviarTexto(telefono, gracias);
+      if (!envio.error) {
+        contesto = true;
+        await admin.from("whatsapp_mensajes").upsert(
+          { wa_id: envio.wa_id || `asistente-${Date.now()}`, telefono, direccion: "salida", via: "asistente", tipo: "text", texto: gracias, enviado_en: new Date().toISOString(), paciente_id: paciente.id },
+          { onConflict: "wa_id", ignoreDuplicates: true }
+        );
+      }
+    }
+    await admin.from("pacientes").update({ chat_listo_en: new Date().toISOString() }).eq("whatsapp", telefono);
+    return registrar(admin, telefono, "cortesia", { contesto });
+  }
+
   const primerContacto = !orden.some((m) => m.direccion === "salida");
 
   const { data: proximas } = await admin
@@ -630,6 +660,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
       ? ""
       : `El consultorio está CERRADO en este momento; abre ${proximaApertura(ahora, cerrados).texto} a las ${proximaApertura(ahora, cerrados).hora}. Si la persona quiere cita, ofrécele lugar desde esa hora.`,
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
+    paciente.origen ? `Ya sabemos cómo nos conoció (${paciente.origen}): NO uses preguntar_origen.` : "",
     proximas?.length
       ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
       : "No tiene citas próximas.",
@@ -641,6 +672,27 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const { data: editadas } = await admin.from("asistente_respuestas").select("*");
   const textos = textosEfectivos(editadas || []);
   const sistema = sistemaCon(textos);
+
+  // Lo que llegó desde nuestra última respuesta (todo, si nunca le hemos escrito)
+  const idxSalida = orden.map((m) => m.direccion).lastIndexOf("salida");
+  const sinContestar = orden.slice(idxSalida + 1).filter((m) => m.direccion === "entrada");
+
+  // Sólo una reacción (👍) o un sticker a algo que ya le contestamos: no hay nada que responder
+  if (idxSalida >= 0 && sinContestar.length && sinContestar.every((m) => ["reaction", "sticker"].includes(m.tipo))) {
+    await admin.from("pacientes").update({ chat_listo_en: new Date().toISOString() }).eq("whatsapp", telefono); // sale de Pendientes
+    return registrar(admin, telefono, "omitido", { motivo: "sólo reacción o sticker" });
+  }
+
+  // Nota de voz, foto, video o documento: el asistente no puede verlos ni escucharlos (y una foto
+  // de los dientes es para el doctor) → el chat pasa a la Dra. Gaby con aviso, sin mandarle nada
+  // al paciente (sería raro que el robot conteste y luego ella).
+  const AVISO_MEDIA = { audio: "Mandó una nota de voz", image: "Mandó una foto", video: "Mandó un video", document: "Mandó un documento" };
+  const media = sinContestar.find((m) => AVISO_MEDIA[m.tipo]);
+  if (media) {
+    await yaRespondio(admin, paciente.ids || paciente.id);
+    await pasarAHumano(admin, paciente, telefono, { motivo: `mandó ${media.tipo}`, urgente: false, aviso: AVISO_MEDIA[media.tipo] });
+    return registrar(admin, telefono, "paso_a_humano", { motivo: AVISO_MEDIA[media.tipo] });
+  }
 
   const client = new Anthropic();
   let d;
@@ -706,7 +758,9 @@ export async function atenderConAsistente(admin, telefono, waId) {
       entraALaPrueba(paciente.primer_mensaje_en || ahora.toISOString()) &&
       ["aprobada", "libre"].includes(d.tipo) &&
       !d.ids?.includes("precio_valoracion");
-    texto = [textos.presentacion, decirPrecio ? textos.precio_valoracion : null, texto].filter(Boolean).join("\n\n");
+    // El costo va sin su "¿Le agendo?": la pregunta la hace la respuesta de abajo (una sola pregunta por mensaje)
+    const precio = decirPrecio ? textos.precio_valoracion.replace(/\s*¿Le agendo\?\s*$/, "") : null;
+    texto = [textos.presentacion, precio, texto].filter(Boolean).join("\n\n");
   }
 
   // "Voy tarde" / "Ya llegué": se le avisa a la Dra. Gaby (sin pasarle el chat), también en modo borrador
@@ -729,7 +783,14 @@ export async function atenderConAsistente(admin, telefono, waId) {
   }
 
   if (await ellaLoTomo() && !["humano"].includes(d.tipo)) return registrar(admin, telefono, "omitido", { motivo: "ella tomó el chat", decision: d });
-  const envio = await enviarTexto(telefono, texto);
+  // 3 botones a la vista (menú, horas para agendar, ¿entre semana o sábado?, ¿cómo nos conoció?)
+  const botones = d.tipo === "humano" ? null : botonesPara(d, primerContacto, /\$\s?500/.test(texto));
+  let envio;
+  let guardado = texto;
+  if (botones) {
+    ({ envio, guardado } = await enviarConMenu(telefono, texto, botones));
+    if (envio.error) ((envio = await enviarTexto(telefono, texto)), (guardado = texto)); // si los botones fallan, va el texto solo
+  } else envio = await enviarTexto(telefono, texto);
   if (envio.error) return registrar(admin, telefono, "error", { envio: envio.error, decision: d });
   await admin.from("whatsapp_mensajes").upsert(
     {
@@ -738,7 +799,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
       direccion: "salida",
       via: "asistente",
       tipo: "text",
-      texto,
+      texto: guardado,
       enviado_en: new Date().toISOString(),
       paciente_id: paciente.id,
     },
