@@ -62,6 +62,22 @@ const sistemaCon = (textos) => `${INSTRUCCIONES}
 # Respuestas aprobadas (id: texto que se manda)
 ${catalogo(textos)}`;
 
+/**
+ * Fecha de hoy CON año y las próximas 2 semanas ya convertidas a AAAA-MM-DD,
+ * para que el modelo no tenga que adivinar el año ni calcular "el próximo martes".
+ */
+function lineaFecha(ahora = new Date()) {
+  const hoy = hoyDurango(ahora);
+  const proximas = Array.from({ length: 14 }, (_, i) => {
+    const f = sumarDias(hoy, i + 1);
+    return `${formatFechaLarga(f)} = ${f}`;
+  });
+  return [
+    `Fecha y hora actual en Durango: ${formatFechaLarga(hoy)} de ${hoy.slice(0, 4)} (${hoy}), ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
+    `Próximas fechas (usa estas fechas exactas en las herramientas): ${proximas.join("; ")}.`,
+  ].join(" ");
+}
+
 // Si el asistente agenda más de esto en un día, se le avisa a la Dra. Gaby (no se frena)
 const AVISO_CITAS_DIA = 8;
 
@@ -306,7 +322,7 @@ ${sistema}`,
 export async function disponibilidad(admin, fecha, { duracion = SLOT_MIN, ignorar = null } = {}) {
   if (!esFechaValida(fecha)) return { error: "Fecha inválida, usa AAAA-MM-DD." };
   const hoy = hoyDurango();
-  if (fecha < hoy) return { error: "Esa fecha ya pasó." };
+  if (fecha < hoy) return { error: `Esa fecha ya pasó. Hoy es ${hoy}; usa una fecha de las "Próximas fechas" del contexto.` };
   const horario = horarioDelDia(fecha);
   if (!horario) return { error: "Ese día (domingo) el consultorio está cerrado." };
 
@@ -655,7 +671,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   const ahora = new Date();
   const cerrados = await diasCerrados(admin);
   const contexto = [
-    `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
+    lineaFecha(ahora),
     abiertoAhora(ahora, cerrados)
       ? ""
       : `El consultorio está CERRADO en este momento; abre ${proximaApertura(ahora, cerrados).texto} a las ${proximaApertura(ahora, cerrados).hora}. Si la persona quiere cita, ofrécele lugar desde esa hora.`,
@@ -826,6 +842,8 @@ function agendaDePrueba({ llena = false } = {}) {
     const q = {
       select: (c) => ((campos = c || ""), q),
       eq: () => q,
+      in: () => q,
+      order: () => q,
       neq: () => q,
       gte: () => q,
       lte: () => q,
@@ -890,7 +908,7 @@ export async function probarConversacion({ conversacion, agendaLlena = false, ci
   const sistema = sistemaCon(textos);
   const ahora = new Date();
   const contexto = [
-    `Fecha y hora actual en Durango: ${formatFechaLarga(hoyDurango(ahora))}, ${formatHora(minutosDelDia(ahora.toISOString()))}.`,
+    lineaFecha(ahora),
     `Nombre registrado del paciente: ${nombre || "todavía no lo sabemos"}.`,
     citaProxima
       ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente.`
