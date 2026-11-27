@@ -23,7 +23,7 @@ import { INSTRUCCIONES } from "./conocimiento";
 import { esSoloCortesia } from "./cortesia";
 import { armar, catalogo, costoSinPregunta, elegiblesDe, textosEfectivos } from "./respuestas";
 import { anuncioDe } from "@/lib/anuncios";
-import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
+import { enviarTexto, mostrarEscribiendo, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { botonesPara, enviarConMenu } from "@/lib/menu";
 import { atenderBotonCita, botonDeAccion, yaRespondio } from "@/lib/mi-cita";
@@ -45,8 +45,10 @@ import {
 } from "@/app/agenda/lib";
 
 const MODELO = process.env.ASISTENTE_MODELO || "claude-sonnet-5-5";
+// Esfuerzo del que contesta: "low" es más rápido; probar con Probar asistente antes de dejarlo
+const ESFUERZO = ["low", "medium", "high"].includes(process.env.ASISTENTE_ESFUERZO) ? process.env.ASISTENTE_ESFUERZO : "medium";
 const VERIFICADOR = process.env.ASISTENTE_VERIFICADOR || "claude-sonnet-5-5";
-const ESPERA_MS = 6000; // por si el paciente manda varios mensajes seguidos
+const ESPERA_MS = 3000; // por si el paciente manda varios mensajes seguidos (mientras ve "escribiendo…")
 const HUMANO_HORAS = 8; // tras su último mensaje, la Dra. Gaby "tiene" el chat
 const MAX_VUELTAS = 6;
 // Candados contra abuso: tope de respuestas por paciente y de largo de lo que se lee
@@ -495,7 +497,7 @@ async function decidir(client, admin, { paciente, messages, contexto, puedeAgend
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     const res = await llamar(client, MODELO, {
       max_tokens: 4096,
-      output_config: { effort: "medium" },
+      output_config: { effort: ESFUERZO },
       system: [
         { type: "text", text: sistema, cache_control: { type: "ephemeral" } },
         { type: "text", text: contexto },
@@ -581,6 +583,8 @@ export async function atenderConAsistente(admin, telefono, waId) {
   if (modo === "apagado") return;
   const libresSolas = modo === "automatico" && config?.libres === "auto";
 
+  // En "Contesta solo" el paciente ve palomitas azules y "escribiendo…" de inmediato
+  if (modo === "automatico") mostrarEscribiendo(waId);
   await espera(ESPERA_MS);
   const ultimoDelPaciente = async () =>
     (
@@ -682,7 +686,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
     paciente.origen ? `Ya sabemos cómo nos conoció (${paciente.origen}): NO uses preguntar_origen.` : "",
     proximas?.length
-      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
+      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente. Si pide agendar (p. ej. toca \"Agendar valoración\"), NO preguntes día: usa cita_del_paciente con accion menu (el sistema le recuerda su cita y le ofrece cambiarla)." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
@@ -923,7 +927,7 @@ export async function probarConversacion({ conversacion, agendaLlena = false, ci
     lineaFecha(ahora),
     `Nombre registrado del paciente: ${nombre || "todavía no lo sabemos"}.`,
     citaProxima
-      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente.`
+      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente. Si pide agendar (p. ej. toca "Agendar valoración"), NO preguntes día: usa cita_del_paciente con accion menu (el sistema le recuerda su cita y le ofrece cambiarla).`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]

@@ -79,6 +79,7 @@ export const CASOS = [
   { id: "cancelar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Quiero cancelar mi cita por favor")], espera: { tipos: ["cita"], acciones: ["cancelar"], agendo: false } },
   { id: "confirmar_escrito", grupo: "agenda", citaProxima: true, conversacion: [P("Sí ahí estaré, gracias")], espera: { tipos: ["cita", "aprobada"], acciones: ["confirmar"], ids: ["gracias"], agendo: false } },
   { id: "cambiar_a_hora", grupo: "agenda", citaProxima: true, conversacion: [P("Me la puede pasar al próximo lunes a las 5 de la tarde?")], espera: { tipos: ["cita"], acciones: ["proponer_horario", "ver_horarios_del_dia"], agendo: false } },
+  { id: "agendar_con_cita", grupo: "agenda", citaProxima: true, conversacion: [P("Agendar valoración")], espera: { tipos: ["cita"], acciones: ["menu"], agendo: false } },
   { id: "cambiar_a_dia", grupo: "agenda", citaProxima: true, conversacion: [P("Mejor el próximo martes, qué horarios tiene?")], espera: { tipos: ["cita"], acciones: ["ver_horarios_del_dia"], agendo: false } },
   { id: "persona", grupo: "pasar", conversacion: [P("Quiero hablar con la doctora Gaby, no con un robot")], espera: { tipos: ["humano"] } },
   { id: "en_tratamiento", grupo: "pasar", conversacion: [P("Soy paciente del doctor, ya llevo 3 citas de mis puentes, cuándo me toca la siguiente?")], espera: { tipos: ["humano"] } },

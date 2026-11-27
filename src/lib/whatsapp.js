@@ -25,6 +25,26 @@ export function ventanaAbierta(ultimoMensajePaciente, ahora = Date.now()) {
   return ahora - new Date(ultimoMensajePaciente).getTime() < VENTANA_MS;
 }
 
+/**
+ * Marca el mensaje del paciente como leído (palomitas azules) y le muestra
+ * "escribiendo…" mientras el asistente prepara la respuesta (Meta lo quita al
+ * contestar o a los 25 s). Si falla, no pasa nada.
+ */
+export async function mostrarEscribiendo(waId) {
+  if (!whatsappConfigurado() || !waId) return;
+  const version = process.env.META_GRAPH_VERSION || "v23.0";
+  try {
+    await fetch(`https://graph.facebook.com/${version}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: waId, typing_indicator: { type: "text" } }),
+      cache: "no-store",
+    });
+  } catch {
+    // sólo es cortesía visual
+  }
+}
+
 /** Manda un texto. Devuelve { ok, wa_id } o { error }. */
 export async function enviarTexto(telefono, texto) {
   if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
