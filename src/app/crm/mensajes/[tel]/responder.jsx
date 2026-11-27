@@ -36,7 +36,7 @@ const redondo = "flex h-[52px] w-[52px] shrink-0 items-center justify-center rou
  * abre fotos, documentos (PDF: facturas, recetas), videos y las
  * respuestas rápidas del manual. Aviso claro si ya pasaron 24 h.
  */
-export default function Responder({ telefono, abierta, conectado, nombre, sinMensajes = false, borrador = null }) {
+export default function Responder({ telefono, abierta, conectado, nombre, sinMensajes = false, borrador = null, plantillasV2 = false }) {
   const [state, formAction] = useActionState(enviarMensajeAction, null);
   const [texto, setTexto] = useState("");
   const [menu, setMenu] = useState(false);
@@ -73,7 +73,7 @@ export default function Responder({ telefono, abierta, conectado, nombre, sinMen
   }
 
   if (!abierta) {
-    return <Plantilla telefono={telefono} nombre={nombre} nuevo={sinMensajes} />;
+    return <Plantilla telefono={telefono} nombre={nombre} nuevo={sinMensajes} v2={plantillasV2} />;
   }
 
   async function elegirFoto(e) {

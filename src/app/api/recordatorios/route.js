@@ -2,6 +2,7 @@ import { whatsappConfigurado } from "@/lib/whatsapp";
 import { supabaseServicio } from "@/lib/mensajes-servidor";
 import { normalizarTelefono } from "@/lib/telefono";
 import { mandarPlantillaCita, primerNombre } from "@/lib/avisos-cita";
+import { plantillasV2 } from "@/app/crm/mensajes/plantillas";
 import { hoyDurango, rangoDelDia, sumarDias } from "@/app/agenda/lib";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ const SEGUIMIENTO_MAX_DIAS = 45;
  *     Una por paciente (su primera cita del día); nunca dos veces la misma cita.
  *  2. Seguimiento de presupuestos no aceptados: a los 3 días y al mes de la valoración
  *     (plantilla seguimiento_presupuesto: Quiero agendar · Tengo una duda · Ya no, gracias).
+ *     Con PLANTILLAS_V2=1: seguimiento_presupuesto_v2 a los 3 días y seguimiento_presupuesto_30 al mes.
  *  3. Pedir opinión en Google (resena_google) cuando terminó su tratamiento: pagó algo, pasaron
  *     2 días y no tiene otra cita. Una vez por paciente. Necesita RESENA_GOOGLE_URL.
  * Cada una se apaga en Ajustes. No se le escribe a quien pidió que ya no ("no_contactar").
@@ -120,7 +122,8 @@ async function seguimientos(admin) {
       resumen.cerrados++;
       continue;
     }
-    const r = await mandarPlantillaCita(admin, c, "seguimiento_presupuesto");
+    const plantilla = !plantillasV2() ? "seguimiento_presupuesto" : (c.seguimiento_enviados || 0) === 0 ? "seguimiento_presupuesto_v2" : "seguimiento_presupuesto_30";
+    const r = await mandarPlantillaCita(admin, c, plantilla);
     if (r.ok) {
       await admin
         .from("citas")

@@ -55,6 +55,8 @@ export const BOTONES_PLANTILLA = {
   seguimiento_presupuesto_v2: ["presupuesto_si", "presupuesto_duda", "presupuesto_no"],
   seguimiento_presupuesto_30: ["presupuesto_si", "presupuesto_duda", "presupuesto_no"],
   seguimiento_consulta_cita: ["confirmar", "cambiar", "duda"],
+  // Sólo la versión nueva (PLANTILLAS_V2) tiene botones; la vieja no lleva ninguno
+  seguimiento_consulta: ["nueva", "duda"],
 };
 const TITULOS = {
   confirmar: ["Confirmo mi cita"],

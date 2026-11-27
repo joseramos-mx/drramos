@@ -7,6 +7,7 @@ import AlInstante from "../al-instante";
 import Cabecera from "./cabecera";
 import Chat from "./chat";
 import Responder from "./responder";
+import { plantillasV2 } from "../plantillas";
 import QuienAtiende from "./quien-atiende";
 import YaQuedo from "./ya-quedo";
 import { esperaRespuesta } from "../lib";
@@ -89,6 +90,7 @@ export default async function ConversacionPage({ params }) {
           nombre={nombre}
           sinMensajes={!mensajes?.length}
           borrador={borrador}
+          plantillasV2={plantillasV2()}
         />
       </div>
     </main>
