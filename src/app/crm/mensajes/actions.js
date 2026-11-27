@@ -7,7 +7,9 @@ import { enviarArchivo, enviarImagen, enviarPlantilla, enviarTexto, ventanaAbier
 import { normalizarTelefono } from "@/lib/telefono";
 import { BUCKET, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 import { ETIQUETAS } from "./lib";
-import { PLANTILLAS, rellenar } from "./plantillas";
+import { PLANTILLAS, PLANTILLAS_SISTEMA, plantillasV2, rellenar, vigente } from "./plantillas";
+import { BOTONES_PLANTILLA, idBoton } from "@/lib/mi-cita";
+import { formatFechaLarga, formatHora, hoyDurango, minutosDelDia } from "@/app/agenda/lib";
 import { ARCHIVOS } from "./archivos";
 import { ETIQUETAS_DATO, ORIGINALES, VARIABLES, deCorchetes, esPropia } from "@/lib/asistente/respuestas";
 import { filtroDuro } from "@/lib/asistente";
@@ -195,15 +197,47 @@ export async function enviarPlantillaAction(_prev, formData) {
   const { user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
 
-  const res = await enviarPlantilla(telefono, plantilla.nombre, valores);
+  const { p, valores: finales, botones } = await plantillaParaMandar(telefono, plantilla, valores);
+  const res = await enviarPlantilla(telefono, p.nombre, finales, "es_MX", { botones });
   if (res.error) return res;
   await guardarSalida(supabaseServicio(), {
     wa_id: res.wa_id || `local-${Date.now()}`,
     telefono,
     tipo: "template",
-    texto: rellenar(plantilla.texto, valores),
+    texto: `${rellenar(p.texto, finales)}${p.botones?.length ? `
+[Botones: ${p.botones.join(" · ")}]` : ""}`,
   });
   return { ok: true, savedAt: Date.now() };
+}
+
+/**
+ * Con PLANTILLAS_V2=1, "Seguimiento" se elige solo según la agenda: si tiene cita
+ * próxima va seguimiento_consulta_cita (con su día y hora, y botones Confirmo · Cambiar
+ * · Tengo una duda ligados a esa cita); si no, seguimiento_consulta con "Agendar mi
+ * cita" (cita nueva como su última cita) · "Tengo una duda". Sin la variable, lo de siempre.
+ */
+async function plantillaParaMandar(telefono, plantilla, valores) {
+  const p = vigente(plantilla);
+  if (plantilla.nombre !== "seguimiento_consulta" || !plantillasV2()) return { p, valores, botones: [] };
+  const admin = supabaseServicio();
+  const { data: fichas } = await admin.from("pacientes").select("id").eq("whatsapp", telefono);
+  const ids = (fichas || []).map((f) => f.id);
+  const ahora = new Date().toISOString();
+  const { data: proxima } = ids.length
+    ? await admin.from("citas").select("id, inicio").in("paciente_id", ids).gte("inicio", ahora).neq("estado", "cancelada").order("inicio").limit(1).maybeSingle()
+    : { data: null };
+  if (proxima) {
+    const conCita = vigente(PLANTILLAS_SISTEMA.find((x) => x.nombre === "seguimiento_consulta_cita"));
+    return {
+      p: conCita,
+      valores: [valores[0], formatFechaLarga(hoyDurango(new Date(proxima.inicio))), formatHora(minutosDelDia(proxima.inicio))],
+      botones: BOTONES_PLANTILLA.seguimiento_consulta_cita.map((a) => idBoton(a, proxima.id)),
+    };
+  }
+  const { data: ultima } = ids.length
+    ? await admin.from("citas").select("id").in("paciente_id", ids).lt("inicio", ahora).neq("estado", "cancelada").order("inicio", { ascending: false }).limit(1).maybeSingle()
+    : { data: null };
+  return { p, valores, botones: BOTONES_PLANTILLA.seguimiento_consulta.map((a) => idBoton(a, ultima?.id)) };
 }
 
 
@@ -374,7 +408,7 @@ export async function cambiarLibresAction(libres) {
 
 /** Ajustes: prender o apagar un mensaje automático (recordatorio, aviso a quien faltó, seguimiento de presupuestos). */
 export async function cambiarAutomaticoAction(campo, prendido) {
-  if (!["recordatorios", "aviso_falto", "seguimientos", "resenas"].includes(campo)) return { error: "Opción no válida." };
+  if (!["recordatorios", "aviso_falto", "seguimientos", "resenas", "seguimiento_anuncios"].includes(campo)) return { error: "Opción no válida." };
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
   const { error } = await supabase

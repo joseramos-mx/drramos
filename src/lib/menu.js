@@ -8,13 +8,15 @@
  *
  * - Las opciones de información se contestan con el texto APROBADO de
  *   "Mis respuestas" (sin consultar a Claude): rápido y sin inventar.
+ *   Cada tratamiento (y la ubicación) lleva arriba su foto (public/whatsapp/).
  * - "Agendar valoración" y "Hablar con alguien" llegan como texto normal
  *   al asistente (él agenda con la agenda real o pasa el chat).
  * - Sólo contesta solo en "Contesta solo" y si la Dra. Gaby no lleva el
  *   chat; si no, el toque se trata como un mensaje cualquiera.
  */
 import { enviarBotones, enviarLista } from "@/lib/whatsapp";
-import { textosEfectivos } from "@/lib/asistente/respuestas";
+import { sinPregunta, textoCosto, textosEfectivos } from "@/lib/asistente/respuestas";
+import { imagenWhatsapp } from "@/lib/consultorio";
 
 const boton = (id, titulo) => ({ id: `menu|${id}`, titulo });
 const AGENDAR = boton("agendar", "Agendar valoración");
@@ -38,19 +40,19 @@ const FILAS_TRATAMIENTOS = [
   fila("t_otro", "Otro tratamiento"),
 ];
 
-/** Opción → respuestas aprobadas que se juntan, y los 3 botones que van debajo. */
+/** Opción → respuestas aprobadas que se juntan, la foto de arriba (opcional) y los 3 botones de abajo. */
 const OPCIONES = {
   costo: { ids: ["precio_valoracion", "pagos"], botones: [AGENDAR, UBICACION, MAS] },
-  ubicacion: { ids: ["ubicacion", "horario"], botones: [AGENDAR, COSTO, MAS] },
-  t_carillas: { ids: ["info_carillas"] },
+  ubicacion: { ids: ["ubicacion", "horario"], imagen: "08-ubicacion.jpg", botones: [AGENDAR, COSTO, MAS] },
+  t_carillas: { ids: ["info_carillas"], imagen: "03-carillas.jpg" },
   t_blanqueamiento: { ids: ["info_blanqueamiento"] },
-  t_diseno_sonrisa: { ids: ["info_diseno_sonrisa"] },
-  t_implantes: { ids: ["info_implantes"] },
-  t_coronas: { ids: ["info_coronas"] },
-  t_protesis: { ids: ["info_protesis"] },
-  t_rehabilitacion: { ids: ["info_rehabilitacion"] },
+  t_diseno_sonrisa: { ids: ["info_diseno_sonrisa"], imagen: "04-diseno-sonrisa.jpg" },
+  t_implantes: { ids: ["info_implantes"], imagen: "01-implante.jpg" },
+  t_coronas: { ids: ["info_coronas"], imagen: "02-corona.jpg" },
+  t_protesis: { ids: ["info_protesis"], imagen: "05-protesis.jpg" },
+  t_rehabilitacion: { ids: ["info_rehabilitacion"], imagen: "06-rehabilitacion.jpg" },
   t_limpieza: { ids: ["info_limpieza"] },
-  t_otro: { ids: ["otros_tratamientos"] },
+  t_otro: { ids: ["otros_tratamientos"], imagen: "07-laboratorio.jpg" },
 };
 
 /** Respuestas donde no van botones (despedidas, avisos, o cuando hay que escribir: nombre, otro día). */
@@ -99,10 +101,14 @@ export const seContestaSola = (opcion) => opcion === "opciones" || opcion === "t
 
 const marca = (botones) => `\n[Botones: ${botones.map((b) => b.titulo).join(" · ")}]`;
 
-/** Manda `texto` con los 3 botones de inicio. Devuelve { envio, guardado }. */
-export async function enviarConMenu(telefono, texto, botones = BOTONES_INICIO) {
-  const envio = await enviarBotones(telefono, texto, botones);
-  return { envio, guardado: `${texto}${marca(botones)}` };
+/**
+ * Manda `texto` con los 3 botones de inicio (y una foto arriba, si `imagen` es un link
+ * público). Si WhatsApp no acepta la foto, se manda igual sin ella. Devuelve { envio, guardado }.
+ */
+export async function enviarConMenu(telefono, texto, botones = BOTONES_INICIO, imagen = null) {
+  let envio = await enviarBotones(telefono, texto, botones, { imagen });
+  if (envio.error && imagen) envio = await enviarBotones(telefono, texto, botones);
+  return { envio, guardado: `${imagen && !envio.error ? "[Foto] " : ""}${texto}${marca(botones)}` };
 }
 
 async function guardar(admin, telefono, pacienteId, envio, texto) {
@@ -138,11 +144,12 @@ export async function atenderMenu(admin, telefono, pacienteId, opcion) {
     const { data: editadas } = await admin.from("asistente_respuestas").select("*");
     const textos = textosEfectivos(editadas || []);
     const o = OPCIONES[opcion];
-    // Al juntar dos respuestas, el "¿Le agendo?" sólo puede ir al final
+    // Al juntar dos respuestas, el "¿Le agendo?" sólo puede ir al final.
+    // El costo va siempre con las formas de pago y termina en "¿Le agendo?".
     const partes = o.ids.map((id) => textos[id]).filter(Boolean);
-    const texto = partes.map((t, i) => (i < partes.length - 1 ? t.replace(/\s*¿Le agendo\?\s*$/, "") : t)).join("\n\n");
+    const texto = opcion === "costo" ? textoCosto(textos) : partes.map((t, i) => (i < partes.length - 1 ? sinPregunta(t) : t)).join("\n\n");
     if (!texto) return false;
-    ({ envio, guardado } = await enviarConMenu(telefono, texto, o.botones || [AGENDAR, COSTO, MAS]));
+    ({ envio, guardado } = await enviarConMenu(telefono, texto, o.botones || [AGENDAR, COSTO, MAS], imagenWhatsapp(o.imagen)));
   }
 
   await guardar(admin, telefono, pacienteId, envio, guardado);

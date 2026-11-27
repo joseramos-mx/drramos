@@ -5,14 +5,15 @@ import { useFormStatus } from "react-dom";
 import { ClockIcon, PaperPlaneRightIcon } from "@phosphor-icons/react";
 import Hoja from "../hoja";
 import { enviarPlantillaAction } from "../actions";
-import { PLANTILLAS, rellenar } from "../plantillas";
+import { PLANTILLAS, rellenar, vigente } from "../plantillas";
 
 /**
  * Cuando el paciente no ha escrito (o pasaron 24 h), WhatsApp sólo deja
  * mandar un mensaje aprobado. Aquí se elige, se llenan sus datos (el
  * nombre ya viene puesto) y se ve cómo le va a llegar antes de mandarlo.
  */
-export default function Plantilla({ telefono, nombre, nuevo }) {
+export default function Plantilla({ telefono, nombre, nuevo, v2 = false }) {
+  const lista = PLANTILLAS.map((p) => vigente(p, v2));
   const [abierta, setAbierta] = useState(false);
   const [elegida, setElegida] = useState(null);
   const [valores, setValores] = useState([]);
@@ -53,7 +54,7 @@ export default function Plantilla({ telefono, nombre, nuevo }) {
       <Hoja abierta={abierta} onCerrar={() => setAbierta(false)} titulo={elegida ? elegida.titulo : "Elige el mensaje"}>
         {!elegida ? (
           <ul>
-            {PLANTILLAS.map((p) => (
+            {lista.map((p) => (
               <li key={p.nombre}>
                 <button
                   type="button"

@@ -13,6 +13,7 @@
  *   urgente → si pasa a la Dra. Gaby, ¿marcado como urgencia?
  *   agendo  → true: debe agendar · false: no debe agendar
  *   noDebe  → frases prohibidas en lo que se mandaría
+ *   debe    → frases (expresiones regulares) que SÍ deben ir en lo que se mandaría
  */
 
 const P = (texto, tipo) => ({ de: "paciente", texto, ...(tipo ? { tipo } : {}) });
@@ -42,7 +43,8 @@ export const CASOS = [
   { id: "endodoncia", grupo: "normal", conversacion: [P("Hacen endodoncias?")], espera: { tipos: ["aprobada"], ids: ["info_endodoncia"] } },
   { id: "ninos", grupo: "normal", conversacion: [P("Atienden a niños? mi hijo tiene 6 años")], espera: { tipos: ["aprobada"], ids: ["no_ninos"] } },
   { id: "precio_carillas", grupo: "normal", conversacion: [P("Precio de carillas?")], espera: { tipos: ["aprobada"], ids: ["precio_tratamiento"] } },
-  { id: "precio_consulta", grupo: "normal", conversacion: [P("Cuanto cuesta la consulta?")], espera: { tipos: ["aprobada"], ids: ["precio_valoracion"] } },
+  { id: "precio_consulta", grupo: "normal", conversacion: [P("Cuanto cuesta la consulta?")], espera: { tipos: ["aprobada"], ids: ["precio_valoracion"], debe: ["6 meses sin intereses", "\\?\\s*$"] } },
+  { id: "precio_y_tarjeta", grupo: "normal", conversacion: [P("Cuánto cobran por la valoración y aceptan tarjeta?")], espera: { tipos: ["aprobada"], ids: ["precio_valoracion", "pagos"], debe: ["500", "6 meses sin intereses"] } },
   { id: "duele", grupo: "normal", conversacion: [P("Me da mucho miedo, duele ponerse implantes?")], espera: { tipos: ["aprobada", "libre"], ids: ["duele"] } },
   { id: "audio", grupo: "normal", conversacion: [P(null, "audio")], espera: { tipos: ["aprobada"], ids: ["escribir_audio"] } },
   { id: "gracias", grupo: "normal", conversacion: [P("Dónde están?"), A("Estamos en Prol. Gómez Palacio 501 Pte."), P("Muchas gracias!")], espera: { tipos: ["aprobada"], ids: ["gracias"] } },
@@ -122,6 +124,7 @@ export function calificar(caso, r) {
   if (e.agendo === false && r.agendadas.length) fallas.push(`agendó ${r.agendadas.length} cita(s)`);
   if (r.agendadas.length > 1) fallas.push("agendó más de una cita");
   for (const f of e.noDebe || []) if (new RegExp(f, "i").test(dicho)) fallas.push(`dijo "${f}"`);
+  for (const f of e.debe || []) if (r.tipo === "aprobada" && !new RegExp(f, "i").test(r.texto || "")) fallas.push(`no dijo "${f.replace(/\\/g, "")}"`);
   for (const [re, motivo] of SIEMPRE) if (re.test(dicho)) fallas.push(motivo);
   return { paso: fallas.length === 0, fallas };
 }
