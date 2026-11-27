@@ -14,7 +14,11 @@
  *               marcada como cancelada para que cuente en Resultados; el horario se libera)
  *   hablar    → pasa el chat a la Dra. Gaby
  *   reagendar → (de una cita pasada/cancelada: faltó o la canceló el consultorio) rdia → rhora → cita NUEVA
+ *   nueva     → "Agendar mi cita" del seguimiento después de su consulta: igual que reagendar
+ *   mas / rmas→ "Ver más días" de la lista de días (dato = desde qué fecha seguir)
  *   presupuesto_si / _duda / _no → respuestas al seguimiento de un presupuesto
+ *   duda      → "Tengo una duda": menú "¿Qué le gustaría saber?" (ya no pasa directo a la Dra. Gaby)
+ *   no_interesa → "No me interesa" (seguimiento de anuncio): ya no se le escribe
  *
  * Duración: cada cita conserva el espacio que la Dra. Gaby le apartó en la
  * agenda (fin − inicio): una cirugía de 3 h sólo ve huecos donde caben 3 h.
@@ -29,10 +33,13 @@ import { enviarBotones, enviarLista, enviarTexto } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { diasCerrados, disponibilidad, pasarAHumano, textoAlPasar } from "@/lib/asistente";
 import { textosEfectivos } from "@/lib/asistente/respuestas";
+import { atenderMenu } from "@/lib/menu";
 import { SLOT_MIN, abiertoAhora, esFechaValida, formatFechaLarga, formatHora, hoyDurango, isoDesde, minutosDelDia, sumarDias } from "@/app/agenda/lib";
 
 const MAX_CAMBIOS = 2;
-const DIAS_A_OFRECER = 14;
+const PRIMEROS_DIAS = 2; // la primera lista de días es corta
+const MAS_DIAS = 5; // cada "Ver más días"
+const DIAS_MAX = 30; // hasta dónde se busca lugar
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -45,16 +52,22 @@ export const BOTONES_PLANTILLA = {
   cita_cancelada: ["reagendar", "hablar"],
   cita_falto: ["reagendar", "hablar"],
   seguimiento_presupuesto: ["presupuesto_si", "presupuesto_duda", "presupuesto_no"],
+  seguimiento_presupuesto_v2: ["presupuesto_si", "presupuesto_duda", "presupuesto_no"],
+  seguimiento_presupuesto_30: ["presupuesto_si", "presupuesto_duda", "presupuesto_no"],
+  seguimiento_consulta_cita: ["confirmar", "cambiar", "duda"],
 };
 const TITULOS = {
   confirmar: ["Confirmo mi cita"],
   cambiar: ["Cambiar mi cita", "Elegir otro horario"],
   cancelar: ["Cancelar mi cita"],
-  // "Hablar con alguien": botones de la app (máx. 20 letras) · "…asistente del doctor": botones de las plantillas
-  hablar: ["Hablar con alguien", "Hablar con la asistente del doctor", "Hablar con Dra. Gaby"],
-  presupuesto_si: ["Quiero agendar"],
+  // "Hablar con alguien": botones de la app (máx. 20 letras) · "…asistente (del doctor)": botones de las plantillas
+  // (se aceptan los títulos viejos y los nuevos: Meta tarda en aprobar las plantillas editadas)
+  hablar: ["Hablar con alguien", "Hablar con la asistente del doctor", "Hablar con la asistente", "Hablar con Dra. Gaby"],
+  presupuesto_si: ["Quiero agendar", "Quiero empezar", "Quiero mi cita"],
   presupuesto_duda: ["Tengo una duda"],
   presupuesto_no: ["Ya no, gracias"],
+  nueva: ["Agendar mi cita"],
+  no_interesa: ["No me interesa"],
 };
 
 export const idBoton = (accion, citaId, dato = "") => `cita|${accion}|${citaId || ""}|${dato}`;
@@ -168,16 +181,43 @@ export async function enviarMenuCita(admin, telefono, paciente, cita) {
   return envio;
 }
 
-/** Lista de días con lugar para la duración de `cita`. `accionDia`: "dia" (mover) o "rdia" (cita nueva). */
-async function enviarDias(admin, telefono, paciente, cita, accionDia, texto, desde = desdeCuando(cita)) {
+const libresDe = (r) => (Array.isArray(r.horarios_libres) ? r.horarios_libres : []);
+const nLibres = (n) => `${n} horario${n === 1 ? "" : "s"} libre${n === 1 ? "" : "s"}`;
+
+/**
+ * Lista de días con lugar para la duración de `cita`. `accionDia`: "dia" (mover) o "rdia" (cita nueva).
+ * `base`: primer día que se puede ofrecer. Se busca hasta DIAS_MAX días después de `base`.
+ *   Primera lista: "Otra hora el mismo día" (sólo al MOVER y si ese día queda otro horario
+ *   libre) + los 2 días siguientes con lugar + "Ver más días" + "Hablar con alguien".
+ *   "Ver más días" (`desdeFecha`): los 5 días siguientes con lugar + "Ver más días" (si hay más).
+ * Devuelve false si no hay ningún lugar.
+ */
+async function enviarDias(admin, telefono, paciente, cita, accionDia, texto, base, { desdeFecha = null } = {}) {
+  const moviendo = accionDia === "dia";
+  const mismoDia = moviendo ? fechaDe(cita.inicio) : null;
+  const limite = sumarDias(base, DIAS_MAX);
+  const cuantos = desdeFecha ? MAS_DIAS : PRIMEROS_DIAS;
   const filas = [];
-  for (let i = 0; i < DIAS_A_OFRECER && filas.length < 9; i++) {
-    const fecha = sumarDias(desde, i);
-    const r = await libresPara(admin, cita, fecha);
-    const n = Array.isArray(r.horarios_libres) ? r.horarios_libres.length : 0;
-    if (n) filas.push({ id: idBoton(accionDia, cita.id, fecha), titulo: diaCorto(fecha), descripcion: `${n} horario${n === 1 ? "" : "s"} libre${n === 1 ? "" : "s"}` });
+  if (moviendo && !desdeFecha && mismoDia >= base) {
+    const actual = formatHora(minutosDelDia(cita.inicio));
+    const n = libresDe(await libresPara(admin, cita, mismoDia)).filter((h) => h !== actual).length;
+    if (n) filas.push({ id: idBoton("dia", cita.id, mismoDia), titulo: "Otra hora el mismo día", descripcion: nLibres(n) });
   }
-  if (!filas.length) return false;
+  const dias = [];
+  let siguiente = null;
+  for (let f = desdeFecha && desdeFecha > base ? desdeFecha : base; f <= limite; f = sumarDias(f, 1)) {
+    if (f === mismoDia) continue; // ese día va en "Otra hora el mismo día"
+    const n = libresDe(await libresPara(admin, cita, f)).length;
+    if (!n) continue;
+    if (dias.length === cuantos) {
+      siguiente = f; // hay más: "Ver más días" sigue desde aquí
+      break;
+    }
+    dias.push({ id: idBoton(accionDia, cita.id, f), titulo: diaCorto(f), descripcion: nLibres(n) });
+  }
+  if (!filas.length && !dias.length) return false;
+  filas.push(...dias);
+  if (siguiente) filas.push({ id: idBoton(moviendo ? "mas" : "rmas", cita.id, siguiente), titulo: "Ver más días", descripcion: "Otros días con lugar" });
   filas.push({ id: idBoton("hablar", cita.id), titulo: "Hablar con alguien", descripcion: "Si ningún día le acomoda" });
   const envio = await enviarLista(telefono, texto, "Ver días", filas, "Días con lugar");
   await guardarSalida(admin, telefono, paciente.id, envio, `${texto}\n[Lista de días]`);
@@ -216,14 +256,15 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
     .in("paciente_id", idsDe(paciente))
     .maybeSingle();
   if (!previa) {
-    await decir(admin, telefono, paciente.id, "No encontré esa cita. Si quiere agendar, con gusto le ayudo por aquí 😊");
+    if (b.accion === "nueva") await pasar(admin, telefono, paciente, "Quiere agendar su siguiente cita");
+    else await decir(admin, telefono, paciente.id, "No encontré esa cita. Si quiere agendar, con gusto le ayudo por aquí 😊");
     return true;
   }
 
   if (b.accion.startsWith("presupuesto_")) {
     await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", previa.id);
     if (b.accion === "presupuesto_si") {
-      await pasar(admin, telefono, paciente, "Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La asistente del Dr. Felipe le escribe para agendar su tratamiento 😊");
+      await pasar(admin, telefono, paciente, "Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La asistente del Dr. Felipe le escribe en un momento para agendar su tratamiento 😊");
     } else if (b.accion === "presupuesto_duda") {
       await pasar(admin, telefono, paciente, "Tiene una duda sobre su plan de tratamiento (seguimiento de presupuesto)");
     } else {
@@ -239,15 +280,23 @@ async function atenderCitaAnterior(admin, telefono, paciente, nombre, b) {
     await enviarMenuCita(admin, telefono, paciente, proxima);
     return true;
   }
-  if (!["no_asistio", "cancelada"].includes(previa.estado)) {
+  // Faltó, se canceló, o ya vino (seguimiento después de su consulta: "Agendar mi cita")
+  if (!["no_asistio", "cancelada", "asistio"].includes(previa.estado)) {
     await pasar(admin, telefono, paciente, "Quiere reagendar su cita");
     return true;
   }
   const desde = hoyDurango();
 
-  if (b.accion === "reagendar") {
-    const ok = await enviarDias(admin, telefono, paciente, previa, "rdia", "¿Para qué día le agendamos su nueva cita?", desde);
-    if (!ok) await pasar(admin, telefono, paciente, "Quiere reagendar y no hay lugar en 2 semanas");
+  if (b.accion === "reagendar" || b.accion === "nueva") {
+    const pregunta = b.accion === "nueva" ? "¿Para qué día le agendamos su siguiente cita?" : "¿Para qué día le agendamos su nueva cita?";
+    const ok = await enviarDias(admin, telefono, paciente, previa, "rdia", pregunta, desde);
+    if (!ok) await pasar(admin, telefono, paciente, "Quiere agendar y no hay lugar en el próximo mes");
+    return true;
+  }
+  if (b.accion === "rmas") {
+    if (!esFechaValida(b.dato)) return atenderBotonCita(admin, telefono, idBoton("reagendar", previa.id));
+    const ok = await enviarDias(admin, telefono, paciente, previa, "rdia", "Más días con lugar. ¿Cuál le acomoda?", desde, { desdeFecha: b.dato });
+    if (!ok) await pasar(admin, telefono, paciente, "Quiere agendar y ya no hay más días con lugar en el próximo mes");
     return true;
   }
   if (b.accion === "rdia") {
@@ -351,6 +400,8 @@ async function contestarLoBasico(admin, telefono, paciente, nombre, b) {
     cancelar: ["Quiere cancelar su cita", "Entendido. La asistente del Dr. Felipe le escribe en un momento para confirmar la cancelación."],
     presupuesto_si: ["Quiere agendar su tratamiento (seguimiento de presupuesto)", "¡Con gusto! La asistente del Dr. Felipe le escribe en un momento para agendar su tratamiento 😊"],
     presupuesto_duda: ["Tiene una duda sobre su plan de tratamiento", null],
+    duda: ["Tiene una duda", null],
+    nueva: ["Quiere agendar su siguiente cita", "Con gusto le buscamos un horario. La asistente del Dr. Felipe le escribe en un momento 😊"],
     confirmar: ["Quiso confirmar, pero no encontré su cita", "¡Gracias! La asistente del Dr. Felipe revisa su cita y le escribe en un momento 😊"],
   };
   const [motivo, texto] = frases[b.accion] || [`Tocó "${TITULOS[b.accion]?.[0] || "una opción de su cita"}"`, null];
@@ -385,6 +436,15 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
   const paciente = { ...base, ids, etiquetas: [...new Set(registros.flatMap((r) => r.etiquetas || []))] };
   const nombre = paciente.nombre && !/^WhatsApp /.test(paciente.nombre) ? paciente.nombre : "Paciente";
 
+  // "No me interesa" (seguimiento de un anuncio): ya no le llega nada automático. Igual en cualquier modo.
+  if (b.accion === "no_interesa") {
+    for (const r of registros) {
+      await admin.from("pacientes").update({ etiquetas: [...new Set([...(r.etiquetas || []), "no_contactar"])] }).eq("id", r.id);
+    }
+    await decir(admin, telefono, paciente.id, "Entendido, gracias por avisarnos. Aquí estamos cuando guste 😊");
+    return true;
+  }
+
   // Si ella lleva el chat o el asistente no está en "Contesta solo", el sistema NO le contesta
   // al paciente: sólo anota lo que tocó y le avisa a ella para que conteste con sus palabras.
   if (!(await contestaSolo(admin))) {
@@ -397,7 +457,18 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
     return true;
   }
 
-  if (["reagendar", "rdia", "rhora", "presupuesto_si", "presupuesto_duda", "presupuesto_no"].includes(b.accion)) {
+  // "Tengo una duda": se le muestra el menú "¿Qué le gustaría saber?" (Ubicación y horario ·
+  // Tratamientos · Hablar con alguien) en vez de pasarlo directo a la Dra. Gaby
+  if (b.accion === "duda" || b.accion === "presupuesto_duda") {
+    if (b.accion === "presupuesto_duda" && b.citaId) {
+      await admin.from("citas").update({ seguimiento_cerrado: true }).eq("id", b.citaId).in("paciente_id", idsDe(paciente));
+    }
+    await yaRespondio(admin, idsDe(paciente));
+    if (!(await atenderMenu(admin, telefono, paciente.id, "opciones"))) await pasar(admin, telefono, paciente, "Tiene una duda");
+    return true;
+  }
+
+  if (["reagendar", "nueva", "rdia", "rmas", "rhora", "presupuesto_si", "presupuesto_no"].includes(b.accion)) {
     return atenderCitaAnterior(admin, telefono, paciente, nombre, b);
   }
 
@@ -425,8 +496,20 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
       }
       const dur = duracionDe(cita);
       const texto = `Su cita es el ${cuando(cita.inicio)}${dur > SLOT_MIN ? ` (dura ${dur >= 60 ? `${dur / 60} h` : `${dur} min`})` : ""}. ¿Para qué día la cambiamos?`;
-      if (!(await enviarDias(admin, telefono, paciente, cita, "dia", texto))) {
-        await pasar(admin, telefono, paciente, "Quiere cambiar su cita y no hay lugar en 2 semanas");
+      if (!(await enviarDias(admin, telefono, paciente, cita, "dia", texto, desdeCuando(cita)))) {
+        await pasar(admin, telefono, paciente, "Quiere cambiar su cita y no hay lugar en el próximo mes");
+      }
+      return true;
+    }
+
+    case "mas": {
+      if ((cita.cambios_paciente || 0) >= MAX_CAMBIOS) {
+        await pasar(admin, telefono, paciente, `Quiere mover otra vez su cita (ya la movió ${MAX_CAMBIOS} veces)`);
+        return true;
+      }
+      if (!esFechaValida(b.dato)) return atenderBotonCita(admin, telefono, idBoton("cambiar", cita.id));
+      if (!(await enviarDias(admin, telefono, paciente, cita, "dia", "Más días con lugar. ¿Cuál le acomoda?", desdeCuando(cita), { desdeFecha: b.dato }))) {
+        await pasar(admin, telefono, paciente, "Quiere cambiar su cita y ya no hay más días con lugar en el próximo mes");
       }
       return true;
     }
