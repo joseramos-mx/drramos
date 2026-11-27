@@ -21,7 +21,8 @@ import { entraALaPrueba, grupoPrecio } from "@/lib/prueba-precio";
 import Anthropic from "@anthropic-ai/sdk";
 import { INSTRUCCIONES } from "./conocimiento";
 import { esSoloCortesia } from "./cortesia";
-import { armar, catalogo, elegiblesDe, textosEfectivos } from "./respuestas";
+import { armar, catalogo, costoSinPregunta, elegiblesDe, textosEfectivos } from "./respuestas";
+import { anuncioDe } from "@/lib/anuncios";
 import { enviarTexto, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { botonesPara, enviarConMenu } from "@/lib/menu";
@@ -578,7 +579,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   // El mismo teléfono puede estar en dos registros (el del chat y el de la agenda): se ven sus citas en todos
   const { data: registros } = await admin
     .from("pacientes")
-    .select("id, nombre, origen, etiquetas, atiende, atiende_desde, primer_mensaje_en")
+    .select("id, nombre, origen, etiquetas, atiende, atiende_desde, primer_mensaje_en, anuncio_id")
     .eq("whatsapp", telefono)
     .order("created_at");
   if (!registros?.length) return;
@@ -750,6 +751,13 @@ export async function atenderConAsistente(admin, telefono, waId) {
   } else {
     texto = d.texto;
   }
+  // Primer mensaje de quien llegó de un anuncio de la campaña (A1-A4) y sólo pidió información:
+  // en vez del saludo general va el texto de SU anuncio, con la foto del anuncio arriba.
+  // Si preguntó algo concreto (costo, cita, un tratamiento…) se le contesta eso, como siempre.
+  const anuncio = primerContacto ? anuncioDe(registros.find((r) => r.anuncio_id)?.anuncio_id) : null;
+  const generico = d.tipo === "aprobada" && (d.ids || []).length > 0 && d.ids.every((id) => ["saludo", "mas_informacion"].includes(id));
+  const textoAnuncio = anuncio && generico ? textos[anuncio.respuesta] : null;
+  if (textoAnuncio) texto = textoAnuncio;
   if (primerContacto) {
     // Prueba de precio: a la mitad de los pacientes nuevos se les dice el costo de la valoración
     // desde el primer mensaje (no si es urgencia o se pasa a la Dra. Gaby, ni si ya lo trae)
@@ -758,8 +766,9 @@ export async function atenderConAsistente(admin, telefono, waId) {
       entraALaPrueba(paciente.primer_mensaje_en || ahora.toISOString()) &&
       ["aprobada", "libre"].includes(d.tipo) &&
       !d.ids?.includes("precio_valoracion");
-    // El costo va sin su "¿Le agendo?": la pregunta la hace la respuesta de abajo (una sola pregunta por mensaje)
-    const precio = decirPrecio ? textos.precio_valoracion.replace(/\s*¿Le agendo\?\s*$/, "") : null;
+    // El costo va con las formas de pago y sin su "¿Le agendo?": la pregunta la hace la
+    // respuesta de abajo (una sola pregunta por mensaje)
+    const precio = decirPrecio ? costoSinPregunta(textos) : null;
     texto = [textos.presentacion, precio, texto].filter(Boolean).join("\n\n");
   }
 
@@ -788,7 +797,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   let envio;
   let guardado = texto;
   if (botones) {
-    ({ envio, guardado } = await enviarConMenu(telefono, texto, botones));
+    ({ envio, guardado } = await enviarConMenu(telefono, texto, botones, textoAnuncio ? anuncio.imagen : null));
     if (envio.error) ((envio = await enviarTexto(telefono, texto)), (guardado = texto)); // si los botones fallan, va el texto solo
   } else envio = await enviarTexto(telefono, texto);
   if (envio.error) return registrar(admin, telefono, "error", { envio: envio.error, decision: d });
@@ -810,7 +819,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     await admin.from("pacientes").update({ etiquetas: [...new Set([...(paciente.etiquetas || []), "no_contactar"])] }).eq("id", paciente.id);
   }
   const accion = d.tipo === "humano" ? "paso_a_humano" : d.acciones?.some((a) => a.herramienta === "agendar_valoracion" && a.resultado?.ok) ? "agendo" : `respondio_${d.tipo}`;
-  return registrar(admin, telefono, accion, { decision: d });
+  return registrar(admin, telefono, accion, { decision: d, ...(textoAnuncio ? { anuncio: anuncio.clave } : {}) });
 }
 
 // ── Pruebas (Ajustes → Probar asistente) ──

@@ -145,13 +145,16 @@ export async function enviarImagen(telefono, buffer, mime, pie) {
  * escribirle a alguien que no ha escrito, o pasadas 24 h). `params` son
  * los {{1}}, {{2}}… del cuerpo, en orden. Devuelve { ok, wa_id } o { error }.
  */
-export async function enviarPlantilla(telefono, nombre, params = [], idioma = "es_MX", { botones = [] } = {}) {
+export async function enviarPlantilla(telefono, nombre, params = [], idioma = "es_MX", { botones = [], imagen = null } = {}) {
   if (!whatsappConfigurado()) return { error: "WhatsApp todavía no está conectado." };
   const to = normalizarTelefono(telefono);
   if (!to) return { error: "Teléfono inválido." };
   const template = { name: nombre, language: { code: idioma } };
+  // Encabezado con foto (la plantilla debe estar dada de alta con encabezado de tipo Imagen)
+  if (imagen) template.components = [{ type: "header", parameters: [{ type: "image", image: { link: imagen } }] }];
   if (params.length) {
-    template.components = [{ type: "body", parameters: params.map((t) => ({ type: "text", text: String(t).slice(0, 200) })) }];
+    template.components = template.components || [];
+    template.components.push({ type: "body", parameters: params.map((t) => ({ type: "text", text: String(t).slice(0, 200) })) });
   }
   // Botones de respuesta rápida: lo que regresa el webhook al tocarlos (p. ej. "cita|cambiar|<id>")
   botones.forEach((payload, i) => {
@@ -241,10 +244,14 @@ async function enviarInteractivo(telefono, interactive) {
   }
 }
 
-/** Hasta 3 botones: [{ id, titulo }] (título máx. 20 letras). */
-export function enviarBotones(telefono, cuerpo, botones) {
+/**
+ * Hasta 3 botones: [{ id, titulo }] (título máx. 20 letras). `imagen`: link
+ * público (https) de una foto que va arriba del texto, como encabezado.
+ */
+export function enviarBotones(telefono, cuerpo, botones, { imagen = null } = {}) {
   return enviarInteractivo(telefono, {
     type: "button",
+    ...(imagen ? { header: { type: "image", image: { link: imagen } } } : {}),
     body: { text: String(cuerpo).slice(0, 1024) },
     action: { buttons: botones.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id.slice(0, 256), title: b.titulo.slice(0, 20) } })) },
   });

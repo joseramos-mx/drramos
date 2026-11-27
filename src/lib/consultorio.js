@@ -8,3 +8,12 @@ export const WHATSAPP_CONSULTORIO = process.env.NEXT_PUBLIC_WHATSAPP_CONSULTORIO
 
 export const waConsultorio = (texto) =>
   `https://wa.me/${WHATSAPP_CONSULTORIO}${texto ? `?text=${encodeURIComponent(texto)}` : ""}`;
+
+/**
+ * Dirección pública de la web (para las fotos que se mandan por WhatsApp: Meta las baja
+ * de aquí, así que deben estar publicadas). SITIO_URL la cambia (sin "/" al final).
+ */
+export const SITIO_URL = (process.env.SITIO_URL || "https://www.drfelipedejesusramos.com").replace(/\/+$/, "");
+
+/** "03-carillas.jpg" → link público de public/whatsapp/03-carillas.jpg (o null). */
+export const imagenWhatsapp = (archivo) => (archivo ? `${SITIO_URL}/whatsapp/${archivo}` : null);
