@@ -98,7 +98,7 @@ const HERRAMIENTAS = [
   {
     name: "agendar_valoracion",
     description:
-      "Agenda una valoración de 30 min cuando la persona ya aceptó día y hora y dio su nombre completo. Después confirma con la respuesta aprobada confirmar_cita.",
+      "Agenda una valoración de 30 min cuando la persona ya aceptó día y hora y dio su nombre completo. En cuanto tengas esos datos, agéndala DE INMEDIATO: no pidas confirmación ni repitas los datos en un mensaje propio. Después confirma con la respuesta aprobada confirmar_cita.",
     input_schema: {
       type: "object",
       properties: {
@@ -288,6 +288,7 @@ async function verificar(client, texto, conversacion, sistema) {
         text: `Eres el verificador de calidad de un consultorio dental. Revisas un mensaje que un asistente virtual quiere mandar por WhatsApp a un paciente.
 
 Apruébalo SÓLO si cumple TODO:
+- Las fechas y días de la semana se revisan contra <fecha> (son correctos si coinciden con ese calendario).
 - Cada dato que afirma está en el MANUAL de abajo (no basta con que "suene razonable"; si algo no está en el manual, se rechaza).
 - No da precios ni cantidades de dinero (salvo $500 de la valoración), no diagnostica, no receta ni menciona medicamentos, no da indicaciones médicas, no promete resultados, no dice "especialista", no habla mal de otros.
 - Contesta lo que preguntó el paciente, es corto, respetuoso y de "usted".
@@ -304,7 +305,7 @@ ${sistema}`,
     messages: [
       {
         role: "user",
-        content: `<conversacion>\n${conversacion}\n</conversacion>\n\n<mensaje_propuesto>\n${texto}\n</mensaje_propuesto>\n\nUsa la herramienta veredicto.`,
+        content: `<fecha>\n${lineaFecha()}\n</fecha>\n\n<conversacion>\n${conversacion}\n</conversacion>\n\n<mensaje_propuesto>\n${texto}\n</mensaje_propuesto>\n\nUsa la herramienta veredicto.`,
       },
     ],
   });
@@ -536,7 +537,9 @@ async function decidir(client, admin, { paciente, messages, contexto, puedeAgend
         // El día sale de la consulta real (no de lo que escriba el modelo)
         const diaConsultado = [...consultados].find(([, libres]) => horas.length && horas.every((h) => libres.has(h)))?.[0];
         const diaSinLugar = [...consultados].find(([, libres]) => libres.size === 0)?.[0];
-        if (ids.includes("ofrecer_horarios") && !diaConsultado) {
+        if (ids.includes("ofrecer_horarios") && tieneCita && puedeAgendar) {
+          r = { error: "Este paciente ya tiene cita: para otro día u hora usa cita_del_paciente (ver_horarios_del_dia o proponer_horario)." };
+        } else if (ids.includes("ofrecer_horarios") && !diaConsultado) {
           r = { error: "Sólo puedes ofrecer horas que salieron libres en consultar_disponibilidad. Consulta primero." };
         } else if (ids.includes("confirmar_cita") && !agendada) {
           r = { error: "Para confirmar primero agenda con agendar_valoracion." };
