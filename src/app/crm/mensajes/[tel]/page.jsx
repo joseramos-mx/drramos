@@ -67,17 +67,20 @@ export default async function ConversacionPage({ params }) {
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] flex-col bg-[#f5f1ea]">
       <AlInstante telefono={telefono} respaldo={15} />
-      <Cabecera
-        nombre={nombre}
-        telefono={telefono}
-        origen={paciente?.origen}
-        etiquetas={paciente?.etiquetas || []}
-        pacienteId={paciente?.id}
-        repetidas={repetidas}
-        volver="/crm/mensajes"
-        agendarHref={paciente ? `/agenda?paciente=${paciente.id}` : null}
-      />
-      {paciente && <QuienAtiende key={`${atiende}-${modo}`} pacienteId={paciente.id} atiende={atiende} desde={atiendeDesde} modo={modo} />}
+      {/* Cabecera y "quién contesta" fijas arriba: el botón Devolver no se pierde en chats largos */}
+      <div className="sticky top-0 z-10">
+        <Cabecera
+          nombre={nombre}
+          telefono={telefono}
+          origen={paciente?.origen}
+          etiquetas={paciente?.etiquetas || []}
+          pacienteId={paciente?.id}
+          repetidas={repetidas}
+          volver="/crm/mensajes"
+          agendarHref={paciente ? `/agenda?paciente=${paciente.id}` : null}
+        />
+        {paciente && <QuienAtiende key={`${atiende}-${modo}`} pacienteId={paciente.id} atiende={atiende} desde={atiendeDesde} modo={modo} />}
+      </div>
       <div className="flex flex-1 flex-col px-3">
         <Chat mensajes={mensajes || []} />
       </div>
