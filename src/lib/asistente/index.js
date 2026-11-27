@@ -23,6 +23,7 @@ import { INSTRUCCIONES } from "./conocimiento";
 import { esSoloCortesia } from "./cortesia";
 import { armar, catalogo, costoSinPregunta, elegiblesDe, textosEfectivos } from "./respuestas";
 import { anuncioDe } from "@/lib/anuncios";
+import { modoPara } from "./modo";
 import { enviarTexto, mostrarEscribiendo, whatsappConfigurado } from "@/lib/whatsapp";
 import { avisar } from "@/lib/mensajes-servidor";
 import { botonesPara, enviarConMenu } from "@/lib/menu";
@@ -579,7 +580,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
   if (!process.env.ANTHROPIC_API_KEY || !whatsappConfigurado()) return;
 
   const { data: config } = await admin.from("asistente_config").select("modo, libres").eq("id", 1).maybeSingle();
-  const modo = config?.modo || "apagado";
+  const modo = modoPara(config?.modo, telefono);
   if (modo === "apagado") return;
   const libresSolas = modo === "automatico" && config?.libres === "auto";
 

@@ -5,6 +5,7 @@ import { codigoEnMensaje } from "../../crm/resultados/fuentes";
 import { bajarMedia } from "@/lib/whatsapp";
 import { avisarMensajeNuevo, guardarMedia, supabaseServicio } from "@/lib/mensajes-servidor";
 import { atenderConAsistente } from "@/lib/asistente";
+import { modoPara } from "@/lib/asistente/modo";
 import { atenderBotonCita, leerBoton } from "@/lib/mi-cita";
 import { atenderMenu, leerMenu, seContestaSola } from "@/lib/menu";
 
@@ -150,9 +151,11 @@ export async function POST(request) {
         : { data: null };
       const loLlevaElla =
         p?.atiende === "humano" && p.atiende_desde && Date.now() - new Date(p.atiende_desde).getTime() < 8 * 3600 * 1000;
-      if (menu && modo === "automatico" && !loLlevaElla) {
+      // Los teléfonos de prueba siempre tienen "Contesta solo"
+      const modoTel = process.env.ANTHROPIC_API_KEY ? modoPara(modo, telefono) : modo;
+      if (menu && modoTel === "automatico" && !loLlevaElla) {
         after(() => atenderMenu(supabaseServicio(), telefono, pacienteId, menu).catch((e) => console.error("[menu]", e)));
-      } else if (modo !== "apagado" && !loLlevaElla) {
+      } else if (modoTel !== "apagado" && !loLlevaElla) {
         // Contesta el asistente; a la Dra. Gaby sólo le llega lo que él le pase
         after(() => atenderConAsistente(supabaseServicio(), telefono, waId).catch((e) => console.error("[asistente]", e)));
       } else {

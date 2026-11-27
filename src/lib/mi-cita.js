@@ -35,6 +35,7 @@ import { diasCerrados, disponibilidad, pasarAHumano, textoAlPasar } from "@/lib/
 import { textosEfectivos } from "@/lib/asistente/respuestas";
 import { atenderMenu } from "@/lib/menu";
 import { SLOT_MIN, abiertoAhora, esFechaValida, formatFechaLarga, formatHora, hoyDurango, isoDesde, minutosDelDia, sumarDias } from "@/app/agenda/lib";
+import { modoPara } from "@/lib/asistente/modo";
 
 const MAX_CAMBIOS = 2;
 const PRIMEROS_DIAS = 2; // la primera lista de días es corta
@@ -355,9 +356,9 @@ const HUMANO_HORAS = 8; // igual que en el asistente: si ella escribió/tomó el
  * Regla de Jesús (2026-11-21): "tomar el chat" sólo decide quién CONVERSA (robot o ella); los botones
  * de cita funcionan igual aunque ella lo haya tomado, por si olvida devolverlo.
  */
-async function contestaSolo(admin) {
+async function contestaSolo(admin, telefono) {
   const { data: config } = await admin.from("asistente_config").select("modo").eq("id", 1).maybeSingle();
-  return config?.modo === "automatico";
+  return modoPara(config?.modo, telefono) === "automatico";
 }
 
 /** Sin contestar: deja anotado lo que el paciente eligió (ella decide qué hacer). */
@@ -449,7 +450,7 @@ export async function atenderBotonCita(admin, telefono, respuesta) {
 
   // Si ella lleva el chat o el asistente no está en "Contesta solo", el sistema NO le contesta
   // al paciente: sólo anota lo que tocó y le avisa a ella para que conteste con sus palabras.
-  if (!(await contestaSolo(admin))) {
+  if (!(await contestaSolo(admin, telefono))) {
     return contestarLoBasico(admin, telefono, paciente, nombre, b);
   }
 
