@@ -13,8 +13,12 @@ export const maxDuration = 60;
 
 const HORA_MS = 3600 * 1000;
 const HUMANO_HORAS = 8; // igual que en el asistente: si ella tomó el chat, es suyo 8 h
-/** Texto libre ~22 h después de su último mensaje (debe ir antes de que se cierre la ventana de 24 h). */
-const VENTANA_22H = { desde: 20 * HORA_MS, hasta: 23.5 * HORA_MS };
+/**
+ * Texto libre a quien no contestó, todavía dentro de la ventana de 24 h. El cron corre UNA vez al día
+ * (Vercel Hobby no permite crons por hora), a las 18:00 de Durango: se le manda a quien escribió hace
+ * entre 4 y 23.5 h (su último mensaje), así nadie se queda fuera de la ventana.
+ */
+const VENTANA_22H = { desde: 4 * HORA_MS, hasta: 23.5 * HORA_MS };
 /** Horas de Durango en que se puede mandar cada mensaje (nada de madrugada). */
 const HORAS_22H = { desde: 8, hasta: 21 };
 const HORAS_D3 = { desde: 10, hasta: 19 };
@@ -26,10 +30,10 @@ const PLANTILLA_D3 = "seguimiento_anuncio";
 const PAYLOADS_D3 = ["menu|agendar", "menu|opciones", "cita|no_interesa||"];
 
 /**
- * Seguimiento a quien llegó de un anuncio de Meta y no agendó (Vercel Cron cada hora,
+ * Seguimiento a quien llegó de un anuncio de Meta y no agendó (Vercel Cron diario 18:00 Durango,
  * vercel.json, `Authorization: Bearer CRON_SECRET`). Interruptor en Ajustes →
  * Mensajes automáticos ("seguimiento_anuncios", apagado por omisión).
- *   a) ~22 h después de su último mensaje (todavía dentro de las 24 h): "¿Pudo revisar la
+ *   a) Entre 4 y 23.5 h después de su último mensaje (todavía dentro de las 24 h): "¿Pudo revisar la
  *      información?" con los 3 botones de inicio. Una vez.
  *   b) Día 3: plantilla seguimiento_anuncio con la foto de su anuncio. Una vez. Sólo con
  *      PLANTILLAS_V2=1 (cuando Meta la apruebe) y si no ha escrito en las últimas 24 h.
