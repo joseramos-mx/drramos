@@ -686,7 +686,7 @@ export async function atenderConAsistente(admin, telefono, waId) {
     `Nombre registrado del paciente: ${nombreValido(paciente.nombre) ? paciente.nombre : "todavía no lo sabemos"}.`,
     paciente.origen ? `Ya sabemos cómo nos conoció (${paciente.origen}): NO uses preguntar_origen.` : "",
     proximas?.length
-      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
+      ? `Citas próximas de este paciente: ${proximas.map((c) => `${formatFechaLarga(hoyDurango(new Date(c.inicio)))} ${formatHora(minutosDelDia(c.inicio))} (${c.tipo})`).join("; ")}. ${modo === "automatico" ? "Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente. Si pide agendar (p. ej. toca \"Agendar valoración\"), NO preguntes día: usa cita_del_paciente con accion menu (el sistema le recuerda su cita y le ofrece cambiarla)." : "Si pregunta por ellas o quiere cambiarlas, pásalo a la Dra. Gaby."}`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
@@ -927,7 +927,7 @@ export async function probarConversacion({ conversacion, agendaLlena = false, ci
     lineaFecha(ahora),
     `Nombre registrado del paciente: ${nombre || "todavía no lo sabemos"}.`,
     citaProxima
-      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente.`
+      ? `Citas próximas de este paciente: ${formatFechaLarga(sumarDias(hoyDurango(), 3))} 10:00 (valoracion). Si pregunta por ellas, quiere cambiarlas, cancelarlas o confirmarlas, usa cita_del_paciente. Si pide agendar (p. ej. toca "Agendar valoración"), NO preguntes día: usa cita_del_paciente con accion menu (el sistema le recuerda su cita y le ofrece cambiarla).`
       : "No tiene citas próximas.",
     modo === "borrador" ? "MODO BORRADOR: la Dra. Gaby revisa todo antes de mandarlo. No agendas tú: ofrece horarios y ella confirma." : "",
   ]
