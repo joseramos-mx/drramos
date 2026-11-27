@@ -15,6 +15,8 @@ export default async function AjustesPage() {
   if (!user) redirect("/crm/login?from=/crm/mensajes/ajustes");
 
   const { data: config } = await supabase.from("asistente_config").select("modo, libres, recordatorios, aviso_falto, seguimientos, resenas").eq("id", 1).maybeSingle();
+  // Aparte: si la migración 20261126000000 aún no corre, esta columna no existe y no debe romper lo demás
+  const { data: extra } = await supabase.from("asistente_config").select("seguimiento_anuncios").eq("id", 1).maybeSingle();
   // ¿El asistente puede trabajar? Falta la llave, o su último intento falló (llave mal puesta, sin saldo)
   let llave = process.env.ANTHROPIC_API_KEY ? { estado: "ok" } : { estado: "falta" };
   if (llave.estado === "ok") {
@@ -28,5 +30,5 @@ export default async function AjustesPage() {
       if (ultimos?.[0]?.accion === "error") llave = { estado: "error", en: ultimos[0].creado_en };
     } catch {}
   }
-  return <Ajustes llave={llave} email={user.email} admin={esAdmin(user.email)} modo={config?.modo || "apagado"} libres={config?.libres || "aprobar"} automaticos={{ recordatorios: config?.recordatorios, aviso_falto: config?.aviso_falto, seguimientos: config?.seguimientos, resenas: config?.resenas }} />;
+  return <Ajustes llave={llave} email={user.email} admin={esAdmin(user.email)} modo={config?.modo || "apagado"} libres={config?.libres || "aprobar"} automaticos={{ recordatorios: config?.recordatorios, aviso_falto: config?.aviso_falto, seguimientos: config?.seguimientos, resenas: config?.resenas, seguimiento_anuncios: extra?.seguimiento_anuncios }} />;
 }

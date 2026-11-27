@@ -24,6 +24,13 @@ const MENSAJES = [
     titulo: "Pedir opinión en Google",
     texto: "Cuando termina su tratamiento (pagó y ya no tiene citas), 2 días después: “¿Nos ayudaría con su opinión en Google?”. Una sola vez por paciente.",
   },
+  {
+    campo: "seguimiento_anuncios",
+    titulo: "Seguimiento a quien llegó de un anuncio",
+    texto: "Si escribió por un anuncio y no agendó: al otro día “¿Pudo revisar la información?” y, al tercer día, un mensaje con la foto de su anuncio. Una vez cada uno. No le llega si ya tiene cita o si tú le escribiste.",
+    // Nuevo: apagado hasta que lo prendan
+    porOmision: false,
+  },
 ];
 
 function Interruptor({ campo, titulo, texto, prendido, demo }) {
@@ -58,7 +65,7 @@ export default function Recordatorios({ estado = {}, demo = false }) {
   return (
     <div className="flex flex-col gap-2 px-5">
       {MENSAJES.map((m) => (
-        <Interruptor key={m.campo} {...m} prendido={estado[m.campo] !== false} demo={demo} />
+        <Interruptor key={m.campo} {...m} prendido={m.porOmision === false ? estado[m.campo] === true : estado[m.campo] !== false} demo={demo} />
       ))}
     </div>
   );

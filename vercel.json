@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/recordatorios", "schedule": "0 17 * * *" },
-    { "path": "/api/resumen-manana", "schedule": "0 15 * * *" }
+    { "path": "/api/resumen-manana", "schedule": "0 15 * * *" },
+    { "path": "/api/seguimiento-anuncios", "schedule": "0 * * * *" }
   ]
 }

@@ -408,7 +408,7 @@ export async function cambiarLibresAction(libres) {
 
 /** Ajustes: prender o apagar un mensaje automático (recordatorio, aviso a quien faltó, seguimiento de presupuestos). */
 export async function cambiarAutomaticoAction(campo, prendido) {
-  if (!["recordatorios", "aviso_falto", "seguimientos", "resenas"].includes(campo)) return { error: "Opción no válida." };
+  if (!["recordatorios", "aviso_falto", "seguimientos", "resenas", "seguimiento_anuncios"].includes(campo)) return { error: "Opción no válida." };
   const { supabase, user } = await sesion();
   if (!user) return { error: "Tu sesión expiró. Vuelve a entrar." };
   const { error } = await supabase
